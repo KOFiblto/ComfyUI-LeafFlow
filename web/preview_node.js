@@ -1,6 +1,6 @@
 import { app } from "/scripts/app.js";
 import { api } from "/scripts/api.js";
-import { PreviewManager } from "./preview_manager.js";
+import { PreviewManager } from "./js/preview_manager.js";
 
 function getKSamplerNodes() {
     if (!app || !app.graph) return [];
