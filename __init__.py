@@ -82,6 +82,7 @@ async def save_settings(request):
         data = await request.json()
         civitai_key = data.get("civitai_api_key")
         tmdb_key = data.get("tmdb_api_key")
+        enable_persistent_queue = data.get("enable_persistent_queue")
 
         lines = []
         if os.path.exists(ENV_FILE):
@@ -94,6 +95,7 @@ async def save_settings(request):
         new_lines = []
         has_civitai = False
         has_tmdb = False
+        has_persistent = False
 
         for line in lines:
             if line.strip().startswith("CIVITAI_API_KEY=") and civitai_key is not None:
@@ -102,6 +104,9 @@ async def save_settings(request):
             elif line.strip().startswith("TMDB_API_KEY=") and tmdb_key is not None:
                 new_lines.append(f"TMDB_API_KEY={tmdb_key}\n")
                 has_tmdb = True
+            elif line.strip().startswith("ENABLE_PERSISTENT_QUEUE=") and enable_persistent_queue is not None:
+                new_lines.append(f"ENABLE_PERSISTENT_QUEUE={enable_persistent_queue}\n")
+                has_persistent = True
             else:
                 new_lines.append(line)
 
@@ -109,6 +114,8 @@ async def save_settings(request):
             new_lines.append(f"CIVITAI_API_KEY={civitai_key}\n")
         if not has_tmdb and tmdb_key is not None:
             new_lines.append(f"TMDB_API_KEY={tmdb_key}\n")
+        if not has_persistent and enable_persistent_queue is not None:
+            new_lines.append(f"ENABLE_PERSISTENT_QUEUE={enable_persistent_queue}\n")
 
         with open(ENV_FILE, "w", encoding="utf-8") as f:
             f.writelines(new_lines)

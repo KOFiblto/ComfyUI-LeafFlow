@@ -12,7 +12,7 @@ from server import PromptServer
 from comfy.utils import load_torch_file
 import comfy.sd
 
-LORA_CATEGORY = "FlowControl/Loaders"
+LORA_CATEGORY = "🍃 FlowControl/Loaders"
 
 CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENV_FILE = os.path.join(CURRENT_DIR, ".env")

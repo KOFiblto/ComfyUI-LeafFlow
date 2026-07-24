@@ -19,7 +19,7 @@ class AutoWatcherNode:
     RETURN_TYPES = ("IMAGE", "BOOLEAN")
     RETURN_NAMES = ("image", "has_image")
     FUNCTION = "watch"
-    CATEGORY = "FlowControl/Automation"
+    CATEGORY = "🍃 FlowControl/Automation"
     DESCRIPTION = "Monitors a directory for incoming images. Can poll and wait for an image to arrive, or load if available without waiting."
 
     @classmethod

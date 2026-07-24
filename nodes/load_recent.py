@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image, ImageOps
 import folder_paths
 
-LOADER_CATEGORY = "FlowControl/Loaders"
+LOADER_CATEGORY = "🍃 FlowControl/Loaders"
 
 class LoadRecentOutputs:
     @classmethod

@@ -51,7 +51,23 @@ app.registerExtension({
             }
         });
 
-        // 4. Pause Alert Sounds Setting
+        // 4. Enable Persistent Queue Setting
+        app.ui.settings.addSetting({
+            id: "FlowControl.EnablePersistentQueue",
+            name: "🍃 FlowControl: Enable Persistent Queue (Auto-Recovery)",
+            type: "boolean",
+            defaultValue: true,
+            tooltip: "Automatically saves unfinished queue items to disk and restores them after restart/crash.",
+            onChange(value) {
+                api.fetchApi("/flow_control/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ enable_persistent_queue: value ? "true" : "false" })
+                }).catch(() => {});
+            }
+        });
+
+        // 5. Pause Alert Sounds Setting
         app.ui.settings.addSetting({
             id: "FlowControl.EnableSoundAlerts",
             name: "🍃 FlowControl: Enable Sound Alert on Pause",

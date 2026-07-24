@@ -1,4 +1,4 @@
-PREVIEW_CATEGORY = "FlowControl/Previews"
+PREVIEW_CATEGORY = "🍃 FlowControl/Previews"
 
 class PreviewLatentLiveNode:
     @classmethod

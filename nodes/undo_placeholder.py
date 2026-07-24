@@ -2,7 +2,7 @@ import os
 import re
 import folder_paths
 
-UTILS_CATEGORY = "FlowControl/Utils"
+UTILS_CATEGORY = "🍃 FlowControl/Utils"
 
 def parse_pretty_name(filepath):
     base = os.path.splitext(os.path.basename(filepath))[0]

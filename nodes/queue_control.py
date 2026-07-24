@@ -6,8 +6,7 @@ from aiohttp import web
 from server import PromptServer
 import nodes
 
-# Category for FlowControl queue nodes
-QUEUE_CATEGORY = "FlowControl/Queue"
+QUEUE_CATEGORY = "🍃 FlowControl/Queue"
 
 class PauseQueueNode:
     @classmethod
@@ -31,14 +30,27 @@ class PersistentQueueNode:
     def noop(self):
         return ()
 
-# Persistent queue data file location
 CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PERSISTENT_FILE = os.path.join(CURRENT_DIR, "persistent_queue.json")
+ENV_FILE = os.path.join(CURRENT_DIR, ".env")
+
+def is_persistent_queue_enabled():
+    enabled = True
+    if os.path.exists(ENV_FILE):
+        try:
+            with open(ENV_FILE, "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.strip().startswith("ENABLE_PERSISTENT_QUEUE="):
+                        val = line.strip().split("=", 1)[1].strip().lower()
+                        enabled = val in ["true", "1", "yes"]
+        except Exception:
+            pass
+    return enabled
 
 class PauseQueueManager:
     def __init__(self):
         self.paused = True
-        self.mode = "after_finish"  # "after_finish" or "instantly"
+        self.mode = "after_finish"
         self.is_waiting = True
         self.event = threading.Event()
         self.event.clear()
@@ -171,6 +183,8 @@ class PersistentQueueManager:
                 self.persistent_items = []
 
     def save_to_file(self):
+        if not is_persistent_queue_enabled():
+            return
         with self.lock:
             try:
                 temp_file = PERSISTENT_FILE + ".tmp"
@@ -181,7 +195,7 @@ class PersistentQueueManager:
                 print(f"[PersistentQueue] Error saving persistent queue file: {e}")
 
     def add_item(self, item_tuple):
-        if self.is_restoring:
+        if self.is_restoring or not is_persistent_queue_enabled():
             return
         try:
             if isinstance(item_tuple, (tuple, list)):
@@ -206,14 +220,15 @@ class PersistentQueueManager:
             initial_count = len(self.persistent_items)
             self.persistent_items = [x for x in self.persistent_items if x.get("prompt_id") != prompt_id]
             changed = len(self.persistent_items) != initial_count
-        if changed:
+        if changed and is_persistent_queue_enabled():
             self.save_to_file()
             print(f"[PersistentQueue] Removed prompt {prompt_id} from disk.")
 
     def wipe_all(self):
         with self.lock:
             self.persistent_items = []
-        self.save_to_file()
+        if is_persistent_queue_enabled():
+            self.save_to_file()
         print("[PersistentQueue] Cleared all saved queue items.")
 
     def sync_client_id(self, active_client_id):
@@ -314,6 +329,10 @@ class PersistentQueueManager:
         print("[PersistentQueue] Server queue hooks patched successfully.")
 
     def restore_queue(self):
+        if not is_persistent_queue_enabled():
+            print("[PersistentQueue] Auto-recovery is disabled in settings.")
+            return
+
         server = PromptServer.instance
         if not hasattr(server, "prompt_queue") or not self.persistent_items:
             return

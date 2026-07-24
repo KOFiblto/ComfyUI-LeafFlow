@@ -9,7 +9,7 @@ import piexif.helper
 from aiohttp import web
 from server import PromptServer
 
-IMAGE_CATEGORY = "FlowControl/Loaders"
+IMAGE_CATEGORY = "🍃 FlowControl/Loaders"
 CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE_FILE = os.path.join(CURRENT_DIR, "image_prompts_cache.json")
 

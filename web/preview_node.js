@@ -6,8 +6,9 @@ function getKSamplerNodes() {
     if (!app || !app.graph) return [];
     return app.graph._nodes.filter(node => {
         if (!node) return false;
-        const type = node.type || "";
-        return type.toLowerCase().includes("ksampler") || type.toLowerCase().includes("sampler");
+        const type = (node.type || "").toLowerCase();
+        const title = (node.title || "").toLowerCase();
+        return type.includes("sampler") || type.includes("ksampler") || title.includes("sampler");
     }).map(node => ({
         id: node.id,
         title: node.title || node.type || `Node ${node.id}`
@@ -24,13 +25,9 @@ function updateAllPreviewNodeDropdowns() {
     for (const node of previewNodes) {
         const widget = node.widgets?.find(w => w.name === "Source");
         if (widget) {
-            const jsonA = JSON.stringify(widget.options.values);
-            const jsonB = JSON.stringify(currentValues);
-            if (jsonA !== jsonB) {
-                widget.options.values = currentValues;
-                if (!currentValues.includes(widget.value)) {
-                    widget.value = "Auto";
-                }
+            widget.options.values = currentValues;
+            if (!currentValues.includes(widget.value)) {
+                widget.value = "Auto";
             }
         }
     }
@@ -40,6 +37,13 @@ app.registerExtension({
     name: "ComfyUI.FlowControl.PreviewLatentLive",
     async setup() {
         PreviewManager.init(app, api);
+        
+        api.addEventListener("status", () => {
+            updateAllPreviewNodeDropdowns();
+        });
+    },
+    async loadedGraph() {
+        updateAllPreviewNodeDropdowns();
     },
     async beforeRegisterNodeDef(nodeType, nodeData) {
         if (nodeData.name === "PreviewLatentLive") {
@@ -51,15 +55,20 @@ app.registerExtension({
                 
                 let widget = this.widgets?.find(w => w.name === "Source");
                 if (!widget) {
-                    this.addWidget("combo", "Source", "Auto", (value) => {}, { values: ["Auto"] });
+                    widget = this.addWidget("combo", "Source", "Auto", (value) => {}, { values: ["Auto"] });
                 }
+                
+                const self = this;
+                widget.callback = function() {
+                    updateAllPreviewNodeDropdowns();
+                };
                 
                 this.size = [300, 300];
                 this.imgs = [];
                 this.imageIndex = 0;
                 
                 PreviewManager.registerNode(this);
-                updateAllPreviewNodeDropdowns();
+                setTimeout(updateAllPreviewNodeDropdowns, 100);
             };
 
             const onRemoved = nodeType.prototype.onRemoved;
@@ -85,6 +94,7 @@ app.registerExtension({
             };
 
             nodeType.prototype.onNewPreview = function(img, samplerId) {
+                updateAllPreviewNodeDropdowns();
                 const sourceWidget = this.widgets?.find(w => w.name === "Source");
                 const selectedSource = sourceWidget ? sourceWidget.value : "Auto";
                 
