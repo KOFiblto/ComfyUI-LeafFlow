@@ -231,11 +231,6 @@ app.registerExtension({
             const viewContainer = document.createElement("div");
             viewContainer.className = "img-visual-container";
 
-            // Isolate mouse wheel scroll events from triggering canvas zooming/panning
-            viewContainer.addEventListener("wheel", (e) => {
-                e.stopPropagation();
-            });
-
             const controlBar = document.createElement("div");
             controlBar.className = "img-control-bar";
 
@@ -250,10 +245,17 @@ app.registerExtension({
             gridContainer.className = "img-grid-container";
             viewContainer.appendChild(gridContainer);
 
+            // Isolate mouse wheel scroll events from triggering canvas zooming/panning
+            viewContainer.addEventListener("wheel", (e) => {
+                e.stopPropagation();
+            }, { passive: true });
+            gridContainer.addEventListener("wheel", (e) => {
+                e.stopPropagation();
+            }, { passive: true });
+
             const initialZoom = localStorage.getItem("comfy_img_picker_zoom") || "80";
             viewContainer.style.setProperty("--img-tile-size", `${initialZoom}px`);
 
-            // Embed DOM Widget inside the node container
             const domWidget = node.addDOMWidget("img_visual_picker", "HTML", viewContainer, {
                 getValue() { return getHiddenWidget().value; },
                 setValue(val) { getHiddenWidget().value = val; },
@@ -261,10 +263,19 @@ app.registerExtension({
             });
 
             domWidget.computeSize = function() {
-                return [node.size[0] - 30, node.size[1] - 140];
+                const displayModeWidget = node.widgets ? node.widgets.find(w => w.name === "display_mode") : null;
+                const isShowAll = (displayModeWidget?.value === "Show All");
+                if (isShowAll) {
+                    gridContainer.style.maxHeight = "none";
+                    gridContainer.style.overflowY = "visible";
+                } else {
+                    gridContainer.style.maxHeight = "360px";
+                    gridContainer.style.overflowY = "auto";
+                }
+                const topMargin = (node.widgets ? node.widgets.length * 24 + 10 : 80);
+                return [node.size[0] - 20, Math.max(160, node.size[1] - topMargin)];
             };
 
-            // Zoom Slider Widget
             const zoomWidget = node.addWidget(
                 "slider",
                 "tile_size",

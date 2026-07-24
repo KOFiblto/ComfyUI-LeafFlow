@@ -444,6 +444,7 @@ class FolderLoraLoaderVisualPrettyV2(FolderLoraLoaderVisualPretty):
                 "folder": ("STRING", {"default": ""}),
                 "strength_model": ("FLOAT", {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01}),
                 "strength_clip": ("FLOAT", {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01}),
+                "display_mode": (["Scrollable", "Show All"], {"default": "Scrollable"}),
             },
             "hidden": {
                 "_selected_lora": ("STRING", {"default": "[]"}),
@@ -460,7 +461,7 @@ class FolderLoraLoaderVisualPrettyV2(FolderLoraLoaderVisualPretty):
             return random.random()
         return ""
 
-    def load_lora(self, model, clip, folder, strength_model, strength_clip, _selected_lora="[]", _selection_mode="All", _scrape_on_new="true"):
+    def load_lora(self, model, clip, folder, strength_model, strength_clip, display_mode="Scrollable", _selected_lora="[]", _selection_mode="All", _scrape_on_new="true"):
         active_lora = _selected_lora if _selected_lora else "[]"
         if active_lora == "[ NONE ]" or active_lora == "[]" or not active_lora:
             return (model, clip, "")

@@ -8,6 +8,25 @@ import nodes
 
 QUEUE_CATEGORY = "🍃 FlowControl/Queue"
 
+CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PERSISTENT_FILE = os.path.join(CURRENT_DIR, "persistent_queue.json")
+ENV_FILE = os.path.join(CURRENT_DIR, ".env")
+
+def get_env_setting(key, default_val):
+    if os.path.exists(ENV_FILE):
+        try:
+            with open(ENV_FILE, "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.strip().startswith(f"{key}="):
+                        return line.strip().split("=", 1)[1].strip()
+        except Exception:
+            pass
+    return default_val
+
+def is_persistent_queue_enabled():
+    val = get_env_setting("ENABLE_PERSISTENT_QUEUE", "true").lower()
+    return val in ["true", "1", "yes"]
+
 class PauseQueueNode:
     @classmethod
     def INPUT_TYPES(s):
@@ -30,30 +49,19 @@ class PersistentQueueNode:
     def noop(self):
         return ()
 
-CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PERSISTENT_FILE = os.path.join(CURRENT_DIR, "persistent_queue.json")
-ENV_FILE = os.path.join(CURRENT_DIR, ".env")
-
-def is_persistent_queue_enabled():
-    enabled = True
-    if os.path.exists(ENV_FILE):
-        try:
-            with open(ENV_FILE, "r", encoding="utf-8") as f:
-                for line in f:
-                    if line.strip().startswith("ENABLE_PERSISTENT_QUEUE="):
-                        val = line.strip().split("=", 1)[1].strip().lower()
-                        enabled = val in ["true", "1", "yes"]
-        except Exception:
-            pass
-    return enabled
-
 class PauseQueueManager:
     def __init__(self):
-        self.paused = True
-        self.mode = "after_finish"
-        self.is_waiting = True
+        default_state = get_env_setting("DEFAULT_PAUSE_STATE", "Paused")
+        default_mode = get_env_setting("DEFAULT_PAUSE_MODE", "after_finish")
+        
+        self.paused = (default_state.lower() != "running")
+        self.mode = "instantly" if "instant" in default_mode.lower() else "after_finish"
+        self.is_waiting = self.paused
         self.event = threading.Event()
-        self.event.clear()
+        if not self.paused:
+            self.event.set()
+        else:
+            self.event.clear()
         self._patched = False
 
     def patch_all(self):

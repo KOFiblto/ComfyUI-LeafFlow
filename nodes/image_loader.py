@@ -155,6 +155,7 @@ class ImageLoaderVisualPrettyV2:
         return {
             "required": {
                 "folder_path": ("STRING", {"default": ""}),
+                "display_mode": (["Scrollable", "Show All"], {"default": "Scrollable"}),
             },
             "hidden": {
                 "_selected_image": ("STRING", {"default": ""}),
@@ -171,7 +172,7 @@ class ImageLoaderVisualPrettyV2:
     def IS_CHANGED(cls, **kwargs):
         return kwargs.get("_selected_image", "")
 
-    def load_image(self, folder_path, _selected_image=""):
+    def load_image(self, folder_path, display_mode="Scrollable", _selected_image=""):
         if not folder_path or not _selected_image:
             empty_image = torch.zeros((1, 64, 64, 3), dtype=torch.float32)
             return (empty_image, "", 0, 0)

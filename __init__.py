@@ -83,6 +83,8 @@ async def save_settings(request):
         civitai_key = data.get("civitai_api_key")
         tmdb_key = data.get("tmdb_api_key")
         enable_persistent_queue = data.get("enable_persistent_queue")
+        default_pause_state = data.get("default_pause_state")
+        default_pause_mode = data.get("default_pause_mode")
 
         lines = []
         if os.path.exists(ENV_FILE):
@@ -96,6 +98,8 @@ async def save_settings(request):
         has_civitai = False
         has_tmdb = False
         has_persistent = False
+        has_pause_state = False
+        has_pause_mode = False
 
         for line in lines:
             if line.strip().startswith("CIVITAI_API_KEY=") and civitai_key is not None:
@@ -107,6 +111,12 @@ async def save_settings(request):
             elif line.strip().startswith("ENABLE_PERSISTENT_QUEUE=") and enable_persistent_queue is not None:
                 new_lines.append(f"ENABLE_PERSISTENT_QUEUE={enable_persistent_queue}\n")
                 has_persistent = True
+            elif line.strip().startswith("DEFAULT_PAUSE_STATE=") and default_pause_state is not None:
+                new_lines.append(f"DEFAULT_PAUSE_STATE={default_pause_state}\n")
+                has_pause_state = True
+            elif line.strip().startswith("DEFAULT_PAUSE_MODE=") and default_pause_mode is not None:
+                new_lines.append(f"DEFAULT_PAUSE_MODE={default_pause_mode}\n")
+                has_pause_mode = True
             else:
                 new_lines.append(line)
 
@@ -116,6 +126,10 @@ async def save_settings(request):
             new_lines.append(f"TMDB_API_KEY={tmdb_key}\n")
         if not has_persistent and enable_persistent_queue is not None:
             new_lines.append(f"ENABLE_PERSISTENT_QUEUE={enable_persistent_queue}\n")
+        if not has_pause_state and default_pause_state is not None:
+            new_lines.append(f"DEFAULT_PAUSE_STATE={default_pause_state}\n")
+        if not has_pause_mode and default_pause_mode is not None:
+            new_lines.append(f"DEFAULT_PAUSE_MODE={default_pause_mode}\n")
 
         with open(ENV_FILE, "w", encoding="utf-8") as f:
             f.writelines(new_lines)

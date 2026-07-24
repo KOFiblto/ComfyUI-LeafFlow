@@ -796,9 +796,9 @@ app.registerExtension({
                 updateVisualGrid();
             });
 
-            scrapeToggleContainer.appendChild(scrapeOnBtn);
-            scrapeToggleContainer.appendChild(scrapeOffBtn);
-            controlBar.appendChild(scrapeToggleContainer);
+            viewContainer.addEventListener("wheel", (e) => {
+                e.stopPropagation();
+            }, { passive: true });
 
             viewContainer.appendChild(controlBar);
 
@@ -809,7 +809,17 @@ app.registerExtension({
             });
 
             domWidget.computeSize = function() {
-                return [node.size[0] - 30, node.size[1] - 190];
+                const displayModeWidget = node.widgets ? node.widgets.find(w => w.name === "display_mode") : null;
+                const isShowAll = (displayModeWidget?.value === "Show All");
+                if (isShowAll) {
+                    viewContainer.style.maxHeight = "none";
+                    viewContainer.style.overflowY = "visible";
+                } else {
+                    viewContainer.style.maxHeight = "360px";
+                    viewContainer.style.overflowY = "auto";
+                }
+                const topMargin = (node.widgets ? node.widgets.length * 24 + 10 : 100);
+                return [node.size[0] - 20, Math.max(160, node.size[1] - topMargin)];
             };
 
             const zoomWidget = node.addWidget(
