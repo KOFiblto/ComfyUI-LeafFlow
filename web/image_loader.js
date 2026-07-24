@@ -266,20 +266,19 @@ app.registerExtension({
                 const displayModeWidget = node.widgets ? node.widgets.find(w => w.name === "display_mode") : null;
                 const isShowAll = (displayModeWidget?.value === "Show All");
                 
-                const topWidgetsHeight = (node.widgets ? (node.widgets.length - 2) * 26 + 30 : 100);
-                const availableHeight = isShowAll ? Math.max(200, gridContainer.scrollHeight || 300) : Math.max(160, node.size[1] - topWidgetsHeight - 55);
-
                 if (isShowAll) {
                     gridContainer.style.maxHeight = "none";
                     gridContainer.style.height = "auto";
                     gridContainer.style.overflowY = "visible";
+                    return [node.size[0] - 20, Math.max(200, gridContainer.scrollHeight || 300)];
                 } else {
+                    const topWidgetsHeight = (node.widgets ? node.widgets.length * 26 + 10 : 100);
+                    const availableHeight = Math.max(160, node.size[1] - topWidgetsHeight);
                     gridContainer.style.maxHeight = `${availableHeight}px`;
                     gridContainer.style.height = `${availableHeight}px`;
                     gridContainer.style.overflowY = "auto";
+                    return [node.size[0] - 20, availableHeight];
                 }
-                
-                return [node.size[0] - 20, availableHeight];
             };
 
             const zoomWidget = node.addWidget(
