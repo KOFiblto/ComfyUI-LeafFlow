@@ -7,7 +7,7 @@ app.registerExtension({
         // 1. Civitai API Key Setting
         app.ui.settings.addSetting({
             id: "FlowControl.CivitaiAPIKey",
-            name: "FlowControl: Civitai API Key",
+            name: "🍃 FlowControl: Civitai API Key",
             type: "text",
             defaultValue: "",
             tooltip: "Optional Civitai API key for auto-downloading LoRA preview thumbnails by hash.",
@@ -23,7 +23,7 @@ app.registerExtension({
         // 2. TMDB API Key Setting
         app.ui.settings.addSetting({
             id: "FlowControl.TMDBAPIKey",
-            name: "FlowControl: TMDB API Key",
+            name: "🍃 FlowControl: TMDB API Key",
             type: "text",
             defaultValue: "",
             tooltip: "Optional TMDB API key for celebrity preview image search.",
@@ -39,7 +39,7 @@ app.registerExtension({
         // 3. Pause Queue Toolbar Toggle Setting
         app.ui.settings.addSetting({
             id: "FlowControl.EnablePauseQueue",
-            name: "FlowControl: Enable Pause Queue Toolbar Button",
+            name: "🍃 FlowControl: Enable Pause Queue Toolbar Button",
             type: "boolean",
             defaultValue: true,
             tooltip: "Displays the green/orange Pause & Continue button group in top action bar.",
@@ -54,7 +54,7 @@ app.registerExtension({
         // 4. Pause Alert Sounds Setting
         app.ui.settings.addSetting({
             id: "FlowControl.EnableSoundAlerts",
-            name: "FlowControl: Enable Sound Alert on Pause",
+            name: "🍃 FlowControl: Enable Sound Alert on Pause",
             type: "boolean",
             defaultValue: false,
             tooltip: "Plays a gentle audio notification when queue execution pauses."

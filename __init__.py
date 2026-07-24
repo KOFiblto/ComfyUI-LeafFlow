@@ -22,14 +22,14 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "PauseQueueNode": "Pause Queue",
-    "PersistentQueueNode": "Persistent Queue",
-    "FolderLoraLoaderVisualPrettyV2": "Visual LoRA Loader",
-    "ImageLoaderVisualPrettyV2": "Visual Image Loader",
-    "UndoPlaceholder": "Undo Placeholder",
-    "AutoWatcherNode": "Auto Watcher",
-    "LoadRecentOutputs": "Recent Outputs",
-    "PreviewLatentLive": "Live Latent Preview"
+    "PauseQueueNode": "🍃 Pause Queue",
+    "PersistentQueueNode": "🍃 Persistent Queue",
+    "FolderLoraLoaderVisualPrettyV2": "🍃 Visual LoRA Loader",
+    "ImageLoaderVisualPrettyV2": "🍃 Visual Image Loader",
+    "UndoPlaceholder": "🍃 Undo Placeholder",
+    "AutoWatcherNode": "🍃 Auto Watcher",
+    "LoadRecentOutputs": "🍃 Recent Outputs",
+    "PreviewLatentLive": "🍃 Live Latent Preview"
 }
 
 WEB_DIRECTORY = "./web"
@@ -42,6 +42,8 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 ENV_FILE = os.path.join(CURRENT_DIR, ".env")
 
 routes = server.routes
+
+print("[ComfyUI-FlowControl] 🍃 Loaded 8 nodes successfully.")
 
 @routes.get("/flow_control/settings")
 async def get_settings(request):
@@ -106,6 +108,6 @@ async def save_settings(request):
             os.environ["TMDB_API_KEY"] = tmdb_key
 
     except Exception as e:
-        print(f"[FlowControl] Error saving settings to .env: {e}")
+        print(f"[FlowControl] 🍃 Error saving settings to .env: {e}")
 
     return web.json_response({"status": "ok"})
