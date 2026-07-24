@@ -649,7 +649,7 @@ app.registerExtension({
                 return [380, 320];
             };
 
-            const folderWidget = node.widgets.find(w => w.name === "folder");
+            const folderWidget = node.widgets ? node.widgets.find(w => w.name === "folder") : null;
             
             const getHiddenWidget = () => {
                 const widgets = node.widgets.filter(w => w.name === "_selected_lora");
@@ -1159,10 +1159,12 @@ app.registerExtension({
                 }
             };
 
-            folderWidget.callback = () => {
-                clearTimeout(debounceTimer);
-                debounceTimer = setTimeout(() => updateVisualGrid(), 350);
-            };
+            if (folderWidget) {
+                folderWidget.callback = () => {
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(() => updateVisualGrid(), 350);
+                };
+            }
 
             const originalOnConfigure = node.onConfigure;
             node.onConfigure = function(config) {
