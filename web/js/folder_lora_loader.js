@@ -796,14 +796,11 @@ app.registerExtension({
                 updateVisualGrid();
             });
 
-            viewContainer.addEventListener("wheel", (e) => {
-                e.stopPropagation();
-            }, { passive: true });
+            scrapeToggleContainer.appendChild(scrapeOnBtn);
+            scrapeToggleContainer.appendChild(scrapeOffBtn);
+            controlBar.appendChild(scrapeToggleContainer);
 
             viewContainer.appendChild(controlBar);
-
-            const initialZoom = (node.properties && node.properties.tile_size) ? node.properties.tile_size : 90;
-            viewContainer.style.setProperty("--lora-tile-size", `${initialZoom}px`);
 
             const domWidget = node.addDOMWidget("lora_visual_picker", "HTML", viewContainer, {
                 getValue() { return getHiddenWidget().value; },
@@ -812,23 +809,7 @@ app.registerExtension({
             });
 
             domWidget.computeSize = function() {
-                const displayModeWidget = node.widgets ? node.widgets.find(w => w.name === "display_mode") : null;
-                const isShowAll = (displayModeWidget?.value === "Show All");
-                
-                const topWidgetsHeight = (node.widgets ? (node.widgets.length - 2) * 26 + 30 : 120);
-                const availableHeight = isShowAll ? Math.max(200, viewContainer.scrollHeight || 300) : Math.max(160, node.size[1] - topWidgetsHeight - 55);
-                
-                if (isShowAll) {
-                    viewContainer.style.maxHeight = "none";
-                    viewContainer.style.height = "auto";
-                    viewContainer.style.overflowY = "visible";
-                } else {
-                    viewContainer.style.maxHeight = `${availableHeight}px`;
-                    viewContainer.style.height = `${availableHeight}px`;
-                    viewContainer.style.overflowY = "auto";
-                }
-                
-                return [node.size[0] - 20, availableHeight];
+                return [node.size[0] - 30, node.size[1] - 190];
             };
 
             const zoomWidget = node.addWidget(
@@ -836,13 +817,12 @@ app.registerExtension({
                 "tile_size",
                 parseInt(initialZoom),
                 (val) => {
-                    if (!node.properties) node.properties = {};
-                    node.properties.tile_size = val;
+                    localStorage.setItem("comfy_lora_picker_zoom", val);
                     viewContainer.style.setProperty("--lora-tile-size", `${val}px`);
                 },
                 { min: 50, max: 180, step: 1 }
             );
-            zoomWidget.serialize = true;
+            zoomWidget.serialize = false;
 
             let activeRequest = null;
             let debounceTimer = null;
