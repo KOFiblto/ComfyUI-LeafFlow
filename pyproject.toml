@@ -1,0 +1,14 @@
+[project]
+name = "comfyui-flowcontrol"
+description = "Essential workflow controls, mid-generation pausing, real-time queue persistence, folder watcher, and visual model loaders for ComfyUI."
+version = "1.0.0"
+license = "MIT"
+dependencies = ["torch", "pillow", "numpy", "piexif"]
+
+[project.urls]
+Repository = "https://github.com/KOFiblto/ComfyUI-FlowControl"
+
+[tool.comfy]
+PublisherId = "KOFiblto"
+DisplayName = "ComfyUI-FlowControl"
+Icon = ""

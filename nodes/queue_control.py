@@ -1,0 +1,399 @@
+import os
+import json
+import threading
+import asyncio
+from aiohttp import web
+from server import PromptServer
+import nodes
+
+# Category for FlowControl queue nodes
+QUEUE_CATEGORY = "FlowControl/Queue"
+
+class PauseQueueNode:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": {}}
+    RETURN_TYPES = ()
+    FUNCTION = "noop"
+    CATEGORY = QUEUE_CATEGORY
+    DESCRIPTION = "Settings & status anchor for Pause Queue toolbar features."
+    def noop(self):
+        return ()
+
+class PersistentQueueNode:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": {}}
+    RETURN_TYPES = ()
+    FUNCTION = "noop"
+    CATEGORY = QUEUE_CATEGORY
+    DESCRIPTION = "Settings & status anchor for Persistent Queue auto-recovery features."
+    def noop(self):
+        return ()
+
+# Persistent queue data file location
+CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PERSISTENT_FILE = os.path.join(CURRENT_DIR, "persistent_queue.json")
+
+class PauseQueueManager:
+    def __init__(self):
+        self.paused = True
+        self.mode = "after_finish"  # "after_finish" or "instantly"
+        self.is_waiting = True
+        self.event = threading.Event()
+        self.event.clear()
+        self._patched = False
+
+    def patch_all(self):
+        if self._patched:
+            return
+        server = PromptServer.instance
+
+        if hasattr(server, "prompt_queue"):
+            queue = server.prompt_queue
+            original_get = queue.get
+
+            def patched_get(*args, **kwargs):
+                while True:
+                    if self.paused:
+                        if not self.is_waiting:
+                            self.is_waiting = True
+                            print("[PauseQueue] Workflow paused after this run: Current workflow finished, queue paused.")
+                            self.notify_clients()
+                        while self.paused:
+                            self.event.wait(0.2)
+                        self.is_waiting = False
+                        self.notify_clients()
+
+                    item = original_get(*args, **kwargs)
+
+                    if self.paused:
+                        if not self.is_waiting:
+                            self.is_waiting = True
+                            print("[PauseQueue] Workflow paused after this run: Current workflow finished, queue paused.")
+                            self.notify_clients()
+                        while self.paused:
+                            self.event.wait(0.2)
+                        self.is_waiting = False
+                        self.notify_clients()
+
+                    return item
+
+            queue.get = patched_get
+
+        original_send_sync = server.send_sync
+
+        def patched_send_sync(event, data, sid=None):
+            if event == "executing" and isinstance(data, dict) and data.get("node") is not None:
+                if self.paused and self.mode == "instantly":
+                    if not self.is_waiting:
+                        self.is_waiting = True
+                        print(f"[PauseQueue] Workflow Paused Instant: Paused before executing node '{data.get('node')}'.")
+                        self.notify_clients()
+                    while self.paused and self.mode == "instantly":
+                        self.event.wait(0.2)
+                    self.is_waiting = False
+                    self.notify_clients()
+            return original_send_sync(event, data, sid)
+
+        server.send_sync = patched_send_sync
+        self._patched = True
+
+    def is_currently_executing(self):
+        try:
+            server = PromptServer.instance
+            if hasattr(server, "prompt_queue"):
+                return bool(server.prompt_queue.currently_running)
+        except Exception:
+            pass
+        return False
+
+    def set_pause(self, paused, mode=None):
+        self.paused = paused
+        if mode:
+            self.mode = mode
+
+        if self.paused:
+            if not self.is_currently_executing():
+                self.is_waiting = True
+                if self.mode == "instantly":
+                    print("[PauseQueue] Workflow Paused Instant: Queue is empty/idle, pause active.")
+                else:
+                    print("[PauseQueue] Workflow paused after this run: Queue is empty/idle, pause active.")
+            else:
+                self.is_waiting = False
+                if self.mode == "instantly":
+                    print("[PauseQueue] Workflow Paused Instant requested. Waiting for current node to complete...")
+                else:
+                    print("[PauseQueue] Workflow paused after this run requested. Will pause when current workflow completes...")
+            self.event.clear()
+        else:
+            self.is_waiting = False
+            self.event.set()
+            print("[PauseQueue] Continue pressed: Resuming execution.")
+
+        self.notify_clients()
+
+    def set_mode(self, mode):
+        self.mode = mode
+        print(f"[PauseQueue] Selected pause mode: '{self.mode}'")
+        self.notify_clients()
+
+    def notify_clients(self):
+        try:
+            PromptServer.instance.send_sync("pause_queue_status", {
+                "paused": self.paused,
+                "mode": self.mode,
+                "waiting": self.is_waiting
+            })
+        except Exception:
+            pass
+
+class PersistentQueueManager:
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.persistent_items = []
+        self.is_restoring = False
+        self._patched = False
+        self.load_from_file()
+
+    def load_from_file(self):
+        with self.lock:
+            if os.path.exists(PERSISTENT_FILE):
+                try:
+                    with open(PERSISTENT_FILE, "r", encoding="utf-8") as f:
+                        self.persistent_items = json.load(f)
+                        print(f"[PersistentQueue] Loaded {len(self.persistent_items)} saved queue item(s).")
+                except Exception as e:
+                    print(f"[PersistentQueue] Error loading persistent queue file: {e}")
+                    self.persistent_items = []
+            else:
+                self.persistent_items = []
+
+    def save_to_file(self):
+        with self.lock:
+            try:
+                temp_file = PERSISTENT_FILE + ".tmp"
+                with open(temp_file, "w", encoding="utf-8") as f:
+                    json.dump(self.persistent_items, f, indent=2)
+                os.replace(temp_file, PERSISTENT_FILE)
+            except Exception as e:
+                print(f"[PersistentQueue] Error saving persistent queue file: {e}")
+
+    def add_item(self, item_tuple):
+        if self.is_restoring:
+            return
+        try:
+            if isinstance(item_tuple, (tuple, list)):
+                item_list = list(item_tuple)
+                prompt_id = item_list[1] if len(item_list) > 1 else None
+                if not prompt_id:
+                    return
+                entry = {
+                    "prompt_id": prompt_id,
+                    "item": item_list
+                }
+                with self.lock:
+                    self.persistent_items = [x for x in self.persistent_items if x.get("prompt_id") != prompt_id]
+                    self.persistent_items.append(entry)
+                self.save_to_file()
+                print(f"[PersistentQueue] Persisted prompt {prompt_id} to disk.")
+        except Exception as e:
+            print(f"[PersistentQueue] Error formatting queue item for persistence: {e}")
+
+    def remove_item(self, prompt_id):
+        with self.lock:
+            initial_count = len(self.persistent_items)
+            self.persistent_items = [x for x in self.persistent_items if x.get("prompt_id") != prompt_id]
+            changed = len(self.persistent_items) != initial_count
+        if changed:
+            self.save_to_file()
+            print(f"[PersistentQueue] Removed prompt {prompt_id} from disk.")
+
+    def wipe_all(self):
+        with self.lock:
+            self.persistent_items = []
+        self.save_to_file()
+        print("[PersistentQueue] Cleared all saved queue items.")
+
+    def sync_client_id(self, active_client_id):
+        if not active_client_id:
+            return
+        server = PromptServer.instance
+        if not hasattr(server, "prompt_queue"):
+            return
+
+        queue = server.prompt_queue
+        updated = False
+        with queue.mutex:
+            new_queue = []
+            for item in queue.queue:
+                item_list = list(item)
+                if len(item_list) > 3 and isinstance(item_list[3], dict):
+                    extra_data = dict(item_list[3])
+                    old_client_id = extra_data.get("client_id")
+                    if old_client_id != active_client_id:
+                        extra_data["client_id"] = active_client_id
+                        item_list[3] = extra_data
+                        updated = True
+                new_queue.append(tuple(item_list))
+
+            if updated:
+                queue.queue.clear()
+                queue.queue.extend(new_queue)
+
+        if updated:
+            with self.lock:
+                for entry in self.persistent_items:
+                    if isinstance(entry.get("item"), list) and len(entry["item"]) > 3:
+                        if isinstance(entry["item"][3], dict):
+                            entry["item"][3]["client_id"] = active_client_id
+                self.save_to_file()
+
+            print(f"[PersistentQueue] Re-assigned restored queue items to active client ID '{active_client_id}'.")
+            try:
+                if hasattr(server, "get_queue_status"):
+                    server.send_sync("status", {"status": server.get_queue_status()})
+            except Exception:
+                pass
+
+    def patch_server(self):
+        if self._patched:
+            return
+        server = PromptServer.instance
+        if not hasattr(server, "prompt_queue"):
+            return
+
+        queue = server.prompt_queue
+
+        original_put = queue.put
+        def patched_put(item, *args, **kwargs):
+            res = original_put(item, *args, **kwargs)
+            self.add_item(item)
+            return res
+        queue.put = patched_put
+
+        if hasattr(queue, "delete_queue_item"):
+            original_delete = queue.delete_queue_item
+            def patched_delete(fn, *args, **kwargs):
+                try:
+                    with queue.mutex:
+                        to_delete = [item[1] for item in queue.queue if fn(item)]
+                        for pid in to_delete:
+                            self.remove_item(pid)
+                except Exception:
+                    pass
+                return original_delete(fn, *args, **kwargs)
+            queue.delete_queue_item = patched_delete
+
+        if hasattr(queue, "wipe_queue"):
+            original_wipe = queue.wipe_queue
+            def patched_wipe(*args, **kwargs):
+                self.wipe_all()
+                return original_wipe(*args, **kwargs)
+            queue.wipe_queue = patched_wipe
+
+        original_send_sync = server.send_sync
+        def patched_send_sync(event, data, sid=None):
+            try:
+                if event == "executing" and isinstance(data, dict):
+                    node = data.get("node")
+                    prompt_id = data.get("prompt_id")
+                    if node is None and prompt_id:
+                        self.remove_item(prompt_id)
+                elif event == "execution_interrupted" and isinstance(data, dict):
+                    prompt_id = data.get("prompt_id")
+                    if prompt_id:
+                        self.remove_item(prompt_id)
+            except Exception:
+                pass
+            return original_send_sync(event, data, sid)
+        server.send_sync = patched_send_sync
+
+        self._patched = True
+        print("[PersistentQueue] Server queue hooks patched successfully.")
+
+    def restore_queue(self):
+        server = PromptServer.instance
+        if not hasattr(server, "prompt_queue") or not self.persistent_items:
+            return
+
+        print(f"[PersistentQueue] Restoring {len(self.persistent_items)} saved queue item(s)...")
+        self.is_restoring = True
+        try:
+            for entry in list(self.persistent_items):
+                try:
+                    item_tuple = tuple(entry["item"])
+                    server.prompt_queue.put(item_tuple)
+                except Exception as e:
+                    print(f"[PersistentQueue] Error restoring prompt {entry.get('prompt_id')}: {e}")
+        finally:
+            self.is_restoring = False
+
+pause_manager = PauseQueueManager()
+persistent_manager = PersistentQueueManager()
+
+def setup_queue_control_routes(server):
+    pause_manager.patch_all()
+    persistent_manager.patch_server()
+    persistent_manager.restore_queue()
+
+    routes = server.routes
+
+    @routes.get("/pause_queue/status")
+    async def get_status(request):
+        pause_manager.patch_all()
+        return web.json_response({
+            "paused": pause_manager.paused,
+            "mode": pause_manager.mode,
+            "waiting": pause_manager.is_waiting
+        })
+
+    @routes.post("/pause_queue/toggle")
+    async def toggle_pause(request):
+        try:
+            data = await request.json()
+        except Exception:
+            data = {}
+        paused = data.get("paused", not pause_manager.paused)
+        mode = data.get("mode", pause_manager.mode)
+        pause_manager.set_pause(paused, mode)
+        return web.json_response({
+            "paused": pause_manager.paused,
+            "mode": pause_manager.mode,
+            "waiting": pause_manager.is_waiting
+        })
+
+    @routes.post("/pause_queue/mode")
+    async def set_mode_route(request):
+        try:
+            data = await request.json()
+        except Exception:
+            data = {}
+        mode = data.get("mode", pause_manager.mode)
+        pause_manager.set_mode(mode)
+        return web.json_response({
+            "paused": pause_manager.paused,
+            "mode": pause_manager.mode,
+            "waiting": pause_manager.is_waiting
+        })
+
+    @routes.post("/pause_queue/continue")
+    async def continue_queue(request):
+        pause_manager.set_pause(False)
+        return web.json_response({
+            "paused": pause_manager.paused,
+            "mode": pause_manager.mode,
+            "waiting": pause_manager.is_waiting
+        })
+
+    @routes.post("/persistent_queue/claim")
+    async def claim_queue(request):
+        try:
+            data = await request.json()
+            client_id = data.get("client_id")
+            if client_id:
+                persistent_manager.sync_client_id(client_id)
+        except Exception as e:
+            print(f"[PersistentQueue] Error in claim endpoint: {e}")
+        return web.json_response({"status": "ok"})

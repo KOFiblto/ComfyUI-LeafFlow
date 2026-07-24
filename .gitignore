@@ -1,0 +1,21 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment and sensitive credential files
+.env
+.env.local
+
+# Persistent and cache data files
+persistent_queue.json
+persistent_queue.json.tmp
+lora_usage.json
+failed_scrapes.json
+image_prompts_cache.json
+
+# IDE and OS metadata
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

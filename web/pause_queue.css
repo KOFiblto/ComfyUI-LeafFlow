@@ -1,0 +1,166 @@
+/* FlowControl PauseQueue CSS */
+
+.pq-button-group {
+    font-family: var(--font-inter, Inter, sans-serif);
+    user-select: none;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: stretch;
+    height: 2rem; /* h-8 */
+    border-radius: 0.5rem;
+    background-color: #059669; /* Emerald 600 */
+    transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    margin-right: 0.25rem;
+    position: relative;
+    z-index: 10;
+}
+
+.pq-button-group.pq-state-paused {
+    background-color: #ea580c; /* Orange 600 */
+    animation: pq-pulse-orange 2s infinite;
+}
+
+.pq-main-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    height: 100%;
+    border: none;
+    background-color: #059669;
+    color: #ffffff;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-top-left-radius: 0.5rem;
+    border-bottom-left-radius: 0.5rem;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.pq-main-btn:hover {
+    background-color: #10b981;
+}
+
+.pq-main-btn:active {
+    background-color: #047857;
+}
+
+.pq-button-group.pq-state-paused .pq-main-btn {
+    background-color: #ea580c;
+}
+
+.pq-button-group.pq-state-paused .pq-main-btn:hover {
+    background-color: #f97316;
+}
+
+.pq-dropdown-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 100%;
+    border: none;
+    border-left: 1px solid rgba(0, 0, 0, 0.2);
+    background-color: #047857;
+    color: #ffffff;
+    cursor: pointer;
+    border-top-right-radius: 0.5rem;
+    border-bottom-right-radius: 0.5rem;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    transition: background-color 0.15s ease;
+    padding: 0;
+}
+
+.pq-dropdown-btn:hover {
+    background-color: #059669;
+}
+
+.pq-button-group.pq-state-paused .pq-dropdown-btn {
+    background-color: #c2410c;
+}
+
+.pq-button-group.pq-state-paused .pq-dropdown-btn:hover {
+    background-color: #ea580c;
+}
+
+.pq-dropdown-menu {
+    position: fixed;
+    min-width: 230px;
+    background-color: #18181b;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.5rem;
+    box-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.7), 0 4px 12px -2px rgba(0, 0, 0, 0.5);
+    padding: 0.375rem;
+    z-index: 999999;
+    color: #e4e4e7;
+    font-size: 0.75rem;
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+    pointer-events: none;
+    transition: opacity 0.12s ease, transform 0.12s ease;
+    display: none;
+}
+
+.pq-dropdown-menu.pq-open {
+    display: block;
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+.pq-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.625rem;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+}
+
+.pq-menu-item:hover {
+    background-color: #27272a;
+}
+
+.pq-menu-item.active {
+    background-color: rgba(249, 115, 22, 0.2);
+}
+
+.pq-menu-item-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.pq-menu-item-title {
+    font-weight: 600;
+    font-size: 0.8125rem;
+    color: #f4f4f5;
+}
+
+.pq-menu-item-desc {
+    font-size: 0.7rem;
+    color: #a1a1aa;
+    margin-top: 1px;
+}
+
+.pq-divider {
+    height: 1px;
+    background-color: #27272a;
+    margin: 0.25rem 0;
+}
+
+@keyframes pq-pulse-orange {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 0 6px rgba(234, 88, 12, 0);
+    }
+}
