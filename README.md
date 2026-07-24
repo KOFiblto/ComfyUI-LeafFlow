@@ -2,6 +2,8 @@
 
 A unified custom node suite for **ComfyUI** featuring real-time queue controls, mid-generation pausing, queue crash recovery, visual model pickers, live latent canvas previews, folder automation, and prompt utilities.
 
+> ⚠️ **Important Notice**: This custom node pack (`ComfyUI-FlowControl`) is engineered exclusively for the **New ComfyUI Frontend (v2)**. The legacy/old ComfyUI frontend is not supported.
+
 ---
 
 ## 🌟 Features & Included Nodes

@@ -175,13 +175,15 @@ app.registerExtension({
             }
         });
 
-        // Masking password inputs for API keys in ComfyUI settings dialog
+        // Masking password inputs and adding color pickers in ComfyUI settings dialog
         const applyKeyMasking = () => {
             const inputs = document.querySelectorAll('input');
             inputs.forEach(input => {
                 const settingRow = input.closest('tr') || input.parentElement;
                 if (!settingRow) return;
                 const text = settingRow.textContent || "";
+                
+                // Password masking for API keys
                 if ((text.includes("Civitai API Key") || text.includes("TMDB API Key")) && !input.dataset.masked) {
                     input.dataset.masked = "true";
                     input.type = "password";
@@ -209,6 +211,37 @@ app.registerExtension({
                     if (container) {
                         container.style.position = "relative";
                         container.appendChild(toggleBtn);
+                    }
+                }
+
+                // Color picker popup for Pause button colors
+                if ((text.includes("Pause Button Unpaused Color") || text.includes("Pause Button Paused Color")) && !input.dataset.colorPickerAttached) {
+                    input.dataset.colorPickerAttached = "true";
+                    const isUnpaused = text.includes("Unpaused Color");
+                    
+                    const colorPicker = document.createElement("input");
+                    colorPicker.type = "color";
+                    colorPicker.value = input.value || (isUnpaused ? "#059669" : "#ea580c");
+                    colorPicker.style.cssText = "width: 28px; height: 28px; border: none; border-radius: 4px; cursor: pointer; padding: 0; background: none; vertical-align: middle; margin-left: 8px;";
+                    
+                    colorPicker.oninput = (e) => {
+                        input.value = e.target.value;
+                        input.dispatchEvent(new Event("change", { bubbles: true }));
+                        const varName = isUnpaused ? "--pq-unpaused-color" : "--pq-paused-color";
+                        document.documentElement.style.setProperty(varName, e.target.value);
+                    };
+
+                    input.oninput = (e) => {
+                        colorPicker.value = e.target.value;
+                        const varName = isUnpaused ? "--pq-unpaused-color" : "--pq-paused-color";
+                        document.documentElement.style.setProperty(varName, e.target.value);
+                    };
+
+                    const container = input.parentElement;
+                    if (container) {
+                        container.style.display = "flex";
+                        container.style.alignItems = "center";
+                        container.appendChild(colorPicker);
                     }
                 }
             });

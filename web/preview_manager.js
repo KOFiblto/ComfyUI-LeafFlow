@@ -17,6 +17,7 @@ class PreviewManagerClass {
         this.api = apiInstance;
         this.initialized = true;
         this.setupListener();
+        this.observeDomImages();
     }
 
     registerNode(node) {
@@ -51,6 +52,42 @@ class PreviewManagerClass {
             const samplerId = currentExecutingNodeId !== null ? currentExecutingNodeId : (this.app?.runningNodeId || null);
             this.processBlob(blob, samplerId);
         });
+    }
+
+    observeDomImages() {
+        // Observe DOM for ComfyUI V2 New Frontend preview images inserted into KSampler nodes (including inside subgraphs)
+        const checkImages = () => {
+            const images = document.querySelectorAll('img[alt*="Live sampling preview"], img[src^="blob:"]');
+            images.forEach(imgEl => {
+                const src = imgEl.src;
+                if (src && src.startsWith("blob:") && imgEl.dataset.lastFlowControlSrc !== src) {
+                    imgEl.dataset.lastFlowControlSrc = src;
+                    
+                    const nodeEl = imgEl.closest('[data-node-id], [data-widgets-grid-node-id], .lg-node');
+                    const nodeId = nodeEl ? (nodeEl.dataset.nodeId || nodeEl.dataset.widgetsGridNodeId || nodeEl.getAttribute('data-node-id')) : null;
+
+                    const img = new Image();
+                    img.onload = () => {
+                        this.updatePreview(img, nodeId || currentExecutingNodeId);
+                    };
+                    img.src = src;
+                }
+            });
+        };
+
+        const observer = new MutationObserver(() => {
+            checkImages();
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ["src"]
+        });
+
+        // Periodic fallback scan
+        setInterval(checkImages, 300);
     }
 
     processBlob(blob, samplerId) {

@@ -4,21 +4,52 @@ import { PreviewManager } from "./preview_manager.js";
 
 function getKSamplerNodes() {
     if (!app || !app.graph) return [];
-    return app.graph._nodes.filter(node => {
-        if (!node) return false;
-        const type = (node.type || "").toLowerCase();
-        const title = (node.title || "").toLowerCase();
-        return type.includes("sampler") || type.includes("ksampler") || title.includes("sampler");
-    }).map(node => ({
-        id: node.id,
-        title: node.title || node.type || `Node ${node.id}`
-    }));
+    
+    const samplers = [];
+    const visitedNodes = new Set();
+
+    const traverseGraph = (graph) => {
+        if (!graph || !graph._nodes) return;
+        for (const node of graph._nodes) {
+            if (!node || visitedNodes.has(node.id)) continue;
+            visitedNodes.add(node.id);
+
+            const type = (node.type || node.comfyClass || "").toLowerCase();
+            const title = (node.title || node.type || "").toLowerCase();
+
+            if (type.includes("sampler") || type.includes("ksampler") || title.includes("sampler")) {
+                samplers.push({
+                    id: node.id,
+                    title: node.title || node.type || `Node ${node.id}`
+                });
+            }
+
+            if (node.subgraph) {
+                traverseGraph(node.subgraph);
+            }
+        }
+    };
+
+    traverseGraph(app.graph);
+
+    // Also check DOM nodes for ComfyUI V2 subgraphs
+    document.querySelectorAll('[data-node-id], [data-widgets-grid-node-id], .lg-node').forEach(el => {
+        const id = el.dataset.nodeId || el.dataset.widgetsGridNodeId || el.getAttribute('data-node-id');
+        const text = el.textContent || "";
+        if (id && text.toLowerCase().includes("sampler") && !samplers.some(s => String(s.id) === String(id))) {
+            const titleMatch = text.match(/KSampler[^\n]*/i) || text.match(/Sampler[^\n]*/i);
+            const title = titleMatch ? titleMatch[0].trim() : `Sampler (${id})`;
+            samplers.push({ id, title });
+        }
+    });
+
+    return samplers;
 }
 
 function updateAllPreviewNodeDropdowns() {
     if (!app || !app.graph) return;
     
-    const previewNodes = app.graph._nodes.filter(n => n && n.type === "PreviewLatentLive");
+    const previewNodes = app.graph._nodes ? app.graph._nodes.filter(n => n && n.type === "PreviewLatentLive") : [];
     const currentNodes = getKSamplerNodes();
     const currentValues = ["Auto", ...currentNodes.map(n => `${n.title} (${n.id})`)];
     
