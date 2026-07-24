@@ -5,7 +5,7 @@ app.registerExtension({
     name: "ComfyUI.FlowControl.PersistentQueue",
     async setup() {
         const claimQueueOwnership = async () => {
-            if (api.clientId) {
+            if (api && api.clientId) {
                 try {
                     await api.fetchApi("/persistent_queue/claim", {
                         method: "POST",
@@ -18,10 +18,13 @@ app.registerExtension({
             }
         };
 
-        claimQueueOwnership();
+        // Delay execution until after app & API client ID initialization
+        setTimeout(claimQueueOwnership, 1000);
 
-        api.addEventListener("status", () => {
-            claimQueueOwnership();
-        }, { once: true });
+        if (api && api.addEventListener) {
+            api.addEventListener("status", () => {
+                claimQueueOwnership();
+            }, { once: true });
+        }
     }
 });
