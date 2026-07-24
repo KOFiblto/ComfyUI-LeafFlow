@@ -3,7 +3,12 @@ from aiohttp import web
 from server import PromptServer
 
 from .nodes.queue_control import PauseQueueNode, PersistentQueueNode, setup_queue_control_routes
-from .nodes.lora_loader import FolderLoraLoaderVisualPrettyV2
+from .nodes.lora_loader import (
+    FolderLoraLoader,
+    FolderLoraLoaderPretty,
+    FolderLoraLoaderVisualPretty,
+    FolderLoraLoaderVisualPrettyV2
+)
 from .nodes.image_loader import ImageLoaderVisualPrettyV2
 from .nodes.undo_placeholder import UndoPlaceholder
 from .nodes.auto_watcher import AutoWatcherNode
@@ -13,6 +18,9 @@ from .nodes.preview_latent import PreviewLatentLiveNode
 NODE_CLASS_MAPPINGS = {
     "PauseQueueNode": PauseQueueNode,
     "PersistentQueueNode": PersistentQueueNode,
+    "FolderLoraLoader": FolderLoraLoader,
+    "FolderLoraLoaderPretty": FolderLoraLoaderPretty,
+    "FolderLoraLoaderVisualPretty": FolderLoraLoaderVisualPretty,
     "FolderLoraLoaderVisualPrettyV2": FolderLoraLoaderVisualPrettyV2,
     "ImageLoaderVisualPrettyV2": ImageLoaderVisualPrettyV2,
     "UndoPlaceholder": UndoPlaceholder,
@@ -24,6 +32,9 @@ NODE_CLASS_MAPPINGS = {
 NODE_DISPLAY_NAME_MAPPINGS = {
     "PauseQueueNode": "🍃 Pause Queue",
     "PersistentQueueNode": "🍃 Persistent Queue",
+    "FolderLoraLoader": "🍃 LoRA Loader (by Folder)",
+    "FolderLoraLoaderPretty": "🍃 LoRA Loader (Pretty)",
+    "FolderLoraLoaderVisualPretty": "🍃 Visual LoRA Picker",
     "FolderLoraLoaderVisualPrettyV2": "🍃 Visual LoRA Loader",
     "ImageLoaderVisualPrettyV2": "🍃 Visual Image Loader",
     "UndoPlaceholder": "🍃 Undo Placeholder",
@@ -43,7 +54,7 @@ ENV_FILE = os.path.join(CURRENT_DIR, ".env")
 
 routes = server.routes
 
-print("[ComfyUI-FlowControl] 🍃 Loaded 8 nodes successfully.")
+print("[ComfyUI-FlowControl] 🍃 Loaded 11 nodes & visual endpoints successfully.")
 
 @routes.get("/flow_control/settings")
 async def get_settings(request):
