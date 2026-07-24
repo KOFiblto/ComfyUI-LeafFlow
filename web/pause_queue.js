@@ -24,8 +24,8 @@ class PauseQueueUI {
         this.init();
     }
 
-    async init() {
-        await this.fetchStatus();
+    init() {
+        this.fetchStatus().catch(() => {});
         this.setupWebSocket();
         this.startObserver();
     }
