@@ -253,7 +253,7 @@ app.registerExtension({
                 e.stopPropagation();
             }, { passive: true });
 
-            const initialZoom = localStorage.getItem("comfy_img_picker_zoom") || "80";
+            const initialZoom = (node.properties && node.properties.tile_size) ? node.properties.tile_size : 80;
             viewContainer.style.setProperty("--img-tile-size", `${initialZoom}px`);
 
             const domWidget = node.addDOMWidget("img_visual_picker", "HTML", viewContainer, {
@@ -265,15 +265,21 @@ app.registerExtension({
             domWidget.computeSize = function() {
                 const displayModeWidget = node.widgets ? node.widgets.find(w => w.name === "display_mode") : null;
                 const isShowAll = (displayModeWidget?.value === "Show All");
+                
+                const topWidgetsHeight = (node.widgets ? (node.widgets.length - 2) * 26 + 30 : 100);
+                const availableHeight = isShowAll ? Math.max(200, gridContainer.scrollHeight || 300) : Math.max(160, node.size[1] - topWidgetsHeight - 55);
+
                 if (isShowAll) {
                     gridContainer.style.maxHeight = "none";
+                    gridContainer.style.height = "auto";
                     gridContainer.style.overflowY = "visible";
                 } else {
-                    gridContainer.style.maxHeight = "360px";
+                    gridContainer.style.maxHeight = `${availableHeight}px`;
+                    gridContainer.style.height = `${availableHeight}px`;
                     gridContainer.style.overflowY = "auto";
                 }
-                const topMargin = (node.widgets ? node.widgets.length * 24 + 10 : 80);
-                return [node.size[0] - 20, Math.max(160, node.size[1] - topMargin)];
+                
+                return [node.size[0] - 20, availableHeight];
             };
 
             const zoomWidget = node.addWidget(
@@ -281,12 +287,13 @@ app.registerExtension({
                 "tile_size",
                 parseInt(initialZoom),
                 (val) => {
-                    localStorage.setItem("comfy_img_picker_zoom", val);
+                    if (!node.properties) node.properties = {};
+                    node.properties.tile_size = val;
                     viewContainer.style.setProperty("--img-tile-size", `${val}px`);
                 },
                 { min: 50, max: 200, step: 1 }
             );
-            zoomWidget.serialize = false;
+            zoomWidget.serialize = true;
 
             let activeRequest = null;
             let debounceTimer = null;

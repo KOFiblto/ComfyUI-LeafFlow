@@ -85,6 +85,9 @@ async def save_settings(request):
         enable_persistent_queue = data.get("enable_persistent_queue")
         default_pause_state = data.get("default_pause_state")
         default_pause_mode = data.get("default_pause_mode")
+        enable_civitai = data.get("enable_civitai_scraping")
+        enable_tmdb = data.get("enable_tmdb_scraping")
+        restored_state = data.get("persistent_queue_restored_state")
 
         lines = []
         if os.path.exists(ENV_FILE):
@@ -100,6 +103,9 @@ async def save_settings(request):
         has_persistent = False
         has_pause_state = False
         has_pause_mode = False
+        has_civ_enable = False
+        has_tmdb_enable = False
+        has_restored_state = False
 
         for line in lines:
             if line.strip().startswith("CIVITAI_API_KEY=") and civitai_key is not None:
@@ -117,6 +123,15 @@ async def save_settings(request):
             elif line.strip().startswith("DEFAULT_PAUSE_MODE=") and default_pause_mode is not None:
                 new_lines.append(f"DEFAULT_PAUSE_MODE={default_pause_mode}\n")
                 has_pause_mode = True
+            elif line.strip().startswith("ENABLE_CIVITAI_SCRAPING=") and enable_civitai is not None:
+                new_lines.append(f"ENABLE_CIVITAI_SCRAPING={enable_civitai}\n")
+                has_civ_enable = True
+            elif line.strip().startswith("ENABLE_TMDB_SCRAPING=") and enable_tmdb is not None:
+                new_lines.append(f"ENABLE_TMDB_SCRAPING={enable_tmdb}\n")
+                has_tmdb_enable = True
+            elif line.strip().startswith("PERSISTENT_QUEUE_RESTORED_STATE=") and restored_state is not None:
+                new_lines.append(f"PERSISTENT_QUEUE_RESTORED_STATE={restored_state}\n")
+                has_restored_state = True
             else:
                 new_lines.append(line)
 
@@ -130,6 +145,12 @@ async def save_settings(request):
             new_lines.append(f"DEFAULT_PAUSE_STATE={default_pause_state}\n")
         if not has_pause_mode and default_pause_mode is not None:
             new_lines.append(f"DEFAULT_PAUSE_MODE={default_pause_mode}\n")
+        if not has_civ_enable and enable_civitai is not None:
+            new_lines.append(f"ENABLE_CIVITAI_SCRAPING={enable_civitai}\n")
+        if not has_tmdb_enable and enable_tmdb is not None:
+            new_lines.append(f"ENABLE_TMDB_SCRAPING={enable_tmdb}\n")
+        if not has_restored_state and restored_state is not None:
+            new_lines.append(f"PERSISTENT_QUEUE_RESTORED_STATE={restored_state}\n")
 
         with open(ENV_FILE, "w", encoding="utf-8") as f:
             f.writelines(new_lines)

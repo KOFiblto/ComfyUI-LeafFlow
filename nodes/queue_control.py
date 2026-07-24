@@ -345,6 +345,12 @@ class PersistentQueueManager:
         if not hasattr(server, "prompt_queue") or not self.persistent_items:
             return
 
+        restored_state_setting = get_env_setting("PERSISTENT_QUEUE_RESTORED_STATE", "Match Default")
+        if restored_state_setting == "Force Paused":
+            pause_manager.set_pause(True)
+        elif restored_state_setting == "Force Running":
+            pause_manager.set_pause(False)
+
         print(f"[PersistentQueue] Restoring {len(self.persistent_items)} saved queue item(s)...")
         self.is_restoring = True
         try:

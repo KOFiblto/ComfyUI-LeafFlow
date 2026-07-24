@@ -114,8 +114,24 @@ def get_file_sha256(filepath):
             h.update(chunk)
     return h.hexdigest().upper()
 
+def get_env_setting(key, default_val):
+    if os.path.exists(ENV_FILE):
+        try:
+            with open(ENV_FILE, "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.strip().startswith(f"{key}="):
+                        return line.strip().split("=", 1)[1].strip()
+        except Exception:
+            pass
+    return default_val
+
 def scrape_missing_images_sync():
     try:
+        civitai_enabled = get_env_setting("ENABLE_CIVITAI_SCRAPING", "true").lower() in ["true", "1", "yes"]
+        tmdb_enabled = get_env_setting("ENABLE_TMDB_SCRAPING", "true").lower() in ["true", "1", "yes"]
+        if not civitai_enabled and not tmdb_enabled:
+            return
+
         civitai_key, tmdb_key = get_api_keys()
         failed_scrapes_file = os.path.join(CURRENT_DIR, "failed_scrapes.json")
         failed_scrapes = {}
@@ -147,31 +163,34 @@ def scrape_missing_images_sync():
 
             success = False
 
-            try:
-                file_hash = get_file_sha256(lora_path)
-                civitai_url = f"https://civitai.com/api/v1/model-versions/by-hash/{file_hash}"
-                headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-                if civitai_key:
-                    headers['Authorization'] = f"Bearer {civitai_key}"
-                
-                req = urllib.request.Request(civitai_url, headers=headers)
-                with urllib.request.urlopen(req, timeout=12) as resp:
-                    data = json.loads(resp.read().decode('utf-8'))
-                    images = data.get("images", [])
-                    if images and len(images) > 0:
-                        img_url = images[0].get("url")
-                        if img_url:
-                            dest_path = os.path.splitext(lora_path)[0] + ".jpg"
-                            img_req = urllib.request.Request(img_url, headers=headers)
-                            with urllib.request.urlopen(img_req, timeout=15) as img_resp:
-                                with open(dest_path, "wb") as f:
-                                    f.write(img_resp.read())
-                            print(f"[FlowControl] Scraped Civitai preview for {pretty_name}")
-                            success = True
-            except Exception:
-                pass
+            # 1. Try Civitai API search by file SHA256 hash if enabled
+            if civitai_enabled:
+                try:
+                    file_hash = get_file_sha256(lora_path)
+                    civitai_url = f"https://civitai.com/api/v1/model-versions/by-hash/{file_hash}"
+                    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+                    if civitai_key:
+                        headers['Authorization'] = f"Bearer {civitai_key}"
+                    
+                    req = urllib.request.Request(civitai_url, headers=headers)
+                    with urllib.request.urlopen(req, timeout=12) as resp:
+                        data = json.loads(resp.read().decode('utf-8'))
+                        images = data.get("images", [])
+                        if images and len(images) > 0:
+                            img_url = images[0].get("url")
+                            if img_url:
+                                dest_path = os.path.splitext(lora_path)[0] + ".jpg"
+                                img_req = urllib.request.Request(img_url, headers=headers)
+                                with urllib.request.urlopen(img_req, timeout=15) as img_resp:
+                                    with open(dest_path, "wb") as f:
+                                        f.write(img_resp.read())
+                                print(f"[FlowControl] Scraped Civitai preview for {pretty_name}")
+                                success = True
+                except Exception:
+                    pass
 
-            if not success and tmdb_key:
+            # 2. Try TMDB API search if enabled and TMDB key is provided
+            if not success and tmdb_enabled and tmdb_key:
                 try:
                     url = f"https://api.themoviedb.org/3/search/person?api_key={tmdb_key}&query={urllib.parse.quote(pretty_name)}&include_adult=true"
                     req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})

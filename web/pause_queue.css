@@ -1,5 +1,10 @@
 /* FlowControl PauseQueue CSS */
 
+:root {
+    --pq-unpaused-color: #059669;
+    --pq-paused-color: #ea580c;
+}
+
 .pq-button-group {
     font-family: var(--font-inter, Inter, sans-serif);
     user-select: none;
@@ -8,7 +13,7 @@
     align-items: stretch;
     height: 2rem; /* h-8 */
     border-radius: 0.5rem;
-    background-color: #059669; /* Emerald 600 */
+    background-color: var(--pq-unpaused-color);
     transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
     margin-right: 0.25rem;
     position: relative;
@@ -16,7 +21,7 @@
 }
 
 .pq-button-group.pq-state-paused {
-    background-color: #ea580c; /* Orange 600 */
+    background-color: var(--pq-paused-color);
     animation: pq-pulse-orange 2s infinite;
 }
 
@@ -30,7 +35,7 @@
     padding-right: 0.75rem;
     height: 100%;
     border: none;
-    background-color: #059669;
+    background-color: var(--pq-unpaused-color);
     color: #ffffff;
     font-size: 0.875rem;
     font-weight: 500;
@@ -43,15 +48,15 @@
 }
 
 .pq-main-btn:hover {
-    background-color: #10b981;
+    filter: brightness(1.15);
 }
 
 .pq-main-btn:active {
-    background-color: #047857;
+    filter: brightness(0.85);
 }
 
 .pq-button-group.pq-state-paused .pq-main-btn {
-    background-color: #ea580c;
+    background-color: var(--pq-paused-color);
 }
 
 .pq-button-group.pq-state-paused .pq-main-btn:hover {
