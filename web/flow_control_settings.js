@@ -247,9 +247,8 @@ app.registerExtension({
             });
         };
 
-        const observer = new MutationObserver(() => {
+        setInterval(() => {
             applyKeyMasking();
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
+        }, 1000);
     }
 });

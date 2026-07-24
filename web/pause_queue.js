@@ -100,24 +100,12 @@ class PauseQueueUI {
     }
 
     startObserver() {
-        let pending = false;
-        const check = () => {
-            pending = false;
+        this.injectUI();
+        setInterval(() => {
             if (!this.groupEl || !document.body.contains(this.groupEl)) {
                 this.injectUI();
             }
-        };
-
-        check();
-
-        const observer = new MutationObserver(() => {
-            if (!pending) {
-                pending = true;
-                requestAnimationFrame(check);
-            }
-        });
-
-        observer.observe(document.body, { childList: true, subtree: true });
+        }, 1000);
     }
 
     injectUI() {
