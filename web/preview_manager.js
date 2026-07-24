@@ -9,6 +9,7 @@ class PreviewManagerClass {
         this.api = null;
         this.app = null;
         this.initialized = false;
+        this.pollTimer = null;
     }
 
     init(appInstance, apiInstance) {
@@ -17,7 +18,7 @@ class PreviewManagerClass {
         this.api = apiInstance;
         this.initialized = true;
         this.setupListener();
-        this.observeDomImages();
+        this.startSafePolling();
     }
 
     registerNode(node) {
@@ -36,6 +37,11 @@ class PreviewManagerClass {
 
         this.api.addEventListener("executing", ({ detail }) => {
             currentExecutingNodeId = detail;
+            this.checkDomPreviewImages();
+        });
+
+        this.api.addEventListener("progress", () => {
+            this.checkDomPreviewImages();
         });
 
         this.api.addEventListener("b_preview_with_metadata", (event) => {
@@ -54,40 +60,35 @@ class PreviewManagerClass {
         });
     }
 
-    observeDomImages() {
-        // Observe DOM for ComfyUI V2 New Frontend preview images inserted into KSampler nodes (including inside subgraphs)
-        const checkImages = () => {
-            const images = document.querySelectorAll('img[alt*="Live sampling preview"], img[src^="blob:"]');
-            images.forEach(imgEl => {
-                const src = imgEl.src;
-                if (src && src.startsWith("blob:") && imgEl.dataset.lastFlowControlSrc !== src) {
-                    imgEl.dataset.lastFlowControlSrc = src;
-                    
-                    const nodeEl = imgEl.closest('[data-node-id], [data-widgets-grid-node-id], .lg-node');
-                    const nodeId = nodeEl ? (nodeEl.dataset.nodeId || nodeEl.dataset.widgetsGridNodeId || nodeEl.getAttribute('data-node-id')) : null;
+    checkDomPreviewImages() {
+        if (this.listeners.size === 0) return;
 
-                    const img = new Image();
-                    img.onload = () => {
-                        this.updatePreview(img, nodeId || currentExecutingNodeId);
-                    };
-                    img.src = src;
-                }
-            });
-        };
+        const images = document.querySelectorAll('img[alt*="Live sampling preview"]');
+        images.forEach(imgEl => {
+            const src = imgEl.src;
+            if (src && src.startsWith("blob:") && imgEl.dataset.lastFlowControlSrc !== src) {
+                imgEl.dataset.lastFlowControlSrc = src;
+                
+                const nodeEl = imgEl.closest('[data-node-id], [data-widgets-grid-node-id], .lg-node');
+                const nodeId = nodeEl ? (nodeEl.dataset.nodeId || nodeEl.dataset.widgetsGridNodeId || nodeEl.getAttribute('data-node-id')) : null;
 
-        const observer = new MutationObserver(() => {
-            checkImages();
+                const img = new Image();
+                img.onload = () => {
+                    this.updatePreview(img, nodeId || currentExecutingNodeId);
+                };
+                img.src = src;
+            }
         });
+    }
 
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ["src"]
-        });
-
-        // Periodic fallback scan
-        setInterval(checkImages, 300);
+    startSafePolling() {
+        if (this.pollTimer) clearInterval(this.pollTimer);
+        // Gentle 500ms check ONLY when preview nodes exist on canvas
+        this.pollTimer = setInterval(() => {
+            if (this.listeners.size > 0) {
+                this.checkDomPreviewImages();
+            }
+        }, 500);
     }
 
     processBlob(blob, samplerId) {

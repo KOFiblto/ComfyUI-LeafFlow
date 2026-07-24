@@ -1,4 +1,4 @@
-import { app } from "../../scripts/app.js";
+import { app } from "/scripts/app.js";
 
 const COLOR_MAP = {
     "PauseQueueNode": { color: "#059669", bgcolor: "#047857" },

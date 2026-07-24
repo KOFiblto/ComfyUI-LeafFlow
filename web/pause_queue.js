@@ -1,5 +1,5 @@
-import { app } from "../../scripts/app.js";
-import { api } from "../../scripts/api.js";
+import { app } from "/scripts/app.js";
+import { api } from "/scripts/api.js";
 
 const stylePath = new URL('./pause_queue.css', import.meta.url).href;
 if (!document.querySelector(`link[href="${stylePath}"]`)) {
