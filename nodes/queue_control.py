@@ -171,7 +171,7 @@ class PauseQueueManager:
 
 class PersistentQueueManager:
     def __init__(self):
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
         self.persistent_items = []
         self.is_restoring = False
         self._patched = False
