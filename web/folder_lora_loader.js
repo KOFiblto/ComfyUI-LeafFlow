@@ -815,20 +815,19 @@ app.registerExtension({
                 const displayModeWidget = node.widgets ? node.widgets.find(w => w.name === "display_mode") : null;
                 const isShowAll = (displayModeWidget?.value === "Show All");
                 
-                const topWidgetsHeight = (node.widgets ? (node.widgets.length - 2) * 26 + 30 : 120);
-                const availableHeight = isShowAll ? Math.max(200, viewContainer.scrollHeight || 300) : Math.max(160, node.size[1] - topWidgetsHeight - 55);
-                
                 if (isShowAll) {
                     viewContainer.style.maxHeight = "none";
                     viewContainer.style.height = "auto";
                     viewContainer.style.overflowY = "visible";
+                    return [node.size[0] - 20, Math.max(200, viewContainer.scrollHeight || 300)];
                 } else {
+                    const topWidgetsHeight = (node.widgets ? node.widgets.length * 26 + 10 : 120);
+                    const availableHeight = Math.max(160, node.size[1] - topWidgetsHeight);
                     viewContainer.style.maxHeight = `${availableHeight}px`;
                     viewContainer.style.height = `${availableHeight}px`;
                     viewContainer.style.overflowY = "auto";
+                    return [node.size[0] - 20, availableHeight];
                 }
-                
-                return [node.size[0] - 20, availableHeight];
             };
 
             const zoomWidget = node.addWidget(
