@@ -80,10 +80,17 @@ Every node in this suite is prefixed with the signature **`🍃`** brand icon fo
 
 Configure options directly under ComfyUI Settings (⚙ gear icon):
 
+- **🍃 FlowControl: Enable Civitai Auto-Scraping**: Automatically download model preview images from Civitai via SHA256 file hashes.
 - **🍃 FlowControl: Civitai API Key**: Optional key for Civitai SHA256 model preview search (`Authorization: Bearer <key>`).
+- **🍃 FlowControl: Enable TMDB Auto-Scraping**: Automatically download celebrity preview images from TMDB.
 - **🍃 FlowControl: TMDB API Key**: Optional key for celebrity preview search.
+- **🍃 FlowControl: Default Pause Queue State on Launch**: Sets whether the queue should start `Unpaused` or `Paused` on boot.
+- **🍃 FlowControl: Default Pause Queue Mode on Launch**: Sets the default pause behavior (`Finish Active Prompt` vs `Instant Resume Node`).
+- **🍃 FlowControl: Persistent Queue Restored Launch State**: Controls what happens to crash-recovered queue items (`Start Paused` or `Start Unpaused`).
+- **🍃 FlowControl: Pause Button Unpaused Color**: Customizable hex color for the toolbar unpaused state.
+- **🍃 FlowControl: Pause Button Paused Color**: Customizable hex color for the toolbar paused/pausing state.
 - **🍃 FlowControl: Enable Pause Queue Toolbar Button**: Toggle top action bar Pause & Continue button ON/OFF.
-- **🍃 FlowControl: Enable Sound Alert on Pause**: Gentle audio notification when queue execution pauses.
+- **🍃 FlowControl: Enable Persistent Queue (Auto-Recovery)**: Toggle the real-time crash recovery queue saving on or off.
 
 ---
 
