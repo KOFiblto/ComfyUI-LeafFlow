@@ -35,10 +35,11 @@ function getKSamplerNodes() {
     // Also check DOM nodes for ComfyUI V2 subgraphs
     document.querySelectorAll('[data-node-id], [data-widgets-grid-node-id], .lg-node').forEach(el => {
         const id = el.dataset.nodeId || el.dataset.widgetsGridNodeId || el.getAttribute('data-node-id');
-        const text = el.textContent || "";
+        const text = (el.innerText || el.textContent || "").split('\n')[0];
         if (id && text.toLowerCase().includes("sampler") && !samplers.some(s => String(s.id) === String(id))) {
             const titleMatch = text.match(/KSampler[^\n]*/i) || text.match(/Sampler[^\n]*/i);
-            const title = titleMatch ? titleMatch[0].trim() : `Sampler (${id})`;
+            let title = titleMatch ? titleMatch[0].trim() : `Sampler (${id})`;
+            if (title.length > 45) title = title.substring(0, 42) + "...";
             samplers.push({ id, title });
         }
     });
@@ -121,6 +122,31 @@ app.registerExtension({
                     ctx.textBaseline = "middle";
                     ctx.fillText("Waiting for live preview...", this.size[0] / 2, (this.size[1] + 40) / 2);
                     ctx.restore();
+                } else if (this.imgs && this.imgs.length > 0) {
+                    const img = this.imgs[this.imageIndex || 0];
+                    if (img && img.width && img.height) {
+                        ctx.save();
+                        
+                        let w = img.width;
+                        let h = img.height;
+                        
+                        // Reserve top area for node title (approx 30px) and widget (approx 40px)
+                        const topOffset = 70;
+                        const canvasW = this.size[0] - 10;
+                        const canvasH = this.size[1] - topOffset - 10;
+                        
+                        if (canvasW > 0 && canvasH > 0) {
+                            const ratio = Math.min(canvasW / w, canvasH / h);
+                            w *= ratio;
+                            h *= ratio;
+                            
+                            const x = (this.size[0] - w) / 2;
+                            const y = topOffset + (canvasH - h) / 2;
+                            
+                            ctx.drawImage(img, x, y, w, h);
+                        }
+                        ctx.restore();
+                    }
                 }
             };
 
