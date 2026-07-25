@@ -90,7 +90,6 @@ app.registerExtension({
                     widget = this.addWidget("combo", "Source", "Auto", (value) => {}, { values: ["Auto"] });
                 }
                 
-                const self = this;
                 widget.callback = function() {
                     updateAllPreviewNodeDropdowns();
                 };
@@ -98,6 +97,40 @@ app.registerExtension({
                 this.size = [300, 300];
                 this.imgs = [];
                 this.imageIndex = 0;
+                
+                // Create robust DOM container for V2 overlay
+                const viewContainer = document.createElement("div");
+                viewContainer.style.width = "100%";
+                viewContainer.style.height = "100%";
+                viewContainer.style.display = "flex";
+                viewContainer.style.alignItems = "center";
+                viewContainer.style.justifyContent = "center";
+                viewContainer.style.backgroundColor = "transparent";
+                viewContainer.style.color = "#888";
+                viewContainer.style.fontFamily = "Inter, sans-serif";
+                viewContainer.style.fontSize = "14px";
+                viewContainer.style.overflow = "hidden";
+                
+                const fallbackText = document.createElement("div");
+                fallbackText.innerText = "Waiting for live preview...";
+                viewContainer.appendChild(fallbackText);
+                
+                const imgElement = document.createElement("img");
+                imgElement.style.maxWidth = "100%";
+                imgElement.style.maxHeight = "100%";
+                imgElement.style.objectFit = "contain";
+                imgElement.style.display = "none";
+                viewContainer.appendChild(imgElement);
+                
+                this.previewImgElement = imgElement;
+                this.previewFallbackText = fallbackText;
+                
+                // Mount DOM widget
+                this.addDOMWidget("preview_display", "HTML", viewContainer, {
+                    getValue() { return ""; },
+                    setValue(val) {},
+                    serialize: false
+                });
                 
                 PreviewManager.registerNode(this);
                 setTimeout(updateAllPreviewNodeDropdowns, 100);
@@ -109,45 +142,6 @@ app.registerExtension({
                     onRemoved.apply(this, arguments);
                 }
                 PreviewManager.unregisterNode(this);
-            };
-
-            nodeType.prototype.onDrawBackground = function(ctx) {
-                if (this.flags.collapsed) return;
-
-                if (!this.imgs || this.imgs.length === 0) {
-                    ctx.save();
-                    ctx.fillStyle = "#888888";
-                    ctx.font = "14px Inter, sans-serif";
-                    ctx.textAlign = "center";
-                    ctx.textBaseline = "middle";
-                    ctx.fillText("Waiting for live preview...", this.size[0] / 2, (this.size[1] + 40) / 2);
-                    ctx.restore();
-                } else if (this.imgs && this.imgs.length > 0) {
-                    const img = this.imgs[this.imageIndex || 0];
-                    if (img && img.width && img.height) {
-                        ctx.save();
-                        
-                        let w = img.width;
-                        let h = img.height;
-                        
-                        // Reserve top area for node title (approx 30px) and widget (approx 40px)
-                        const topOffset = 70;
-                        const canvasW = this.size[0] - 10;
-                        const canvasH = this.size[1] - topOffset - 10;
-                        
-                        if (canvasW > 0 && canvasH > 0) {
-                            const ratio = Math.min(canvasW / w, canvasH / h);
-                            w *= ratio;
-                            h *= ratio;
-                            
-                            const x = (this.size[0] - w) / 2;
-                            const y = topOffset + (canvasH - h) / 2;
-                            
-                            ctx.drawImage(img, x, y, w, h);
-                        }
-                        ctx.restore();
-                    }
-                }
             };
 
             nodeType.prototype.onNewPreview = function(img, samplerId) {
@@ -167,6 +161,14 @@ app.registerExtension({
                 
                 this.imgs = [img];
                 this.imageIndex = 0;
+                
+                // Update DOM elements natively for V2 visibility
+                if (this.previewImgElement && this.previewFallbackText && img && img.src) {
+                    this.previewFallbackText.style.display = "none";
+                    this.previewImgElement.src = img.src;
+                    this.previewImgElement.style.display = "block";
+                }
+                
                 app.graph.setDirtyCanvas(true, true);
             };
         }
