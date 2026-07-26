@@ -395,6 +395,7 @@ app.registerExtension({
                 }
                 const w = node.addWidget("text", "_selected_lora", "[ NONE ]", () => {}, { serialize: true });
                 w.type = "hidden";
+                w.computeSize = () => [0, -4];
                 return w;
             };
             const hiddenWidget = getHiddenWidget();
@@ -663,6 +664,7 @@ app.registerExtension({
                 }
                 const w = node.addWidget("text", "_selected_lora", "[]", () => {}, { serialize: true });
                 w.type = "hidden";
+                w.computeSize = () => [0, -4];
                 return w;
             };
             const hiddenWidget = getHiddenWidget();
@@ -679,6 +681,7 @@ app.registerExtension({
                 }
                 const w = node.addWidget("text", "_selection_mode", "All", () => {}, { serialize: true });
                 w.type = "hidden";
+                w.computeSize = () => [0, -4];
                 return w;
             };
             const hiddenModeWidget = getHiddenModeWidget();
@@ -695,6 +698,7 @@ app.registerExtension({
                 }
                 const w = node.addWidget("text", "_scrape_on_new", "true", () => {}, { serialize: true });
                 w.type = "hidden";
+                w.computeSize = () => [0, -4];
                 return w;
             };
             const hiddenScrapeWidget = getHiddenScrapeWidget();
@@ -723,11 +727,11 @@ app.registerExtension({
 
             const allBtn = document.createElement("button");
             allBtn.className = "lora-toggle-btn active";
-            allBtn.innerText = "All Celebs";
+            allBtn.innerText = "All Loras";
 
             const randomBtn = document.createElement("button");
             randomBtn.className = "lora-toggle-btn";
-            randomBtn.innerText = "Random Celeb";
+            randomBtn.innerText = "Random Lora";
 
             const syncModeToggleUI = () => {
                 const curModeWidget = getHiddenModeWidget();

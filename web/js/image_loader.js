@@ -223,6 +223,7 @@ app.registerExtension({
                 }
                 const w = node.addWidget("text", "_selected_image", "", () => {}, { serialize: true });
                 w.type = "hidden";
+                w.computeSize = () => [0, -4];
                 return w;
             };
             const hiddenWidget = getHiddenWidget();
