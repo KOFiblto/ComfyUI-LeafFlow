@@ -14,6 +14,8 @@ from .nodes.undo_placeholder import UndoPlaceholder
 from .nodes.auto_watcher import AutoWatcherNode
 from .nodes.load_recent import LoadRecentOutputs
 from .nodes.preview_latent import PreviewLatentLiveNode
+from .nodes.decision_node import FlowControlDecision
+
 
 NODE_CLASS_MAPPINGS = {
     "PauseQueueNode": PauseQueueNode,
@@ -26,7 +28,8 @@ NODE_CLASS_MAPPINGS = {
     "UndoPlaceholder": UndoPlaceholder,
     "AutoWatcherNode": AutoWatcherNode,
     "LoadRecentOutputs": LoadRecentOutputs,
-    "PreviewLatentLive": PreviewLatentLiveNode
+    "PreviewLatentLive": PreviewLatentLiveNode,
+    "FlowControlDecision": FlowControlDecision
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -40,7 +43,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "UndoPlaceholder": "🍃 Undo Placeholder",
     "AutoWatcherNode": "🍃 Auto Watcher",
     "LoadRecentOutputs": "🍃 Recent Outputs",
-    "PreviewLatentLive": "🍃 Live Latent Preview"
+    "PreviewLatentLive": "🍃 Live Latent Preview",
+    "FlowControlDecision": "🍃 FlowControl Decision"
 }
 
 WEB_DIRECTORY = "./web"
@@ -54,7 +58,7 @@ ENV_FILE = os.path.join(CURRENT_DIR, ".env")
 
 routes = server.routes
 
-print("[ComfyUI-FlowControl] 🍃 Loaded 11 nodes & visual endpoints successfully.")
+print("[ComfyUI-FlowControl] 🍃 Loaded 12 nodes & visual endpoints successfully.")
 
 @routes.get("/flow_control/settings")
 async def get_settings(request):

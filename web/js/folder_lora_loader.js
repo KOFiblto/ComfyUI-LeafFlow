@@ -294,6 +294,7 @@ app.registerExtension({
             if (!hiddenWidget) {
                 hiddenWidget = node.addWidget("text", "_selected_lora", "[ NONE ]", () => {}, { serialize: true });
                 hiddenWidget.type = "hidden";
+                hiddenWidget.computeSize = () => [0, -4];
             }
 
             if (folderWidget && loraWidget) {
