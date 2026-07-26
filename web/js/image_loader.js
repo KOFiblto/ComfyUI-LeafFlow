@@ -6,8 +6,6 @@ const visualStyles = document.createElement("style");
 visualStyles.textContent = `
     .img-visual-container {
         width: 100%;
-        height: 400px;
-        min-height: 200px;
         display: flex;
         flex-direction: column;
         gap: 8px;
@@ -16,8 +14,17 @@ visualStyles.textContent = `
         border: 1px solid #222;
         border-radius: 6px;
         box-sizing: border-box;
-        resize: vertical;
         overflow-y: hidden;
+    }
+    .img-visual-container.vue-mode {
+        height: 400px;
+        min-height: 200px;
+        resize: vertical;
+    }
+    .img-visual-container.litegraph-mode {
+        height: 100%;
+        min-height: 0;
+        max-height: 100%;
     }
     .img-visual-container::-webkit-scrollbar {
         width: 6px;
@@ -200,14 +207,6 @@ visualStyles.textContent = `
 `;
 document.head.appendChild(visualStyles);
 
-const globalVueFixCSS2 = document.createElement("style");
-globalVueFixCSS2.textContent = `
-    .lg-node-widget[node-type*="ImageLoaderVisual"] canvas {
-        display: none !important;
-    }
-`;
-document.head.appendChild(globalVueFixCSS2);
-
 app.registerExtension({
     name: "Comfy.ImageLoaderCustom",
     async nodeCreated(node) {
@@ -224,22 +223,24 @@ app.registerExtension({
 
             const folderWidget = node.widgets ? node.widgets.find(w => w.name === "folder_path") : null;
 
-            const getHiddenWidget = () => {
-                const widgets = node.widgets.filter(w => w.name === "_selected_image");
+            const getHiddenWidget = (name, defaultVal) => {
+                const widgets = node.widgets.filter(w => w.name === name);
                 if (widgets.length > 1) {
-                    const keep = widgets.find(w => w.value && w.value !== "") || widgets[0];
-                    node.widgets = node.widgets.filter(w => w.name !== "_selected_image" || w === keep);
-                    return keep;
+                    for (let i = 1; i < widgets.length; i++) {
+                        node.widgets.splice(node.widgets.indexOf(widgets[i]), 1);
+                    }
                 }
                 if (widgets.length === 1) {
+                    widgets[0].hidden = true;
+                    widgets[0].computeSize = () => [0, 0];
                     return widgets[0];
                 }
-                const w = node.addWidget("text", "_selected_image", "", () => {}, { serialize: true });
-                w.type = "hidden";
-                w.computeSize = () => [0, -4];
+                const w = node.addWidget("text", name, defaultVal, () => {}, { serialize: true });
+                w.hidden = true;
+                w.computeSize = () => [0, 0];
                 return w;
             };
-            const hiddenWidget = getHiddenWidget();
+            const hiddenWidget = getHiddenWidget("_selected_image", "");
 
             // Create Visual HTML DOM Layout
             const viewContainer = document.createElement("div");
@@ -286,10 +287,25 @@ app.registerExtension({
 
             // Embed DOM Widget inside the node container
             const domWidget = node.addDOMWidget("img_visual_picker", "HTML", viewContainer, {
-                getValue() { return getHiddenWidget().value; },
-                setValue(val) { getHiddenWidget().value = val; },
+                getValue() { return getHiddenWidget("_selected_image", "").value; },
+                setValue(val) { getHiddenWidget("_selected_image", "").value = val; },
                 serialize: false
             });
+
+            // Detect Vue UI vs LiteGraph
+            const isVueUI = !!document.querySelector(".lg-node");
+            if (isVueUI) {
+                viewContainer.classList.add("vue-mode");
+            } else {
+                viewContainer.classList.add("litegraph-mode");
+                const onResize = node.onResize;
+                node.onResize = function(size) {
+                    if (onResize) onResize.apply(this, arguments);
+                    if (viewContainer.style) {
+                        viewContainer.style.height = `${size[1] - 80}px`;
+                    }
+                };
+            }
 
             domWidget.computeSize = function() {
                 return [node.size[0] - 30, node.size[1] - 140];

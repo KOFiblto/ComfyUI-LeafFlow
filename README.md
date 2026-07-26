@@ -12,17 +12,24 @@ Every node in this suite is prefixed with the signature **`🍃`** brand icon fo
 
 ### ⏸️ Queue & Workflow Control (`FlowControl/Queue`)
 
-1. **`🍃 Pause Queue`**
+1. **`🍃 Pause Queue` (Global Integration)**
    - Adds a native-styled **Pause / Continue** button directly into the ComfyUI V2 top action bar.
    - **Pause (Finish)**: Completes the currently active generation, then holds the queue before starting the next prompt.
    - **Pause (Instant)**: Pauses immediately before the next node executes in the active workflow (resumable mid-workflow without losing progress).
    - **Visual Indicators**: Green when unpaused, Orange when pausing/paused with pulsing glow animation.
    - **Status Text**: Displays `Pausing (Finish)...` or `Pausing (Instant)...` while waiting for execution to reach the pause gate, then transforms into `Continue` with a play icon `▶`.
 
-2. **`🍃 Persistent Queue`**
+2. **`🍃 Persistent Queue` (Global Integration)**
    - Automatically saves all queued workflows to `persistent_queue.json` in real time on disk.
    - If ComfyUI crashes, suffers a power outage, or is closed, all unfinished prompts are automatically restored to the queue on next boot in a paused state.
    - **Session Ownership Claiming**: Automatically re-assigns restored queue items to your active browser tab's `client_id` when you open the page, removing the *"Running in another tab"* warning.
+
+3. **`🍃 FlowControl Decision`**
+   - A drop-in node that pauses workflow execution at a specific point and prompts you with a UI popup.
+   - **Continue**: Resumes execution normally (outputs `False`).
+   - **Cancel**: Cancels this branch of the workflow (outputs `True`, allowing you to route it into a Switch node).
+   - **Stop Workflow**: Instantly kills the entire active generation queue.
+   - **Windows Notification**: Optionally sends a native Windows 11 toast notification when it's waiting for your input.
 
 ---
 
@@ -41,17 +48,21 @@ Every node in this suite is prefixed with the signature **`🍃`** brand icon fo
    - Outputs `IMAGE`, `positive_prompt`, `width`, and `height`.
 
 5. **`🍃 Recent Outputs`**
-   - Recursively scans ComfyUI's `output/` directory and cycles through recently generated images by step index for seamless integration with ComfyUI's sidebar/assets panel.
+   - Cycles through recently generated images by step index for seamless integration with ComfyUI's sidebar/assets panel.
+   - Supports custom `output_folder` paths.
+   - Uses an `index` paired with an `amount` to chronologically step through the X newest images in a batch.
 
 ---
 
 ### ⚙️ Automation, Previews & Utilities (`FlowControl/Automation`, `FlowControl/Previews`, `FlowControl/Utils`)
 
-6. **`🍃 Auto Watcher`**
+6. **`🍃 Load image from folder`**
    - Monitors a directory for incoming images (`.png`, `.jpg`, `.jpeg`, `.webp`), converts them into PyTorch image tensors, and removes processed files.
-   - **`wait_for_image` Toggle**:
-     - `True` (Default): Safely polls until an image arrives in the directory. Does not create missing folders automatically or crash if folder is deleted.
-     - `False`: Immediately checks the directory. If an image is present, loads it and returns `(image, has_image=True)`. If no image is present (or folder is missing), returns a dummy tensor and `has_image=False` immediately without blocking.
+   - **`wait_if_folder_is_empty` Toggle**:
+     - `True` (Default): Safely polls until an image arrives in the directory at your chosen `rescan_interval` (seconds).
+     - `False`: Immediately checks the directory. If an image is present, loads it. If no image is present, returns a dummy tensor and `has_image=False` immediately without blocking.
+   - **Advanced Sorting**: Supports sorting incoming images by `date_modified`, `date_created`, or `name`.
+   - **Regex Filtering**: Use standard Python regex strings (e.g. `^img_.*\.png$`) to target specific file formats or naming conventions.
 
 7. **`🍃 Undo Placeholder`**
    - Scans text prompt strings for names matching LoRA files in a specified folder filter and restores placeholder tokens like `%celeb%`.
@@ -65,12 +76,11 @@ Every node in this suite is prefixed with the signature **`🍃`** brand icon fo
 
 | Node Class | Display Name | Category | Primary Function |
 | :--- | :--- | :--- | :--- |
-| `PauseQueueNode` | **`🍃 Pause Queue`** | `FlowControl/Queue` | V2 action bar Pause (Finish) & Pause (Instant) controls |
-| `PersistentQueueNode` | **`🍃 Persistent Queue`** | `FlowControl/Queue` | Real-time queue persistence & crash recovery |
+| `FlowControlDecision` | **`🍃 FlowControl Decision`** | `FlowControl/Queue` | Inline workflow pausing with Continue/Cancel UI and native notifications |
 | `FolderLoraLoaderVisualPrettyV2` | **`🍃 Visual LoRA Loader`** | `FlowControl/Loaders` | Visual LoRA picker with SHA256 Civitai/TMDB previews |
 | `ImageLoaderVisualPrettyV2` | **`🍃 Visual Image Loader`** | `FlowControl/Loaders` | Visual image browser with EXIF prompt extraction |
 | `LoadRecentOutputs` | **`🍃 Recent Outputs`** | `FlowControl/Loaders` | Cycles recent output images for assets/sidebar |
-| `AutoWatcherNode` | **`🍃 Auto Watcher`** | `FlowControl/Automation` | Folder image watcher with `wait_for_image` toggle |
+| `LoadImageFromFolder` | **`🍃 Load image from folder`** | `FlowControl/Automation` | Folder image watcher with regex and intelligent sorting |
 | `UndoPlaceholder` | **`🍃 Undo Placeholder`** | `FlowControl/Utils` | Replaces pretty LoRA names with `%placeholder%` tokens |
 | `PreviewLatentLive` | **`🍃 Live Latent Preview`** | `FlowControl/Previews` | Canvas real-time sampler latent preview display |
 

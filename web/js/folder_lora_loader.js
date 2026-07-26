@@ -22,16 +22,21 @@ const visualStyles = document.createElement("style");
 visualStyles.textContent = `
     .lora-visual-container {
         width: 100%;
-        height: 400px;
-        min-height: 200px;
         display: flex;
         flex-direction: column;
         background: #111;
         border-radius: 8px;
         padding: 8px;
         box-sizing: border-box;
-        resize: vertical;
         overflow-y: hidden;
+    }
+    .lora-visual-container.vue-mode {
+        height: 400px;
+        min-height: 200px;
+        resize: vertical;
+    }
+    .lora-visual-container.litegraph-mode {
+        height: 100%;
     }
     .lora-visual-container.grid-layout {
         display: grid;
@@ -283,16 +288,6 @@ visualStyles.textContent = `
 `;
 document.head.appendChild(visualStyles);
 
-// Fix for Vue UI empty space
-const globalVueFixCSS = document.createElement("style");
-globalVueFixCSS.textContent = `
-    .lg-node-widget[node-type*="Visual"] canvas,
-    .lg-node-widget[node-type*="Pretty"] canvas {
-        display: none !important;
-    }
-`;
-document.head.appendChild(globalVueFixCSS);
-
 app.registerExtension({
     name: "Comfy.FolderLoraLoader",
     async nodeCreated(node) {
@@ -395,22 +390,24 @@ app.registerExtension({
 
             const folderWidget = node.widgets.find(w => w.name === "folder");
             
-            const getHiddenWidget = () => {
-                const widgets = node.widgets.filter(w => w.name === "_selected_lora");
+            const getHiddenWidget = (name, defaultVal) => {
+                const widgets = node.widgets.filter(w => w.name === name);
                 if (widgets.length > 1) {
-                    const keep = widgets.find(w => w.value && w.value !== "[ NONE ]") || widgets[0];
-                    node.widgets = node.widgets.filter(w => w.name !== "_selected_lora" || w === keep);
-                    return keep;
+                    for (let i = 1; i < widgets.length; i++) {
+                        node.widgets.splice(node.widgets.indexOf(widgets[i]), 1);
+                    }
                 }
                 if (widgets.length === 1) {
+                    widgets[0].hidden = true;
+                    widgets[0].computeSize = () => [0, 0];
                     return widgets[0];
                 }
-                const w = node.addWidget("text", "_selected_lora", "[ NONE ]", () => {}, { serialize: true });
-                w.type = "hidden";
-                w.computeSize = () => [0, -4];
+                const w = node.addWidget("text", name, defaultVal, () => {}, { serialize: true });
+                w.hidden = true;
+                w.computeSize = () => [0, 0];
                 return w;
             };
-            const hiddenWidget = getHiddenWidget();
+            const hiddenWidget = getHiddenWidget("_selected_lora", "[ NONE ]");
 
             // Create Visual HTML DOM Element
             const viewContainer = document.createElement("div");
@@ -424,6 +421,22 @@ app.registerExtension({
                 setValue(val) { getHiddenWidget().value = val; },
                 serialize: false
             });
+
+            // Detect Vue UI vs LiteGraph by checking for the Vue container class eventually
+            const isVueUI = !!document.querySelector(".lg-node");
+            if (isVueUI) {
+                viewContainer.classList.add("vue-mode");
+                viewContainer.style.height = "160px";
+            } else {
+                viewContainer.classList.add("litegraph-mode");
+                const onResize = node.onResize;
+                node.onResize = function(size) {
+                    if (onResize) onResize.apply(this, arguments);
+                    if (viewContainer.style) {
+                        viewContainer.style.height = `${size[1] - 160}px`;
+                    }
+                };
+            }
 
             // Adjust sizing constraints dynamically
             domWidget.computeSize = function() {

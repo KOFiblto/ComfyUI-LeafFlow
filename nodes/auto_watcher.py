@@ -65,14 +65,25 @@ class LoadImageFromFolder:
         if not files:
             return []
 
-        if sort_by == "date_modified":
-            files.sort(key=lambda x: os.path.getmtime(x), reverse=True) # newest first
-        elif sort_by == "date_created":
-            files.sort(key=lambda x: os.path.getctime(x), reverse=True) # newest first
+        valid_files = []
+        for file in files:
+            try:
+                if sort_by == "date_modified":
+                    val = os.path.getmtime(file)
+                elif sort_by == "date_created":
+                    val = os.path.getctime(file)
+                else:
+                    val = file
+                valid_files.append((file, val))
+            except OSError:
+                continue
+
+        if sort_by in ("date_modified", "date_created"):
+            valid_files.sort(key=lambda x: x[1], reverse=True) # newest first
         elif sort_by == "name":
-            files.sort() # alphabetical
+            valid_files.sort(key=lambda x: x[1]) # alphabetical
             
-        return files
+        return [x[0] for x in valid_files]
 
     def watch(self, folder, wait_if_folder_is_empty, rescan_interval, sort_by, regex_filter):
         if wait_if_folder_is_empty:
