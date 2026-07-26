@@ -11,6 +11,7 @@ class LoadRecentOutputs:
     def INPUT_TYPES(s):
         return {
             "required": {
+                "output_folder": ("STRING", {"default": "output"}),
                 "amount": ("INT", {"default": 5, "min": 1, "max": 100, "step": 1}),
                 "index": ("INT", {
                     "default": 0, 
@@ -25,10 +26,13 @@ class LoadRecentOutputs:
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "load_single_image"
     CATEGORY = LOADER_CATEGORY
-    DESCRIPTION = "Cycles through recently generated output images saved in ComfyUI output directory by step index."
+    DESCRIPTION = "Cycles through recently generated output images.\n\nExplanation of Index:\n- 'amount' grabs the X newest images from the folder.\n- 'index' selects which of those X images to output.\n- For example, if amount=64, setting index=0 to 63 in a batch will load each of the 64 newest images one by one.\n- If index exceeds amount, it loops back around (e.g. index 64 = index 0)."
 
-    def load_single_image(self, amount, index):
-        output_dir = folder_paths.get_output_directory()
+    def load_single_image(self, output_folder, amount, index):
+        if output_folder == "output":
+            output_dir = folder_paths.get_output_directory()
+        else:
+            output_dir = output_folder
 
         if not os.path.exists(output_dir):
             dummy = torch.zeros((1, 64, 64, 3), dtype=torch.float32)

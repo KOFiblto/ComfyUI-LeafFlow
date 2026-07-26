@@ -300,15 +300,19 @@ async def get_loras_endpoint(request):
 
 @routes.get("/folder_lora_loader/get_preview")
 async def get_preview_endpoint(request):
+    system_path = request.query.get("system_path", "")
+    
+    # Fallback to old behavior for older UI components
     lora_name = request.query.get("lora", "")
     folder = request.query.get("folder", "")
     pretty = request.query.get("pretty", "true").lower() == "true"
     
-    mapping = get_filtered_loras_mapping(folder, pretty=pretty)
-    system_relative_path = mapping.get(lora_name, lora_name)
+    if not system_path and lora_name:
+        mapping = get_filtered_loras_mapping(folder, pretty=pretty)
+        system_path = mapping.get(lora_name, lora_name)
     
-    if system_relative_path and system_relative_path != "[ NONE ]":
-        img_path = find_preview_image(system_relative_path)
+    if system_path and system_path != "[ NONE ]":
+        img_path = find_preview_image(system_path)
         if img_path and os.path.exists(img_path):
             return web.FileResponse(img_path)
             

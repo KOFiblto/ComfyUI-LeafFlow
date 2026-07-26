@@ -6,10 +6,8 @@ const visualStyles = document.createElement("style");
 visualStyles.textContent = `
     .img-visual-container {
         width: 100%;
-        height: 100%;
-        min-height: 0;
-        max-height: 100%;
-        overflow: hidden;
+        height: 400px;
+        min-height: 200px;
         display: flex;
         flex-direction: column;
         gap: 8px;
@@ -18,6 +16,8 @@ visualStyles.textContent = `
         border: 1px solid #222;
         border-radius: 6px;
         box-sizing: border-box;
+        resize: vertical;
+        overflow-y: hidden;
     }
     .img-visual-container::-webkit-scrollbar {
         width: 6px;
@@ -57,6 +57,7 @@ visualStyles.textContent = `
     }
     .img-grid-container {
         flex: 1 1 0px;
+
         min-height: 0;
         max-height: 100%;
         overflow-y: auto;
@@ -198,6 +199,14 @@ visualStyles.textContent = `
     }
 `;
 document.head.appendChild(visualStyles);
+
+const globalVueFixCSS2 = document.createElement("style");
+globalVueFixCSS2.textContent = `
+    .lg-node-widget[node-type*="ImageLoaderVisual"] canvas {
+        display: none !important;
+    }
+`;
+document.head.appendChild(globalVueFixCSS2);
 
 app.registerExtension({
     name: "Comfy.ImageLoaderCustom",

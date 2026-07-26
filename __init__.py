@@ -11,37 +11,33 @@ from .nodes.lora_loader import (
 )
 from .nodes.image_loader import ImageLoaderVisualPrettyV2
 from .nodes.undo_placeholder import UndoPlaceholder
-from .nodes.auto_watcher import AutoWatcherNode
+from .nodes.auto_watcher import LoadImageFromFolder
 from .nodes.load_recent import LoadRecentOutputs
 from .nodes.preview_latent import PreviewLatentLiveNode
 from .nodes.decision_node import FlowControlDecision
 
 
 NODE_CLASS_MAPPINGS = {
-    "PauseQueueNode": PauseQueueNode,
-    "PersistentQueueNode": PersistentQueueNode,
     "FolderLoraLoader": FolderLoraLoader,
     "FolderLoraLoaderPretty": FolderLoraLoaderPretty,
     "FolderLoraLoaderVisualPretty": FolderLoraLoaderVisualPretty,
     "FolderLoraLoaderVisualPrettyV2": FolderLoraLoaderVisualPrettyV2,
     "ImageLoaderVisualPrettyV2": ImageLoaderVisualPrettyV2,
     "UndoPlaceholder": UndoPlaceholder,
-    "AutoWatcherNode": AutoWatcherNode,
+    "LoadImageFromFolder": LoadImageFromFolder,
     "LoadRecentOutputs": LoadRecentOutputs,
     "PreviewLatentLive": PreviewLatentLiveNode,
     "FlowControlDecision": FlowControlDecision
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "PauseQueueNode": "🍃 Pause Queue",
-    "PersistentQueueNode": "🍃 Persistent Queue",
     "FolderLoraLoader": "🍃 LoRA Loader (by Folder)",
     "FolderLoraLoaderPretty": "🍃 LoRA Loader (Pretty)",
     "FolderLoraLoaderVisualPretty": "🍃 Visual LoRA Picker",
     "FolderLoraLoaderVisualPrettyV2": "🍃 Visual LoRA Loader",
     "ImageLoaderVisualPrettyV2": "🍃 Visual Image Loader",
     "UndoPlaceholder": "🍃 Undo Placeholder",
-    "AutoWatcherNode": "🍃 Auto Watcher",
+    "LoadImageFromFolder": "🍃 Load image from folder",
     "LoadRecentOutputs": "🍃 Recent Outputs",
     "PreviewLatentLive": "🍃 Live Latent Preview",
     "FlowControlDecision": "🍃 FlowControl Decision"
@@ -58,7 +54,7 @@ ENV_FILE = os.path.join(CURRENT_DIR, ".env")
 
 routes = server.routes
 
-print("[ComfyUI-FlowControl] 🍃 Loaded 12 nodes & visual endpoints successfully.")
+print("[ComfyUI-FlowControl] 🍃 Loaded 11 nodes & visual endpoints successfully.")
 
 @routes.get("/flow_control/settings")
 async def get_settings(request):

@@ -22,15 +22,16 @@ const visualStyles = document.createElement("style");
 visualStyles.textContent = `
     .lora-visual-container {
         width: 100%;
-        height: 100%;
-        min-height: 150px;
-        overflow-y: auto;
-        gap: 8px;
-        padding: 10px;
+        height: 400px;
+        min-height: 200px;
+        display: flex;
+        flex-direction: column;
         background: #111;
-        border: 2px solid #222;
-        border-radius: 6px;
+        border-radius: 8px;
+        padding: 8px;
         box-sizing: border-box;
+        resize: vertical;
+        overflow-y: hidden;
     }
     .lora-visual-container.grid-layout {
         display: grid;
@@ -281,6 +282,16 @@ visualStyles.textContent = `
     }
 `;
 document.head.appendChild(visualStyles);
+
+// Fix for Vue UI empty space
+const globalVueFixCSS = document.createElement("style");
+globalVueFixCSS.textContent = `
+    .lg-node-widget[node-type*="Visual"] canvas,
+    .lg-node-widget[node-type*="Pretty"] canvas {
+        display: none !important;
+    }
+`;
+document.head.appendChild(globalVueFixCSS);
 
 app.registerExtension({
     name: "Comfy.FolderLoraLoader",
@@ -651,9 +662,6 @@ app.registerExtension({
                 const displayModeWidget = node.widgets ? node.widgets.find(w => w.name === "display_mode") : null;
                 if (displayModeWidget && displayModeWidget.value === "Show All") {
                     const viewContainer = document.querySelector(".lora-visual-container"); 
-                    // Wait, viewContainer is local to the node, so we should just reference it below.
-                    // But we can't reference it if it's defined after. We will just use the node's properties.
-                    // Actually, we can move node.computeSize definition below viewContainer!
                 }
                 return [node.size[0], Math.max(360, node.size[1])];
             };
@@ -1098,7 +1106,8 @@ app.registerExtension({
                             }
 
                             const img = document.createElement("img");
-                            img.src = `/folder_lora_loader/get_preview?lora=${encodeURIComponent(item.loraName)}&folder=${encodeURIComponent(folder)}&pretty=true`;
+                            img.dataset.src = `/folder_lora_loader/get_preview?system_path=${encodeURIComponent(item.systemPath)}`;
+                            img.src = img.dataset.src;
                             
                             img.onerror = () => {
                                 img.remove();
