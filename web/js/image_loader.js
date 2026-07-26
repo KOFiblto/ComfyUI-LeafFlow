@@ -206,7 +206,11 @@ app.registerExtension({
             node.size = [380, 480];
 
             node.computeSize = function() {
-                return [380, 320];
+                const displayModeWidget = node.widgets ? node.widgets.find(w => w.name === "display_mode") : null;
+                if (displayModeWidget && displayModeWidget.value === "Show All") {
+                    // Logic added below
+                }
+                return [node.size[0], Math.max(480, node.size[1])];
             };
 
             const folderWidget = node.widgets ? node.widgets.find(w => w.name === "folder_path") : null;
@@ -250,6 +254,23 @@ app.registerExtension({
             const gridContainer = document.createElement("div");
             gridContainer.className = "img-grid-container";
             viewContainer.appendChild(gridContainer);
+
+            node.computeSize = function() {
+                const displayModeWidget = node.widgets ? node.widgets.find(w => w.name === "display_mode") : null;
+                if (displayModeWidget && displayModeWidget.value === "Show All" && gridContainer) {
+                    return [node.size[0], Math.max(480, gridContainer.scrollHeight + 140)];
+                }
+                return [node.size[0], Math.max(480, node.size[1])];
+            };
+
+            const updateNodeSize = () => {
+                const displayModeWidget = node.widgets ? node.widgets.find(w => w.name === "display_mode") : null;
+                if (displayModeWidget && displayModeWidget.value === "Show All") {
+                    const neededHeight = gridContainer.scrollHeight + 140;
+                    node.setSize([node.size[0], Math.max(480, neededHeight)]);
+                    if (app.graph) app.graph.setDirtyCanvas(true, true);
+                }
+            };
 
             const initialZoom = localStorage.getItem("comfy_img_picker_zoom") || "80";
             viewContainer.style.setProperty("--img-tile-size", `${initialZoom}px`);
@@ -446,6 +467,7 @@ app.registerExtension({
 
                     gridContainer.appendChild(folderContainer);
                 });
+                setTimeout(() => updateNodeSize(), 50);
             };
 
             const updateImagesList = async () => {
@@ -490,7 +512,27 @@ app.registerExtension({
                 setTimeout(() => updateImagesList(), 100);
             };
 
-            setTimeout(() => updateImagesList(), 100);
+            setTimeout(() => {
+                const displayModeWidget = node.widgets ? node.widgets.find(w => w.name === "display_mode") : null;
+                if (displayModeWidget) {
+                    const origCallback = displayModeWidget.callback;
+                    displayModeWidget.callback = function(val) {
+                        if (origCallback) origCallback.apply(this, arguments);
+                        if (val === "Show All") {
+                            gridContainer.style.overflowY = "hidden";
+                        } else {
+                            gridContainer.style.overflowY = "auto";
+                        }
+                        setTimeout(() => updateNodeSize(), 50);
+                    };
+                    if (displayModeWidget.value === "Show All") {
+                        gridContainer.style.overflowY = "hidden";
+                    } else {
+                        gridContainer.style.overflowY = "auto";
+                    }
+                }
+                updateImagesList();
+            }, 100);
         }
     }
 });
