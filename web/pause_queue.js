@@ -102,40 +102,45 @@ class PauseQueueUI {
     startObserver() {
         this.injectUI();
         setInterval(() => {
-            if (!this.groupEl || !document.body.contains(this.groupEl)) {
-                this.injectUI();
-            }
+            this.injectUI();
         }, 1000);
     }
 
     injectUI() {
-        const isV2 = !!document.querySelector('comfy-app') || !!document.querySelector('#app') || !!document.querySelector('.queue-button-group');
-
-        if (isV2) {
-            // Vue UI Injection
-            // Find the queue button itself, fallback to text search if data-testid changes
-            const queueBtn = document.querySelector('[data-testid="queue-button"]') || 
-                             Array.from(document.querySelectorAll('button')).find(b => {
-                                 const text = b.textContent?.trim().toLowerCase();
-                                 return text === 'queue' || text === 'queue prompt';
-                             });
-            
-            if (!queueBtn) return; // Wait for V2 header to render
-            
-            const parentDiv = queueBtn.parentElement;
+        // Vue V2 UI Detection
+        const queueGroup = document.querySelector(".queue-button-group") || 
+                           document.querySelector('[data-testid="queue-button"]')?.closest(".queue-button-group");
+                           
+        if (queueGroup) {
+            const parentDiv = queueGroup.parentElement;
             if (!parentDiv) return;
 
+            // If it's already in the correct V2 container, do nothing
             if (this.groupEl && parentDiv.contains(this.groupEl)) return;
+            
             if (!this.groupEl) this.buildElement();
+            
+            this.groupEl.classList.remove("litegraph-mode");
 
-            parentDiv.insertBefore(this.groupEl, queueBtn);
+            const dragHandle = parentDiv.querySelector(".drag-handle");
+            if (dragHandle && dragHandle.nextSibling) {
+                parentDiv.insertBefore(this.groupEl, dragHandle.nextSibling);
+            } else {
+                parentDiv.insertBefore(this.groupEl, queueGroup);
+            }
             this.renderUI();
-        } else if (app.ui && app.ui.menuContainer) {
-            // LiteGraph UI Injection
+            return;
+        }
+
+        // If we are definitely in V2, wait for V2 header to render
+        const isV2 = !!document.querySelector('comfy-app') || !!document.querySelector('#app');
+        if (isV2) return;
+
+        // LiteGraph V1 UI Detection
+        if (app.ui && app.ui.menuContainer) {
             if (this.groupEl && app.ui.menuContainer.contains(this.groupEl)) return;
             if (!this.groupEl) this.buildElement();
 
-            // Insert into LiteGraph floating menu, near the Queue Prompt button
             this.groupEl.classList.add("litegraph-mode");
             const queueBtn = app.ui.menuContainer.querySelector(".comfy-queue-btn");
             if (queueBtn) {
@@ -143,9 +148,8 @@ class PauseQueueUI {
             } else {
                 app.ui.menuContainer.appendChild(this.groupEl);
             }
+            this.renderUI();
         }
-
-        this.renderUI();
     }
 
     buildElement() {
