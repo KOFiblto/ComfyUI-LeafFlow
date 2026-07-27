@@ -109,11 +109,15 @@ class PauseQueueUI {
     }
 
     injectUI() {
-        const queueGroup = document.querySelector(".queue-button-group") || 
-                           document.querySelector('[data-testid="queue-button"]')?.closest(".queue-button-group");
-                           
-        if (queueGroup) {
+        const isV2 = !!document.querySelector('comfy-app') || !!document.querySelector('#app') || !!document.querySelector('.queue-button-group');
+
+        if (isV2) {
             // Vue UI Injection
+            const queueGroup = document.querySelector(".queue-button-group") || 
+                               document.querySelector('[data-testid="queue-button"]')?.closest(".queue-button-group");
+            
+            if (!queueGroup) return; // Wait for V2 header to render
+            
             const parentDiv = queueGroup.parentElement;
             if (!parentDiv) return;
 
