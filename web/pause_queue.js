@@ -109,14 +109,11 @@ class PauseQueueUI {
     }
 
     injectUI() {
-        const isVueUI = !!document.querySelector(".lg-node");
-        
-        if (isVueUI) {
+        const queueGroup = document.querySelector(".queue-button-group") || 
+                           document.querySelector('[data-testid="queue-button"]')?.closest(".queue-button-group");
+                           
+        if (queueGroup) {
             // Vue UI Injection
-            const queueGroup = document.querySelector(".queue-button-group") || 
-                               document.querySelector('[data-testid="queue-button"]')?.closest(".queue-button-group");
-            
-            if (!queueGroup) return;
             const parentDiv = queueGroup.parentElement;
             if (!parentDiv) return;
 
@@ -129,10 +126,8 @@ class PauseQueueUI {
             } else {
                 parentDiv.insertBefore(this.groupEl, queueGroup);
             }
-        } else {
+        } else if (app.ui && app.ui.menuContainer) {
             // LiteGraph UI Injection
-            if (!app.ui || !app.ui.menuContainer) return;
-            
             if (this.groupEl && app.ui.menuContainer.contains(this.groupEl)) return;
             if (!this.groupEl) this.buildElement();
 
