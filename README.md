@@ -8,6 +8,8 @@ A unified custom node suite for **ComfyUI** featuring real-time queue controls, 
 
 ## 🌟 Features & Included Nodes
 
+> 📖 **Need a detailed guide?** Check out the [Complete ComfyUI-FlowControl Walkthrough](WALKTHROUGH.md) for in-depth tutorials on using every feature across both UI versions.
+
 Every node in this suite is prefixed with the signature **`🍃`** brand icon for quick identification on your canvas and search menu.
 
 ### ⏸️ Queue & Workflow Control (`FlowControl/Queue`)
@@ -56,7 +58,7 @@ Every node in this suite is prefixed with the signature **`🍃`** brand icon fo
 
 ### ⚙️ Automation, Previews & Utilities (`FlowControl/Automation`, `FlowControl/Previews`, `FlowControl/Utils`)
 
-6. **`🍃 Load image from folder`**
+6. **`🍃 Load Image From Folder`**
    - Monitors a directory for incoming images (`.png`, `.jpg`, `.jpeg`, `.webp`), converts them into PyTorch image tensors, and removes processed files.
    - **`wait_if_folder_is_empty` Toggle**:
      - `True` (Default): Safely polls until an image arrives in the directory at your chosen `rescan_interval` (seconds).
@@ -80,7 +82,7 @@ Every node in this suite is prefixed with the signature **`🍃`** brand icon fo
 | `FolderLoraLoaderVisualPrettyV2` | **`🍃 Visual LoRA Loader`** | `FlowControl/Loaders` | Visual LoRA picker with SHA256 Civitai/TMDB previews |
 | `ImageLoaderVisualPrettyV2` | **`🍃 Visual Image Loader`** | `FlowControl/Loaders` | Visual image browser with EXIF prompt extraction |
 | `LoadRecentOutputs` | **`🍃 Recent Outputs`** | `FlowControl/Loaders` | Cycles recent output images for assets/sidebar |
-| `LoadImageFromFolder` | **`🍃 Load image from folder`** | `FlowControl/Automation` | Folder image watcher with regex and intelligent sorting |
+| `LoadImageFromFolder` | **`🍃 Load Image From Folder`** | `FlowControl/Automation` | Folder image watcher with regex and intelligent sorting |
 | `UndoPlaceholder` | **`🍃 Undo Placeholder`** | `FlowControl/Utils` | Replaces pretty LoRA names with `%placeholder%` tokens |
 | `PreviewLatentLive` | **`🍃 Live Latent Preview`** | `FlowControl/Previews` | Canvas real-time sampler latent preview display |
 

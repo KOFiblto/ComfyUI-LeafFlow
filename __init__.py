@@ -37,7 +37,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "FolderLoraLoaderVisualPrettyV2": "🍃 Visual LoRA Loader",
     "ImageLoaderVisualPrettyV2": "🍃 Visual Image Loader",
     "UndoPlaceholder": "🍃 Undo Placeholder",
-    "LoadImageFromFolder": "🍃 Load image from folder",
+    "LoadImageFromFolder": "🍃 Load Image From Folder",
     "LoadRecentOutputs": "🍃 Recent Outputs",
     "PreviewLatentLive": "🍃 Live Latent Preview",
     "FlowControlDecision": "🍃 FlowControl Decision"
