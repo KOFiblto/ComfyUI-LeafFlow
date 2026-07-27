@@ -113,23 +113,23 @@ class PauseQueueUI {
 
         if (isV2) {
             // Vue UI Injection
-            const queueGroup = document.querySelector(".queue-button-group") || 
-                               document.querySelector('[data-testid="queue-button"]')?.closest(".queue-button-group");
+            // Find the queue button itself, fallback to text search if data-testid changes
+            const queueBtn = document.querySelector('[data-testid="queue-button"]') || 
+                             Array.from(document.querySelectorAll('button')).find(b => {
+                                 const text = b.textContent?.trim().toLowerCase();
+                                 return text === 'queue' || text === 'queue prompt';
+                             });
             
-            if (!queueGroup) return; // Wait for V2 header to render
+            if (!queueBtn) return; // Wait for V2 header to render
             
-            const parentDiv = queueGroup.parentElement;
+            const parentDiv = queueBtn.parentElement;
             if (!parentDiv) return;
 
             if (this.groupEl && parentDiv.contains(this.groupEl)) return;
             if (!this.groupEl) this.buildElement();
 
-            const dragHandle = parentDiv.querySelector(".drag-handle");
-            if (dragHandle && dragHandle.nextSibling) {
-                parentDiv.insertBefore(this.groupEl, dragHandle.nextSibling);
-            } else {
-                parentDiv.insertBefore(this.groupEl, queueGroup);
-            }
+            parentDiv.insertBefore(this.groupEl, queueBtn);
+            this.renderUI();
         } else if (app.ui && app.ui.menuContainer) {
             // LiteGraph UI Injection
             if (this.groupEl && app.ui.menuContainer.contains(this.groupEl)) return;
