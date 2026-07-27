@@ -686,14 +686,17 @@ app.registerExtension({
                 if (widgets.length > 1) {
                     const keep = widgets.find(w => w.value && w.value !== "[ NONE ]" && w.value !== "[]") || widgets[0];
                     node.widgets = node.widgets.filter(w => w.name !== "_selected_lora" || w === keep);
+                    keep.hidden = true;
                     return keep;
                 }
                 if (widgets.length === 1) {
+                    widgets[0].hidden = true;
                     return widgets[0];
                 }
                 const w = node.addWidget("text", "_selected_lora", "[]", () => {}, { serialize: true });
                 w.type = "hidden";
-                w.computeSize = () => [0, -4];
+                w.hidden = true;
+                w.computeSize = () => [0, 0];
                 return w;
             };
             const hiddenWidget = getHiddenWidget();
@@ -703,14 +706,17 @@ app.registerExtension({
                 if (widgets.length > 1) {
                     const keep = widgets.find(w => w.value && w.value !== "All") || widgets[0];
                     node.widgets = node.widgets.filter(w => w.name !== "_selection_mode" || w === keep);
+                    keep.hidden = true;
                     return keep;
                 }
                 if (widgets.length === 1) {
+                    widgets[0].hidden = true;
                     return widgets[0];
                 }
                 const w = node.addWidget("text", "_selection_mode", "All", () => {}, { serialize: true });
                 w.type = "hidden";
-                w.computeSize = () => [0, -4];
+                w.hidden = true;
+                w.computeSize = () => [0, 0];
                 return w;
             };
             const hiddenModeWidget = getHiddenModeWidget();
@@ -720,14 +726,17 @@ app.registerExtension({
                 if (widgets.length > 1) {
                     const keep = widgets.find(w => w.value && (w.value === "true" || w.value === "false")) || widgets[0];
                     node.widgets = node.widgets.filter(w => w.name !== "_scrape_on_new" || w === keep);
+                    keep.hidden = true;
                     return keep;
                 }
                 if (widgets.length === 1) {
+                    widgets[0].hidden = true;
                     return widgets[0];
                 }
                 const w = node.addWidget("text", "_scrape_on_new", "true", () => {}, { serialize: true });
                 w.type = "hidden";
-                w.computeSize = () => [0, -4];
+                w.hidden = true;
+                w.computeSize = () => [0, 0];
                 return w;
             };
             const hiddenScrapeWidget = getHiddenScrapeWidget();
