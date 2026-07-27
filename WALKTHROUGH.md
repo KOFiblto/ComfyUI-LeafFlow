@@ -43,6 +43,7 @@ An absolute powerhouse for automation. Point this node at any folder on your har
 Tired of guessing what a LoRA does based on its filename?
 1. Use the **Visual LoRA Loader**. It natively extracts preview images if you place an identically named `.png`/`.jpg` next to your `.safetensors` file.
 2. If you enable the **Civitai Auto-Scraper** in your ComfyUI Settings, the node will calculate the SHA256 hash of your LoRA and automatically download the official preview thumbnail directly from Civitai! 
+3. **Pretty Name String Output**: The node outputs the parsed, human-readable name of the loaded LoRA (e.g. "Addison Rae V1") by default, allowing you to route it into a text prompt or watermark node. You can easily switch this via the `output_name` toggle on the node to output the raw filename without extension instead. 
 
 ### 🍃 Recent Outputs
 Want to quickly reference your recent generations without digging through Windows Explorer? The Recent Outputs node cycles chronologically through your `output/` directory, pulling your freshest creations right back into the workflow canvas.

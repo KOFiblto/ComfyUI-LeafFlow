@@ -468,6 +468,7 @@ class FolderLoraLoaderVisualPrettyV2(FolderLoraLoaderVisualPretty):
                 "strength_model": ("FLOAT", {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01}),
                 "strength_clip": ("FLOAT", {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01}),
                 "display_mode": (["Scrollable", "Show All"], {"default": "Scrollable"}),
+                "output_name": (["Parsed Name", "Filename"], {"default": "Parsed Name"}),
             },
             "hidden": {
                 "_selected_lora": ("STRING", {"default": "[]"}),
@@ -484,7 +485,7 @@ class FolderLoraLoaderVisualPrettyV2(FolderLoraLoaderVisualPretty):
             return random.random()
         return ""
 
-    def load_lora(self, model, clip, folder, strength_model, strength_clip, display_mode="Scrollable", _selected_lora="[]", _selection_mode="All", _scrape_on_new="true"):
+    def load_lora(self, model, clip, folder, strength_model, strength_clip, display_mode="Scrollable", output_name="Parsed Name", _selected_lora="[]", _selection_mode="All", _scrape_on_new="true"):
         active_lora = _selected_lora if _selected_lora else "[]"
         if active_lora == "[ NONE ]" or active_lora == "[]" or not active_lora:
             return (model, clip, "")
@@ -545,8 +546,12 @@ class FolderLoraLoaderVisualPrettyV2(FolderLoraLoaderVisualPretty):
             )
             increment_lora_usage(resolved_path)
             
-            clean_display_name = re.sub(r'\s+V\d+(\.\d+)?$', '', display_name, flags=re.IGNORECASE).strip()
-            loaded_names.append(clean_display_name)
+            if output_name == "Filename":
+                raw_name = os.path.splitext(os.path.basename(resolved_path))[0]
+                loaded_names.append(raw_name)
+            else:
+                clean_display_name = re.sub(r'\s+V\d+(\.\d+)?$', '', display_name, flags=re.IGNORECASE).strip()
+                loaded_names.append(clean_display_name)
 
         pretty_name_str = ", ".join(loaded_names) if loaded_names else ""
         return (current_model, current_clip, pretty_name_str)
