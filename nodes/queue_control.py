@@ -175,6 +175,7 @@ class PersistentQueueManager:
         self.persistent_items = []
         self.is_restoring = False
         self._patched = False
+        self.has_claimed_once = False
         self.load_from_file()
 
     def load_from_file(self):
@@ -239,46 +240,7 @@ class PersistentQueueManager:
             self.save_to_file()
         print("[PersistentQueue] Cleared all saved queue items.")
 
-    def sync_client_id(self, active_client_id):
-        if not active_client_id:
-            return
-        server = PromptServer.instance
-        if not hasattr(server, "prompt_queue"):
-            return
 
-        queue = server.prompt_queue
-        updated = False
-        with queue.mutex:
-            new_queue = []
-            for item in queue.queue:
-                item_list = list(item)
-                if len(item_list) > 3 and isinstance(item_list[3], dict):
-                    extra_data = dict(item_list[3])
-                    old_client_id = extra_data.get("client_id")
-                    if old_client_id != active_client_id:
-                        extra_data["client_id"] = active_client_id
-                        item_list[3] = extra_data
-                        updated = True
-                new_queue.append(tuple(item_list))
-
-            if updated:
-                queue.queue.clear()
-                queue.queue.extend(new_queue)
-
-        if updated:
-            with self.lock:
-                for entry in self.persistent_items:
-                    if isinstance(entry.get("item"), list) and len(entry["item"]) > 3:
-                        if isinstance(entry["item"][3], dict):
-                            entry["item"][3]["client_id"] = active_client_id
-                self.save_to_file()
-
-            print(f"[PersistentQueue] Re-assigned restored queue items to active client ID '{active_client_id}'.")
-            try:
-                if hasattr(server, "get_queue_status"):
-                    server.send_sync("status", {"status": server.get_queue_status()})
-            except Exception:
-                pass
 
     def patch_server(self):
         if self._patched:
@@ -336,13 +298,18 @@ class PersistentQueueManager:
         self._patched = True
         print("[PersistentQueue] Server queue hooks patched successfully.")
 
-    def restore_queue(self):
+    def restore_queue(self, active_client_id=None):
+        if self.has_claimed_once:
+            return
+            
         if not is_persistent_queue_enabled():
             print("[PersistentQueue] Auto-recovery is disabled in settings.")
+            self.has_claimed_once = True
             return
 
         server = PromptServer.instance
         if not hasattr(server, "prompt_queue") or not self.persistent_items:
+            self.has_claimed_once = True
             return
 
         restored_state_setting = get_env_setting("PERSISTENT_QUEUE_RESTORED_STATE", "Match Default")
@@ -351,17 +318,37 @@ class PersistentQueueManager:
         elif restored_state_setting == "Force Running":
             pause_manager.set_pause(False)
 
-        print(f"[PersistentQueue] Restoring {len(self.persistent_items)} saved queue item(s)...")
+        print(f"[PersistentQueue] Restoring {len(self.persistent_items)} saved queue item(s) to client '{active_client_id}'...")
         self.is_restoring = True
         try:
             for entry in list(self.persistent_items):
                 try:
-                    item_tuple = tuple(entry["item"])
-                    server.prompt_queue.put(item_tuple)
+                    item_list = list(entry["item"])
+                    if active_client_id and len(item_list) > 3 and isinstance(item_list[3], dict):
+                        item_list[3]["client_id"] = active_client_id
+                    
+                    server.prompt_queue.put(tuple(item_list))
                 except Exception as e:
                     print(f"[PersistentQueue] Error restoring prompt {entry.get('prompt_id')}: {e}")
         finally:
             self.is_restoring = False
+            self.has_claimed_once = True
+            
+        # Sync the updated client_id to the persistent file
+        if active_client_id:
+            with self.lock:
+                for entry in self.persistent_items:
+                    if isinstance(entry.get("item"), list) and len(entry["item"]) > 3:
+                        if isinstance(entry["item"][3], dict):
+                            entry["item"][3]["client_id"] = active_client_id
+                self.save_to_file()
+                
+        # Force a UI sync so the client sees the newly injected items
+        try:
+            if hasattr(server, "get_queue_status"):
+                server.send_sync("status", {"status": server.get_queue_status()})
+        except Exception:
+            pass
 
 pause_manager = PauseQueueManager()
 persistent_manager = PersistentQueueManager()
@@ -369,7 +356,6 @@ persistent_manager = PersistentQueueManager()
 def setup_queue_control_routes(server):
     pause_manager.patch_all()
     persistent_manager.patch_server()
-    persistent_manager.restore_queue()
 
     routes = server.routes
 
@@ -425,8 +411,8 @@ def setup_queue_control_routes(server):
         try:
             data = await request.json()
             client_id = data.get("client_id")
-            if client_id:
-                persistent_manager.sync_client_id(client_id)
+            if client_id and not persistent_manager.has_claimed_once:
+                persistent_manager.restore_queue(client_id)
         except Exception as e:
             print(f"[PersistentQueue] Error in claim endpoint: {e}")
         return web.json_response({"status": "ok"})
