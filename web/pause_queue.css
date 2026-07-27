@@ -25,6 +25,19 @@
     animation: pq-pulse-orange 2s infinite;
 }
 
+.pq-button-group.litegraph-mode {
+    display: flex;
+    width: 100%;
+    margin: 4px 0;
+    height: 30px;
+    border-radius: 0;
+}
+
+.pq-button-group.litegraph-mode .pq-main-btn,
+.pq-button-group.litegraph-mode .pq-dropdown-btn {
+    border-radius: 0;
+}
+
 .pq-main-btn {
     position: relative;
     display: inline-flex;

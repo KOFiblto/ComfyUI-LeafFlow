@@ -42,7 +42,7 @@ class FlowControlDecision:
         return {
             "required": {
                 "disable": ("BOOLEAN", {"default": False}),
-                "send_windows_notification": ("BOOLEAN", {"default": False}),
+                "send_os_notification": ("BOOLEAN", {"default": False}),
                 "timeout": ("INT", {"default": -1, "min": -1, "max": 3600}),
             },
             "hidden": {
@@ -54,12 +54,12 @@ class FlowControlDecision:
     RETURN_NAMES = ("cancel",)
     FUNCTION = "decide"
     CATEGORY = "🍃 FlowControl"
-    DESCRIPTION = "Pauses execution and waits for your input via the UI buttons.\n\n- 'Continue' outputs False (0).\n- 'Cancel' outputs True (1) so you can route it into a Switch node to bypass later nodes.\n- 'Stop Workflow' instantly aborts the entire ComfyUI generation queue."
+    DESCRIPTION = "Pauses execution and waits for your input via the UI buttons.\n\n- 'Continue' outputs False (0).\n- 'Cancel' outputs True (1) so you can route it into a Switch node to bypass later nodes.\n- 'Stop Workflow' instantly aborts the entire ComfyUI generation queue.\n- 'OS Notification': Sends a native desktop toast (Windows/macOS/Linux) when waiting."
 
     def send_notification(self, title, message):
-        if os.name == 'nt':
-            try:
-                # Using native PowerShell Toast Notification API (no third party modules required)
+        try:
+            if os.name == 'nt':
+                # Windows native PowerShell Toast Notification
                 ps_script = f"""
 $ErrorActionPreference = 'Stop'
 [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
@@ -82,10 +82,19 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
 [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("ComfyUI").Show($toast)
 """
                 subprocess.Popen(["powershell", "-NoProfile", "-Command", ps_script], creationflags=subprocess.CREATE_NO_WINDOW)
-            except Exception as e:
-                print(f"[FlowControl] Failed to send Windows notification: {e}")
+            elif os.uname().sysname == 'Darwin':
+                # macOS native AppleScript Notification
+                escape_title = title.replace('"', '\\"')
+                escape_message = message.replace('"', '\\"')
+                apple_script = f'display notification "{escape_message}" with title "{escape_title}"'
+                subprocess.Popen(["osascript", "-e", apple_script])
+            else:
+                # Linux dbus notify-send
+                subprocess.Popen(["notify-send", title, message])
+        except Exception as e:
+            print(f"[FlowControl] Failed to send OS notification: {e}")
 
-    def decide(self, disable, send_windows_notification, timeout, unique_id=None):
+    def decide(self, disable, send_os_notification, timeout, unique_id=None):
         if disable:
             return (False,)
 
@@ -95,7 +104,7 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
         # Notify frontend
         PromptServer.instance.send_sync("flowcontrol_decision_waiting", {"node_id": unique_id})
 
-        if send_windows_notification:
+        if send_os_notification:
             self.send_notification("ComfyUI FlowControl", "Workflow paused! Waiting for your decision.")
 
         # Wait for user input

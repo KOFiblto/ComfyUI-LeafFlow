@@ -179,7 +179,13 @@ app.registerExtension({
         const applyKeyMasking = () => {
             const inputs = document.querySelectorAll('input');
             inputs.forEach(input => {
-                const settingRow = input.closest('tr') || input.parentElement;
+                // Find parent container that includes the label text
+                // LiteGraph uses <tr>, Vue V2 uses Flex/Grid <div> layouts
+                const settingRow = input.closest('tr') || 
+                                   input.closest('.p-4') || 
+                                   input.parentElement?.parentElement || 
+                                   input.parentElement;
+                
                 if (!settingRow) return;
                 const text = settingRow.textContent || "";
                 

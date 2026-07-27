@@ -2,7 +2,7 @@
 
 A unified custom node suite for **ComfyUI** featuring real-time queue controls, mid-generation pausing, queue crash recovery, visual model pickers, live latent canvas previews, folder automation, and prompt utilities.
 
-> ⚠️ **Important Notice**: This custom node pack (`ComfyUI-FlowControl`) is engineered exclusively for the **New ComfyUI Frontend (v2)**. The legacy/old ComfyUI frontend is not supported.
+> ⚠️ **Important Notice**: This custom node pack (`ComfyUI-FlowControl`) is engineered to dynamically support both the **New ComfyUI Frontend (v2/Vue)** and the **Classic ComfyUI Frontend (LiteGraph)**.
 
 ---
 
@@ -13,7 +13,7 @@ Every node in this suite is prefixed with the signature **`🍃`** brand icon fo
 ### ⏸️ Queue & Workflow Control (`FlowControl/Queue`)
 
 1. **`🍃 Pause Queue` (Global Integration)**
-   - Adds a native-styled **Pause / Continue** button directly into the ComfyUI V2 top action bar.
+   - Adds a native-styled **Pause / Continue** button directly into the ComfyUI V2 top action bar (or the floating menu in the Classic UI).
    - **Pause (Finish)**: Completes the currently active generation, then holds the queue before starting the next prompt.
    - **Pause (Instant)**: Pauses immediately before the next node executes in the active workflow (resumable mid-workflow without losing progress).
    - **Visual Indicators**: Green when unpaused, Orange when pausing/paused with pulsing glow animation.
@@ -29,7 +29,7 @@ Every node in this suite is prefixed with the signature **`🍃`** brand icon fo
    - **Continue**: Resumes execution normally (outputs `False`).
    - **Cancel**: Cancels this branch of the workflow (outputs `True`, allowing you to route it into a Switch node).
    - **Stop Workflow**: Instantly kills the entire active generation queue.
-   - **Windows Notification**: Optionally sends a native Windows 11 toast notification when it's waiting for your input.
+   - **OS Notification**: Optionally sends a native desktop toast notification (Windows, macOS, or Linux) when it's waiting for your input.
 
 ---
 

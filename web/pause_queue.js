@@ -109,27 +109,41 @@ class PauseQueueUI {
     }
 
     injectUI() {
-        const queueGroup = document.querySelector(".queue-button-group") || 
-                           document.querySelector('[data-testid="queue-button"]')?.closest(".queue-button-group");
+        const isVueUI = !!document.querySelector(".lg-node");
         
-        if (!queueGroup) return;
-        
-        const parentDiv = queueGroup.parentElement;
-        if (!parentDiv) return;
+        if (isVueUI) {
+            // Vue UI Injection
+            const queueGroup = document.querySelector(".queue-button-group") || 
+                               document.querySelector('[data-testid="queue-button"]')?.closest(".queue-button-group");
+            
+            if (!queueGroup) return;
+            const parentDiv = queueGroup.parentElement;
+            if (!parentDiv) return;
 
-        if (this.groupEl && parentDiv.contains(this.groupEl)) {
-            return;
-        }
+            if (this.groupEl && parentDiv.contains(this.groupEl)) return;
+            if (!this.groupEl) this.buildElement();
 
-        if (!this.groupEl) {
-            this.buildElement();
-        }
-
-        const dragHandle = parentDiv.querySelector(".drag-handle");
-        if (dragHandle && dragHandle.nextSibling) {
-            parentDiv.insertBefore(this.groupEl, dragHandle.nextSibling);
+            const dragHandle = parentDiv.querySelector(".drag-handle");
+            if (dragHandle && dragHandle.nextSibling) {
+                parentDiv.insertBefore(this.groupEl, dragHandle.nextSibling);
+            } else {
+                parentDiv.insertBefore(this.groupEl, queueGroup);
+            }
         } else {
-            parentDiv.insertBefore(this.groupEl, queueGroup);
+            // LiteGraph UI Injection
+            if (!app.ui || !app.ui.menuContainer) return;
+            
+            if (this.groupEl && app.ui.menuContainer.contains(this.groupEl)) return;
+            if (!this.groupEl) this.buildElement();
+
+            // Insert into LiteGraph floating menu, near the Queue Prompt button
+            this.groupEl.classList.add("litegraph-mode");
+            const queueBtn = app.ui.menuContainer.querySelector(".comfy-queue-btn");
+            if (queueBtn) {
+                app.ui.menuContainer.insertBefore(this.groupEl, queueBtn.nextSibling);
+            } else {
+                app.ui.menuContainer.appendChild(this.groupEl);
+            }
         }
 
         this.renderUI();
