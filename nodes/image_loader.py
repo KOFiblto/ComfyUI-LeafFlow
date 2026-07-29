@@ -73,6 +73,11 @@ routes = server.routes
 @routes.get("/image_loader/get_images")
 async def get_images_endpoint(request):
     folder = request.query.get("folder", "")
+    clean_folder = folder.strip()
+    if clean_folder.endswith("*"):
+        clean_folder = clean_folder[:-1].rstrip("\\/")
+    folder = clean_folder
+    
     if not folder or not os.path.exists(folder):
         return web.json_response({"names": [], "mapping": {}, "prompts": {}})
         
@@ -124,6 +129,11 @@ async def get_images_endpoint(request):
 @routes.get("/image_loader/get_thumbnail")
 async def get_thumbnail_endpoint(request):
     folder = request.query.get("folder", "")
+    clean_folder = folder.strip()
+    if clean_folder.endswith("*"):
+        clean_folder = clean_folder[:-1].rstrip("\\/")
+    folder = clean_folder
+    
     image_rel = request.query.get("image", "")
     
     full_path = os.path.normpath(os.path.join(folder, image_rel))
@@ -142,6 +152,11 @@ async def get_thumbnail_endpoint(request):
 @routes.get("/image_loader/get_full_image")
 async def get_full_image_endpoint(request):
     folder = request.query.get("folder", "")
+    clean_folder = folder.strip()
+    if clean_folder.endswith("*"):
+        clean_folder = clean_folder[:-1].rstrip("\\/")
+    folder = clean_folder
+    
     image_rel = request.query.get("image", "")
     
     full_path = os.path.normpath(os.path.join(folder, image_rel))
@@ -173,6 +188,11 @@ class ImageLoaderVisualPrettyV2:
         return kwargs.get("_selected_image", "")
 
     def load_image(self, folder_path, display_mode="Scrollable", _selected_image=""):
+        clean_folder = folder_path.strip()
+        if clean_folder.endswith("*"):
+            clean_folder = clean_folder[:-1].rstrip("\\/")
+        folder_path = clean_folder
+        
         if not folder_path or not _selected_image:
             empty_image = torch.zeros((1, 64, 64, 3), dtype=torch.float32)
             return (empty_image, "", 0, 0)

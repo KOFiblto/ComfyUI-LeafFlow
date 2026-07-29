@@ -86,6 +86,11 @@ class LoadImageFromFolder:
         return [x[0] for x in valid_files]
 
     def watch(self, folder, wait_if_folder_is_empty, rescan_interval, sort_by, regex_filter):
+        clean_folder = folder.strip()
+        if clean_folder.endswith("*"):
+            clean_folder = clean_folder[:-1].rstrip("\\/")
+        folder = clean_folder
+        
         if wait_if_folder_is_empty:
             while True:
                 comfy.model_management.throw_exception_if_processing_interrupted()
