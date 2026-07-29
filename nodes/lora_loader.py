@@ -41,7 +41,7 @@ def parse_pretty_name(filepath):
     parts = base.split('_')
     if len(parts) >= 2:
         name_part = parts[1]
-        name_part = re.sub(r'(?<!^)(?=[A-Z])', ' ', name_part)
+        name_part = re.sub(r'(?<=[a-z])(?=[A-Z])', ' ', name_part)
         name_part = name_part.replace('-', ' ')
         
         words = name_part.split()
