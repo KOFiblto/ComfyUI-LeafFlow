@@ -50,7 +50,19 @@ Want to quickly reference your recent generations without digging through Window
 
 ---
 
-## 3. Settings & Configuration
+## 3. Formatting Folder Paths
+Several nodes across this suite (e.g. *Load Image From Folder*, *Recent Outputs*, *Visual Image Loader*, *Visual LoRA Loader*) take a `folder` or `folder_path` string as input. Here is how they work:
+
+- **Empty String**: Leaving a field completely empty (or spaces) will often default to the sensible native directory for that node (e.g., leaving it empty on *Recent Outputs* will automatically target ComfyUI's root `output/` directory).
+- **Absolute Paths**: You can paste full absolute paths from your OS, e.g., `C:\Users\Name\Pictures\Renders` or `/home/user/images`.
+- **Relative Paths**: If you use a relative path like `input/watch`, it resolves relative to your root ComfyUI directory.
+- **Wildcard Filters (`*`)**: 
+  - **For the LoRA Loader**: Ending a path with `*` acts as a wildcard directory filter. For example, if you input `style/*`, the loader will recursively display all LoRAs located inside any subfolder that begins with `style/`.
+  - **For File Loaders**: If you accidentally copy a path from Windows Explorer that ends in `\*` or `*`, these nodes are smart enough to automatically strip the trailing asterisk so the folder path still resolves perfectly without throwing an OS Error.
+
+---
+
+## 4. Settings & Configuration
 
 Click the standard ComfyUI Settings gear ⚙️ to access FlowControl's configurations. Here you can:
 - Safely enter and mask API Keys for Civitai and TMDB scraping.
