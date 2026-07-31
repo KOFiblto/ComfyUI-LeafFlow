@@ -56,7 +56,7 @@ app.registerExtension({
             
             if (this.imgs && this.imgs.length > 0) {
                 options.push({
-                    content: "⭐ Save to Favorites",
+                    content: "🍃 Save to Favorites",
                     callback: () => {
                         let subcategory = prompt("Enter subcategory for Favorite (e.g. Minimalist):", "Default");
                         if (!subcategory) return;
@@ -77,7 +77,7 @@ app.registerExtension({
                 if (onNodeCreated) onNodeCreated.apply(this, arguments);
                 
                 // Add the star button directly onto the node widgets
-                const saveBtn = this.addWidget("button", "⭐ Save Active to Favorites", "save", () => {
+                const saveBtn = this.addWidget("button", "🍃 Save Active to Favorites", "save", () => {
                     if (!this.imgs || this.imgs.length === 0) {
                         alert("No image to save yet!");
                         return;
@@ -90,7 +90,7 @@ app.registerExtension({
                     saveToFavorites(img.src, subcategory).then(success => {
                         if (success) {
                             saveBtn.name = "✅ Saved!";
-                            setTimeout(() => saveBtn.name = "⭐ Save Active to Favorites", 2000);
+                            setTimeout(() => saveBtn.name = "🍃 Save Active to Favorites", 2000);
                             app.graph.setDirtyCanvas(true, true);
                         }
                     });
@@ -110,7 +110,7 @@ const observer = new MutationObserver((mutations) => {
                     
                     // The user specified looking for "Inspect" and "More" buttons.
                     // Let's find any container with buttons to inject our Star
-                    if (node.tagName === "BUTTON" || node.querySelector("button")) {
+                    if (node.tagName === "BUTTON" || node.querySelector("button") || node.tagName === "DIV") {
                         injectAssetsStarButton();
                     }
                 }
@@ -147,7 +147,7 @@ function injectAssetsStarButton() {
         starBtn.className = inspectBtn.className + " flowcontrol-star-btn"; // Steal classes for exact styling match
         
         // Use a <span> for the text to match whatever internal structure Vue might use, or just direct text
-        starBtn.innerHTML = "<span>⭐ Star</span>";
+        starBtn.innerHTML = "<span>🍃 Star</span>";
         
         starBtn.onclick = (e) => {
             e.preventDefault();
@@ -181,7 +181,7 @@ function injectAssetsStarButton() {
                     saveToFavorites(img.src, subcategory).then(success => {
                         if (success) {
                             starBtn.innerHTML = "<span>✅ Saved</span>";
-                            setTimeout(() => starBtn.innerHTML = "<span>⭐ Star</span>", 2000);
+                            setTimeout(() => starBtn.innerHTML = "<span>🍃 Star</span>", 2000);
                         }
                     });
                 }
@@ -193,4 +193,45 @@ function injectAssetsStarButton() {
         // Insert between Inspect and More
         targetContainer.insertBefore(starBtn, moreBtn);
     }
+
+    // 2. Inject into Asset Grid Items directly (for the main assets pane)
+    const gridItems = document.querySelectorAll('div[data-virtual-grid-item]');
+    gridItems.forEach(item => {
+        if (item.querySelector('.flowcontrol-grid-star')) return;
+        
+        const shrinkContainer = item.querySelector('.shrink-0');
+        if (shrinkContainer) {
+            const img = item.querySelector('img');
+            if (!img || !img.src) return;
+            
+            const existingBtn = shrinkContainer.querySelector('button');
+            const btnClass = existingBtn ? existingBtn.className : "relative inline-flex items-center justify-center gap-2 cursor-pointer appearance-none border-none font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-secondary-foreground bg-secondary-background hover:bg-secondary-background-hover h-8 rounded-lg p-2 text-xs";
+            
+            const starBtn = document.createElement("button");
+            starBtn.className = btnClass + " flowcontrol-grid-star";
+            starBtn.innerHTML = "<span>🍃</span>";
+            starBtn.title = "Save to Favorites";
+            
+            shrinkContainer.style.display = "flex";
+            shrinkContainer.style.gap = "4px";
+            shrinkContainer.style.flexDirection = "row";
+            shrinkContainer.style.alignItems = "center";
+            
+            starBtn.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                let subcategory = prompt("Enter subcategory for Favorite:", "Default");
+                if (subcategory) {
+                    saveToFavorites(img.src, subcategory).then(success => {
+                        if (success) {
+                            starBtn.innerHTML = "<span>✅</span>";
+                            setTimeout(() => starBtn.innerHTML = "<span>🍃</span>", 2000);
+                        }
+                    });
+                }
+            };
+            
+            shrinkContainer.insertBefore(starBtn, shrinkContainer.firstChild);
+        }
+    });
 }
