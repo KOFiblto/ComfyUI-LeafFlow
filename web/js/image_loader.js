@@ -255,11 +255,29 @@ app.registerExtension({
 
             const controlBar = document.createElement("div");
             controlBar.className = "img-control-bar";
+            controlBar.style.display = "flex";
+            controlBar.style.flexDirection = "row";
+            controlBar.style.gap = "6px";
+            
+            const refreshBtn = document.createElement("button");
+            refreshBtn.innerHTML = "↻";
+            refreshBtn.title = "Refresh Images";
+            refreshBtn.style.background = "#1c1c1c";
+            refreshBtn.style.border = "1px solid #333";
+            refreshBtn.style.borderRadius = "4px";
+            refreshBtn.style.color = "#fff";
+            refreshBtn.style.cursor = "pointer";
+            refreshBtn.style.padding = "4px 8px";
+            refreshBtn.style.fontSize = "14px";
+            refreshBtn.onmouseover = () => refreshBtn.style.background = "#333";
+            refreshBtn.onmouseout = () => refreshBtn.style.background = "#1c1c1c";
+            controlBar.appendChild(refreshBtn);
 
             const searchBar = document.createElement("input");
             searchBar.type = "text";
             searchBar.className = "img-search-bar";
             searchBar.placeholder = "Search images or positive prompts...";
+            searchBar.style.flex = "1";
             controlBar.appendChild(searchBar);
             viewContainer.appendChild(controlBar);
 
@@ -352,12 +370,7 @@ app.registerExtension({
 
                 let folder = folderWidget ? (folderWidget.value || "") : "";
                 if (node.comfyClass === "FavoritePromptLoader") {
-                    const subcatWidget = node.widgets ? node.widgets.find(w => w.name === "subcategory") : null;
-                    if (subcatWidget && subcatWidget.value) {
-                        folder = "favorites/" + subcatWidget.value;
-                    } else {
-                        folder = "favorites";
-                    }
+                    folder = "favorites";
                 }
                 const selectedVal = getHiddenWidget("_selected_image", "").value;
 
@@ -509,12 +522,7 @@ app.registerExtension({
             const updateImagesList = async () => {
                 let folder = folderWidget ? (folderWidget.value || "") : "";
                 if (node.comfyClass === "FavoritePromptLoader") {
-                    const subcatWidget = node.widgets ? node.widgets.find(w => w.name === "subcategory") : null;
-                    if (subcatWidget && subcatWidget.value) {
-                        folder = "favorites/" + subcatWidget.value;
-                    } else {
-                        folder = "favorites";
-                    }
+                    folder = "favorites";
                 }
                 const currentRequest = Symbol();
                 activeRequest = currentRequest;
@@ -537,15 +545,15 @@ app.registerExtension({
                 };
             }
             
-            if (node.comfyClass === "FavoritePromptLoader") {
-                const subcatWidget = node.widgets ? node.widgets.find(w => w.name === "subcategory") : null;
-                if (subcatWidget) {
-                    subcatWidget.callback = () => {
-                        clearTimeout(debounceTimer);
-                        debounceTimer = setTimeout(() => updateImagesList(), 350);
-                    };
-                }
-            }
+            refreshBtn.onclick = () => {
+                refreshBtn.style.transform = "rotate(180deg)";
+                refreshBtn.style.transition = "transform 0.3s";
+                updateImagesList();
+                setTimeout(() => {
+                    refreshBtn.style.transform = "none";
+                    refreshBtn.style.transition = "none";
+                }, 300);
+            };
 
             searchBar.addEventListener("input", () => {
                 searchQuery = searchBar.value;

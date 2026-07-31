@@ -82,32 +82,69 @@ async function promptForFavoriteDetails(defaultCategory = "", defaultName = "") 
                labelCat.style.color = "#bbb";
                dialog.appendChild(labelCat);
                
-               const inputCat = document.createElement("input");
-               inputCat.type = "text";
-               inputCat.value = defaultCategory;
-               inputCat.placeholder = "e.g. Minimalist";
-               inputCat.setAttribute("list", "flowcontrol-categories");
-               inputCat.style.width = "100%";
-               inputCat.style.padding = "10px 12px";
-               inputCat.style.background = "#141418";
-               inputCat.style.border = "1px solid #444";
-               inputCat.style.color = "#eee";
-               inputCat.style.marginBottom = "18px";
-               inputCat.style.borderRadius = "8px";
-               inputCat.style.boxSizing = "border-box";
-               inputCat.style.outline = "none";
-               inputCat.onfocus = () => inputCat.style.borderColor = "#007acc";
-               inputCat.onblur = () => inputCat.style.borderColor = "#444";
-               dialog.appendChild(inputCat);
+               const selectCat = document.createElement("select");
+               selectCat.style.width = "100%";
+               selectCat.style.padding = "10px 12px";
+               selectCat.style.background = "#141418";
+               selectCat.style.border = "1px solid #444";
+               selectCat.style.color = "#eee";
+               selectCat.style.marginBottom = "12px";
+               selectCat.style.borderRadius = "8px";
+               selectCat.style.boxSizing = "border-box";
+               selectCat.style.outline = "none";
+               selectCat.onfocus = () => selectCat.style.borderColor = "#007acc";
+               selectCat.onblur = () => selectCat.style.borderColor = "#444";
                
-               const datalist = document.createElement("datalist");
-               datalist.id = "flowcontrol-categories";
+               const rootOpt = document.createElement("option");
+               rootOpt.value = "";
+               rootOpt.innerText = "/ (Root)";
+               selectCat.appendChild(rootOpt);
+               
                categories.forEach(cat => {
                    const opt = document.createElement("option");
                    opt.value = cat;
-                   datalist.appendChild(opt);
+                   opt.innerText = cat;
+                   selectCat.appendChild(opt);
                });
-               dialog.appendChild(datalist);
+               
+               const newOpt = document.createElement("option");
+               newOpt.value = "__NEW__";
+               newOpt.innerText = "+ Create New Category...";
+               selectCat.appendChild(newOpt);
+               
+               if (categories.has(defaultCategory)) {
+                   selectCat.value = defaultCategory;
+               } else if (defaultCategory) {
+                   selectCat.value = "";
+               }
+               
+               dialog.appendChild(selectCat);
+               
+               const inputNewCat = document.createElement("input");
+               inputNewCat.type = "text";
+               inputNewCat.placeholder = "Enter new category name...";
+               inputNewCat.style.width = "100%";
+               inputNewCat.style.padding = "10px 12px";
+               inputNewCat.style.background = "#141418";
+               inputNewCat.style.border = "1px solid #444";
+               inputNewCat.style.color = "#eee";
+               inputNewCat.style.marginBottom = "18px";
+               inputNewCat.style.borderRadius = "8px";
+               inputNewCat.style.boxSizing = "border-box";
+               inputNewCat.style.outline = "none";
+               inputNewCat.style.display = "none";
+               inputNewCat.onfocus = () => inputNewCat.style.borderColor = "#007acc";
+               inputNewCat.onblur = () => inputNewCat.style.borderColor = "#444";
+               dialog.appendChild(inputNewCat);
+               
+               selectCat.onchange = () => {
+                   if (selectCat.value === "__NEW__") {
+                       inputNewCat.style.display = "block";
+                       inputNewCat.focus();
+                   } else {
+                       inputNewCat.style.display = "none";
+                   }
+               };
                
                const labelName = document.createElement("label");
                labelName.innerText = "Image Name:";
@@ -163,7 +200,13 @@ async function promptForFavoriteDetails(defaultCategory = "", defaultName = "") 
                saveBtn.style.fontWeight = "500";
                saveBtn.onmouseover = () => saveBtn.style.background = "#359635";
                saveBtn.onmouseout = () => saveBtn.style.background = "#2b7d2b";
-               saveBtn.onclick = () => { dialog.close(); resolve({subcategory: inputCat.value, custom_name: inputName.value}); dialog.remove(); };
+               saveBtn.onclick = () => { 
+                   let finalCat = selectCat.value;
+                   if (finalCat === "__NEW__") finalCat = inputNewCat.value;
+                   dialog.close(); 
+                   resolve({subcategory: finalCat, custom_name: inputName.value}); 
+                   dialog.remove(); 
+               };
                
                btnContainer.appendChild(cancelBtn);
                btnContainer.appendChild(saveBtn);

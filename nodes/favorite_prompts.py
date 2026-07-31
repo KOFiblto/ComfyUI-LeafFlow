@@ -30,15 +30,8 @@ class SaveFavoritePreview(PreviewImage):
 class FavoritePromptLoader(ImageLoaderVisualPrettyV2):
     @classmethod
     def INPUT_TYPES(s):
-        folders = [""]
-        if os.path.exists(FAV_DIR):
-            for entry in os.listdir(FAV_DIR):
-                if os.path.isdir(os.path.join(FAV_DIR, entry)):
-                    folders.append(entry)
-                    
         return {
             "required": {
-                "subcategory": (folders, ),
                 "display_mode": (["Scrollable", "Show All"], {"default": "Scrollable"}),
             },
             "hidden": {
@@ -52,8 +45,8 @@ class FavoritePromptLoader(ImageLoaderVisualPrettyV2):
     CATEGORY = "🍃 FlowControl/Loaders"
     DESCRIPTION = "Visually pick an image from your saved Favorites and output its prompt."
 
-    def load_favorite(self, subcategory, display_mode="Scrollable", _selected_image=""):
-        folder_path = os.path.join(FAV_DIR, subcategory)
+    def load_favorite(self, display_mode="Scrollable", _selected_image=""):
+        folder_path = FAV_DIR
         return super().load_image(folder_path, display_mode, _selected_image)
 
 server = PromptServer.instance
