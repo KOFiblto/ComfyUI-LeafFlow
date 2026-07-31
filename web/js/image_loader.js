@@ -370,7 +370,7 @@ app.registerExtension({
 
                 let folder = folderWidget ? (folderWidget.value || "") : "";
                 if (node.comfyClass === "FavoritePromptLoader") {
-                    folder = "favorites";
+                    folder = "__FAVORITES__";
                 }
                 const selectedVal = getHiddenWidget("_selected_image", "").value;
 
@@ -522,7 +522,7 @@ app.registerExtension({
             const updateImagesList = async () => {
                 let folder = folderWidget ? (folderWidget.value || "") : "";
                 if (node.comfyClass === "FavoritePromptLoader") {
-                    folder = "favorites";
+                    folder = "__FAVORITES__";
                 }
                 const currentRequest = Symbol();
                 activeRequest = currentRequest;

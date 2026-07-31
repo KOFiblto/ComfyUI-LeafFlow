@@ -8,6 +8,7 @@ import piexif
 import piexif.helper
 from aiohttp import web
 from server import PromptServer
+import folder_paths
 
 IMAGE_CATEGORY = "🍃 FlowControl/Loaders"
 CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -76,6 +77,10 @@ async def get_images_endpoint(request):
     clean_folder = folder.strip()
     if clean_folder.endswith("*"):
         clean_folder = clean_folder[:-1].rstrip("\\/")
+        
+    if clean_folder == "__FAVORITES__":
+        clean_folder = os.path.join(folder_paths.get_output_directory(), "favorites")
+        
     folder = clean_folder
     
     if not folder or not os.path.exists(folder):
@@ -132,6 +137,10 @@ async def get_thumbnail_endpoint(request):
     clean_folder = folder.strip()
     if clean_folder.endswith("*"):
         clean_folder = clean_folder[:-1].rstrip("\\/")
+        
+    if clean_folder == "__FAVORITES__":
+        clean_folder = os.path.join(folder_paths.get_output_directory(), "favorites")
+        
     folder = clean_folder
     
     image_rel = request.query.get("image", "")
@@ -155,6 +164,10 @@ async def get_full_image_endpoint(request):
     clean_folder = folder.strip()
     if clean_folder.endswith("*"):
         clean_folder = clean_folder[:-1].rstrip("\\/")
+        
+    if clean_folder == "__FAVORITES__":
+        clean_folder = os.path.join(folder_paths.get_output_directory(), "favorites")
+        
     folder = clean_folder
     
     image_rel = request.query.get("image", "")
