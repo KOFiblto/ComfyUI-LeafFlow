@@ -15,6 +15,7 @@ from .nodes.auto_watcher import LoadImageFromFolder
 from .nodes.load_recent import LoadRecentOutputs
 from .nodes.preview_latent import PreviewLatentLiveNode
 from .nodes.decision_node import FlowControlDecision
+from .nodes.favorite_prompts import FavoritePromptLoader, SaveFavoritePreview
 
 
 NODE_CLASS_MAPPINGS = {
@@ -27,7 +28,9 @@ NODE_CLASS_MAPPINGS = {
     "LoadImageFromFolder": LoadImageFromFolder,
     "LoadRecentOutputs": LoadRecentOutputs,
     "PreviewLatentLive": PreviewLatentLiveNode,
-    "FlowControlDecision": FlowControlDecision
+    "FlowControlDecision": FlowControlDecision,
+    "FavoritePromptLoader": FavoritePromptLoader,
+    "SaveFavoritePreview": SaveFavoritePreview
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -40,7 +43,9 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LoadImageFromFolder": "🍃 Load Image From Folder",
     "LoadRecentOutputs": "🍃 Recent Outputs",
     "PreviewLatentLive": "🍃 Live Latent Preview",
-    "FlowControlDecision": "🍃 FlowControl Decision"
+    "FlowControlDecision": "🍃 FlowControl Decision",
+    "FavoritePromptLoader": "🍃 Favorite Prompts",
+    "SaveFavoritePreview": "🍃 Save Favorite Preview"
 }
 
 WEB_DIRECTORY = "./web"
