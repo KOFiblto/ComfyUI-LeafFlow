@@ -57,9 +57,11 @@ function updateAllPreviewNodeDropdowns() {
     for (const node of previewNodes) {
         const widget = node.widgets?.find(w => w.name === "Source");
         if (widget) {
-            widget.options.values = currentValues;
-            if (!currentValues.includes(widget.value)) {
-                widget.value = "Auto";
+            const currentVal = widget.value;
+            widget.options.values = [...currentValues];
+            
+            if (currentVal && currentVal !== "Auto" && !currentValues.includes(currentVal)) {
+                widget.options.values.push(currentVal);
             }
         }
     }
@@ -112,10 +114,12 @@ app.registerExtension({
                 viewContainer.style.overflow = "hidden";
                 
                 const fallbackText = document.createElement("div");
+                fallbackText.className = "flowcontrol-live-preview-fallback";
                 fallbackText.innerText = "Waiting for live preview...";
                 viewContainer.appendChild(fallbackText);
                 
                 const imgElement = document.createElement("img");
+                imgElement.className = "flowcontrol-live-preview-img";
                 imgElement.style.maxWidth = "100%";
                 imgElement.style.maxHeight = "100%";
                 imgElement.style.objectFit = "contain";
@@ -163,6 +167,17 @@ app.registerExtension({
                 this.imageIndex = 0;
                 
                 // Update DOM elements natively for V2 visibility
+                const domImgs = document.querySelectorAll(`[data-node-id="${this.id}"] .flowcontrol-live-preview-img, [data-widgets-grid-node-id="${this.id}"] .flowcontrol-live-preview-img`);
+                if (domImgs.length > 0) {
+                    domImgs.forEach(imgEl => {
+                        imgEl.src = img.src;
+                        imgEl.style.display = "block";
+                        const fallback = imgEl.parentElement.querySelector(".flowcontrol-live-preview-fallback");
+                        if (fallback) fallback.style.display = "none";
+                    });
+                }
+                
+                // Fallback for V1 LiteGraph internal references
                 if (this.previewImgElement && this.previewFallbackText && img && img.src) {
                     this.previewFallbackText.style.display = "none";
                     this.previewImgElement.src = img.src;
