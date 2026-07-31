@@ -44,7 +44,7 @@ async function saveToFavorites(imgSrc, subcategory = "Default", custom_name = ""
     }
 }
 
-async function promptForFavoriteDetails(defaultCategory = "Default") {
+async function promptForFavoriteDetails(defaultCategory = "", defaultName = "") {
     return new Promise((resolve) => {
         api.fetchApi('/image_loader/get_images?folder=favorites')
            .then(r => r.json())
@@ -58,39 +58,46 @@ async function promptForFavoriteDetails(defaultCategory = "Default") {
                });
                
                const dialog = document.createElement("dialog");
-               dialog.style.padding = "20px";
-               dialog.style.borderRadius = "8px";
-               dialog.style.background = "#222";
+               dialog.style.padding = "24px";
+               dialog.style.borderRadius = "12px";
+               dialog.style.background = "#1e1e24";
                dialog.style.color = "#eee";
-               dialog.style.border = "1px solid #444";
+               dialog.style.border = "1px solid #333";
+               dialog.style.boxShadow = "0 10px 25px rgba(0,0,0,0.5)";
                dialog.style.fontFamily = "Inter, sans-serif";
-               dialog.style.minWidth = "300px";
+               dialog.style.minWidth = "320px";
                
                const title = document.createElement("h3");
                title.innerText = "🍃 Save to Favorites";
                title.style.marginTop = "0";
-               title.style.marginBottom = "20px";
+               title.style.marginBottom = "24px";
+               title.style.fontWeight = "600";
                dialog.appendChild(title);
                
                const labelCat = document.createElement("label");
-               labelCat.innerText = "Category / Subfolder:";
+               labelCat.innerText = "Category / Subfolder (Empty = Root):";
                labelCat.style.display = "block";
-               labelCat.style.marginBottom = "5px";
-               labelCat.style.fontSize = "12px";
+               labelCat.style.marginBottom = "6px";
+               labelCat.style.fontSize = "13px";
+               labelCat.style.color = "#bbb";
                dialog.appendChild(labelCat);
                
                const inputCat = document.createElement("input");
                inputCat.type = "text";
                inputCat.value = defaultCategory;
+               inputCat.placeholder = "e.g. Minimalist";
                inputCat.setAttribute("list", "flowcontrol-categories");
                inputCat.style.width = "100%";
-               inputCat.style.padding = "8px";
-               inputCat.style.background = "#111";
+               inputCat.style.padding = "10px 12px";
+               inputCat.style.background = "#141418";
                inputCat.style.border = "1px solid #444";
                inputCat.style.color = "#eee";
-               inputCat.style.marginBottom = "15px";
-               inputCat.style.borderRadius = "4px";
+               inputCat.style.marginBottom = "18px";
+               inputCat.style.borderRadius = "8px";
                inputCat.style.boxSizing = "border-box";
+               inputCat.style.outline = "none";
+               inputCat.onfocus = () => inputCat.style.borderColor = "#007acc";
+               inputCat.onblur = () => inputCat.style.borderColor = "#444";
                dialog.appendChild(inputCat);
                
                const datalist = document.createElement("datalist");
@@ -103,48 +110,59 @@ async function promptForFavoriteDetails(defaultCategory = "Default") {
                dialog.appendChild(datalist);
                
                const labelName = document.createElement("label");
-               labelName.innerText = "Custom Name (Optional):";
+               labelName.innerText = "Image Name:";
                labelName.style.display = "block";
-               labelName.style.marginBottom = "5px";
-               labelName.style.fontSize = "12px";
+               labelName.style.marginBottom = "6px";
+               labelName.style.fontSize = "13px";
+               labelName.style.color = "#bbb";
                dialog.appendChild(labelName);
                
                const inputName = document.createElement("input");
                inputName.type = "text";
-               inputName.placeholder = "Leave blank for original name";
+               inputName.value = defaultName;
+               inputName.placeholder = "Image Name";
                inputName.style.width = "100%";
-               inputName.style.padding = "8px";
-               inputName.style.background = "#111";
+               inputName.style.padding = "10px 12px";
+               inputName.style.background = "#141418";
                inputName.style.border = "1px solid #444";
                inputName.style.color = "#eee";
-               inputName.style.marginBottom = "20px";
-               inputName.style.borderRadius = "4px";
+               inputName.style.marginBottom = "24px";
+               inputName.style.borderRadius = "8px";
                inputName.style.boxSizing = "border-box";
+               inputName.style.outline = "none";
+               inputName.onfocus = () => inputName.style.borderColor = "#007acc";
+               inputName.onblur = () => inputName.style.borderColor = "#444";
                dialog.appendChild(inputName);
                
                const btnContainer = document.createElement("div");
                btnContainer.style.display = "flex";
                btnContainer.style.justifyContent = "flex-end";
-               btnContainer.style.gap = "10px";
+               btnContainer.style.gap = "12px";
                
                const cancelBtn = document.createElement("button");
                cancelBtn.innerText = "Cancel";
-               cancelBtn.style.padding = "8px 16px";
-               cancelBtn.style.background = "#444";
+               cancelBtn.style.padding = "8px 18px";
+               cancelBtn.style.background = "#333";
                cancelBtn.style.color = "#fff";
                cancelBtn.style.border = "none";
-               cancelBtn.style.borderRadius = "4px";
+               cancelBtn.style.borderRadius = "8px";
                cancelBtn.style.cursor = "pointer";
+               cancelBtn.style.fontWeight = "500";
+               cancelBtn.onmouseover = () => cancelBtn.style.background = "#444";
+               cancelBtn.onmouseout = () => cancelBtn.style.background = "#333";
                cancelBtn.onclick = () => { dialog.close(); resolve(null); dialog.remove(); };
                
                const saveBtn = document.createElement("button");
-               saveBtn.innerText = "Save";
-               saveBtn.style.padding = "8px 16px";
-               saveBtn.style.background = "#308530";
+               saveBtn.innerText = "Save to Favorites";
+               saveBtn.style.padding = "8px 18px";
+               saveBtn.style.background = "#2b7d2b";
                saveBtn.style.color = "#fff";
                saveBtn.style.border = "none";
-               saveBtn.style.borderRadius = "4px";
+               saveBtn.style.borderRadius = "8px";
                saveBtn.style.cursor = "pointer";
+               saveBtn.style.fontWeight = "500";
+               saveBtn.onmouseover = () => saveBtn.style.background = "#359635";
+               saveBtn.onmouseout = () => saveBtn.style.background = "#2b7d2b";
                saveBtn.onclick = () => { dialog.close(); resolve({subcategory: inputCat.value, custom_name: inputName.value}); dialog.remove(); };
                
                btnContainer.appendChild(cancelBtn);
@@ -176,13 +194,18 @@ app.registerExtension({
                 options.push({
                     content: "🍃 Save to Favorites",
                     callback: async () => {
-                        const details = await promptForFavoriteDetails("Default");
-                        if (!details || !details.subcategory) return;
-                        
                         let img = this.imgs[this.imageIndex || 0];
-                        // Also update saveToFavorites to accept custom_name
+                        if (!img || !img.src) return;
+                        
+                        let url = new URL(img.src, window.location.origin);
+                        let filename = url.searchParams.get("filename") || "";
+                        let defaultName = filename.replace(/\.[^/.]+$/, ""); // strip extension
+                        
+                        const details = await promptForFavoriteDetails("", defaultName);
+                        if (!details) return;
+                        
                         saveToFavorites(img.src, details.subcategory, details.custom_name).then(success => {
-                            if (success) alert(`Saved to Favorites -> ${details.subcategory}!`);
+                            if (success) alert(`Saved to Favorites -> ${details.subcategory || 'Root'}!`);
                         });
                     }
                 });
@@ -202,10 +225,14 @@ app.registerExtension({
                         return;
                     }
                     
-                    const details = await promptForFavoriteDetails("Default");
-                    if (!details || !details.subcategory) return;
-                    
                     let img = this.imgs[this.imageIndex || 0];
+                    let url = new URL(img.src, window.location.origin);
+                    let filename = url.searchParams.get("filename") || "";
+                    let defaultName = filename.replace(/\.[^/.]+$/, "");
+                    
+                    const details = await promptForFavoriteDetails("", defaultName);
+                    if (!details) return;
+                    
                     saveToFavorites(img.src, details.subcategory, details.custom_name).then(success => {
                         if (success) {
                             saveBtn.name = "✅ Saved!";
@@ -295,8 +322,12 @@ function injectAssetsStarButton() {
             }
             
             if (img) {
-                const details = await promptForFavoriteDetails("Default");
-                if (details && details.subcategory) {
+                let url = new URL(img.src, window.location.origin);
+                let filename = url.searchParams.get("filename") || "";
+                let defaultName = filename.replace(/\.[^/.]+$/, "");
+                
+                const details = await promptForFavoriteDetails("", defaultName);
+                if (details) {
                     saveToFavorites(img.src, details.subcategory, details.custom_name).then(success => {
                         if (success) {
                             starBtn.innerHTML = "<span>✅ Saved</span>";
@@ -339,8 +370,13 @@ function injectAssetsStarButton() {
             starBtn.onclick = async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const details = await promptForFavoriteDetails("Default");
-                if (details && details.subcategory) {
+                
+                let url = new URL(img.src, window.location.origin);
+                let filename = url.searchParams.get("filename") || "";
+                let defaultName = filename.replace(/\.[^/.]+$/, "");
+                
+                const details = await promptForFavoriteDetails("", defaultName);
+                if (details) {
                     saveToFavorites(img.src, details.subcategory, details.custom_name).then(success => {
                         if (success) {
                             starBtn.innerHTML = "<span>✅</span>";

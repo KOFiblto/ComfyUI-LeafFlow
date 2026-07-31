@@ -30,9 +30,15 @@ class SaveFavoritePreview(PreviewImage):
 class FavoritePromptLoader(ImageLoaderVisualPrettyV2):
     @classmethod
     def INPUT_TYPES(s):
+        folders = [""]
+        if os.path.exists(FAV_DIR):
+            for entry in os.listdir(FAV_DIR):
+                if os.path.isdir(os.path.join(FAV_DIR, entry)):
+                    folders.append(entry)
+                    
         return {
             "required": {
-                "subcategory": ("STRING", {"default": "Minimalist"}),
+                "subcategory": (folders, ),
                 "display_mode": (["Scrollable", "Show All"], {"default": "Scrollable"}),
             },
             "hidden": {

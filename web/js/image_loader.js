@@ -231,11 +231,13 @@ app.registerExtension({
                     }
                 }
                 if (widgets.length === 1) {
+                    widgets[0].type = "hidden";
                     widgets[0].hidden = true;
                     widgets[0].computeSize = () => [0, 0];
                     return widgets[0];
                 }
                 const w = node.addWidget("text", name, defaultVal, () => {}, { serialize: true });
+                w.type = "hidden";
                 w.hidden = true;
                 w.computeSize = () => [0, 0];
                 return w;
@@ -357,7 +359,7 @@ app.registerExtension({
                         folder = "favorites";
                     }
                 }
-                const selectedVal = getHiddenWidget().value;
+                const selectedVal = getHiddenWidget("_selected_image", "").value;
 
                 // Group items by subfolder
                 const foldersMap = {};
@@ -481,7 +483,7 @@ app.registerExtension({
                                  allTiles.forEach(t => t.classList.remove("selected"));
                                  
                                  tile.classList.add("selected");
-                                 const curWidget = getHiddenWidget();
+                                 const curWidget = getHiddenWidget("_selected_image", "");
                                  curWidget.value = item.relPath;
                                  if (curWidget.callback) curWidget.callback(item.relPath);
                                  
@@ -555,7 +557,7 @@ app.registerExtension({
             node.onConfigure = function(config) {
                 if (originalOnConfigure) originalOnConfigure.apply(this, arguments);
 
-                const curWidget = getHiddenWidget();
+                const curWidget = getHiddenWidget("_selected_image", "");
                 const widgetIndex = node.widgets.indexOf(curWidget);
                 const savedValue = (config.widgets_values && widgetIndex !== -1) ? config.widgets_values[widgetIndex] : curWidget.value;
                 if (savedValue) {
