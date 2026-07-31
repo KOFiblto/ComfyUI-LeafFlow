@@ -337,21 +337,38 @@ function injectAssetsStarButton() {
     
     for (const btn of allButtons) {
         const text = (btn.innerText || btn.textContent || "").trim();
-        if (text === "Inspect") inspectBtn = btn;
-        if (text === "More") moreBtn = btn;
+        const ariaLabel = btn.getAttribute("aria-label") || "";
+        
+        if (text === "Inspect" || ariaLabel === "Zoom in") inspectBtn = btn;
+        if (text === "More" || ariaLabel === "More options") moreBtn = btn;
         
         if (inspectBtn && moreBtn && inspectBtn.parentElement === moreBtn.parentElement) {
             targetContainer = inspectBtn.parentElement;
-            break;
+            // Only inject if it hasn't been injected yet
+            if (!targetContainer.querySelector(".flowcontrol-star-btn")) {
+                break;
+            } else {
+                // Keep looking if we already injected in this container (multiple might exist on screen)
+                inspectBtn = null;
+                moreBtn = null;
+                targetContainer = null;
+            }
         }
     }
     
-    if (targetContainer && !targetContainer.querySelector(".flowcontrol-star-btn")) {
+    if (targetContainer) {
         const starBtn = document.createElement("button");
         starBtn.className = inspectBtn.className + " flowcontrol-star-btn"; // Steal classes for exact styling match
         
         // Use a <span> for the text to match whatever internal structure Vue might use, or just direct text
-        starBtn.innerHTML = "<span>🍃 Star</span>";
+        // If it's the icon-only menu, we just use the icon
+        if (inspectBtn.getAttribute("aria-label") === "Zoom in") {
+            starBtn.innerHTML = "🍃";
+            starBtn.setAttribute("aria-label", "Save to Favorites");
+            starBtn.title = "Save to Favorites";
+        } else {
+            starBtn.innerHTML = "<span>🍃 Star</span>";
+        }
         
         starBtn.onclick = async (e) => {
             e.preventDefault();
