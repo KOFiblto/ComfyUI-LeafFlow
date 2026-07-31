@@ -61,6 +61,7 @@ async def save_favorite_endpoint(request):
         subfolder = data.get("subfolder", "")
         type_str = data.get("type", "temp")
         subcategory = data.get("subcategory", "Default").strip()
+        custom_name = data.get("custom_name", "").strip()
 
         if not filename:
             return web.json_response({"success": False, "error": "No filename provided"})
@@ -79,12 +80,23 @@ async def save_favorite_endpoint(request):
 
         dest_dir = os.path.join(FAV_DIR, subcategory)
         os.makedirs(dest_dir, exist_ok=True)
-        dest_path = os.path.join(dest_dir, filename)
+        
+        base, ext = os.path.splitext(filename)
+        if custom_name:
+            # Sanitize
+            custom_name = "".join([c for c in custom_name if c.isalnum() or c in " -_"]).strip()
+            if not custom_name:
+                custom_name = base
+            dest_filename = custom_name + ext
+        else:
+            dest_filename = filename
+            
+        dest_path = os.path.join(dest_dir, dest_filename)
         
         if os.path.exists(dest_path):
-            base, ext = os.path.splitext(filename)
+            base_d, ext_d = os.path.splitext(dest_filename)
             suffix = ''.join(random.choice("abcdefghijklmnopqrstuvwxyz") for _ in range(4))
-            dest_path = os.path.join(dest_dir, f"{base}_{suffix}{ext}")
+            dest_path = os.path.join(dest_dir, f"{base_d}_{suffix}{ext_d}")
 
         shutil.copy2(src_path, dest_path)
         

@@ -210,7 +210,7 @@ document.head.appendChild(visualStyles);
 app.registerExtension({
     name: "Comfy.ImageLoaderCustom",
     async nodeCreated(node) {
-        if (node.comfyClass === "ImageLoaderVisualPrettyV2" || node.comfyClass === "ImageLoaderCustom") {
+        if (node.comfyClass === "ImageLoaderVisualPrettyV2" || node.comfyClass === "ImageLoaderCustom" || node.comfyClass === "FavoritePromptLoader") {
             node.size = [380, 480];
 
             node.computeSize = function() {
@@ -348,7 +348,15 @@ app.registerExtension({
                 gridContainer.innerHTML = "";
                 lazyObserver.disconnect();
 
-                const folder = folderWidget ? (folderWidget.value || "") : "";
+                let folder = folderWidget ? (folderWidget.value || "") : "";
+                if (node.comfyClass === "FavoritePromptLoader") {
+                    const subcatWidget = node.widgets ? node.widgets.find(w => w.name === "subcategory") : null;
+                    if (subcatWidget && subcatWidget.value) {
+                        folder = "favorites/" + subcatWidget.value;
+                    } else {
+                        folder = "favorites";
+                    }
+                }
                 const selectedVal = getHiddenWidget().value;
 
                 // Group items by subfolder
@@ -450,7 +458,8 @@ app.registerExtension({
                             }
 
                             const img = document.createElement("img");
-                            img.dataset.src = `/image_loader/get_thumbnail?folder=${encodeURIComponent(folder)}&image=${encodeURIComponent(item.relPath)}`;
+                            let fetchFolder = folder;
+                            img.dataset.src = `/image_loader/get_thumbnail?folder=${encodeURIComponent(fetchFolder)}&image=${encodeURIComponent(item.relPath)}`;
                             img.onload = () => img.classList.add("loaded");
                             
                             img.onerror = () => {
@@ -496,7 +505,15 @@ app.registerExtension({
             };
 
             const updateImagesList = async () => {
-                const folder = folderWidget ? (folderWidget.value || "") : "";
+                let folder = folderWidget ? (folderWidget.value || "") : "";
+                if (node.comfyClass === "FavoritePromptLoader") {
+                    const subcatWidget = node.widgets ? node.widgets.find(w => w.name === "subcategory") : null;
+                    if (subcatWidget && subcatWidget.value) {
+                        folder = "favorites/" + subcatWidget.value;
+                    } else {
+                        folder = "favorites";
+                    }
+                }
                 const currentRequest = Symbol();
                 activeRequest = currentRequest;
 
@@ -516,6 +533,16 @@ app.registerExtension({
                     clearTimeout(debounceTimer);
                     debounceTimer = setTimeout(() => updateImagesList(), 350);
                 };
+            }
+            
+            if (node.comfyClass === "FavoritePromptLoader") {
+                const subcatWidget = node.widgets ? node.widgets.find(w => w.name === "subcategory") : null;
+                if (subcatWidget) {
+                    subcatWidget.callback = () => {
+                        clearTimeout(debounceTimer);
+                        debounceTimer = setTimeout(() => updateImagesList(), 350);
+                    };
+                }
             }
 
             searchBar.addEventListener("input", () => {
