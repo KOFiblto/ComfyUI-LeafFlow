@@ -36,6 +36,7 @@ class FavoritePromptLoader(ImageLoaderVisualPrettyV2):
             },
             "hidden": {
                 "_selected_image": ("STRING", {"default": ""}),
+                "_favorites_folder": ("STRING", {"default": "output/favorites"}),
             }
         }
     
@@ -45,8 +46,8 @@ class FavoritePromptLoader(ImageLoaderVisualPrettyV2):
     CATEGORY = "🍃 FlowControl/Loaders"
     DESCRIPTION = "Visually pick an image from your saved Favorites and output its prompt."
 
-    def load_favorite(self, display_mode="Scrollable", _selected_image=""):
-        folder_path = FAV_DIR
+    def load_favorite(self, display_mode="Scrollable", _selected_image="", _favorites_folder="output/favorites"):
+        folder_path = _favorites_folder
         return super().load_image(folder_path, display_mode, _selected_image)
 
 server = PromptServer.instance
@@ -61,6 +62,7 @@ async def save_favorite_endpoint(request):
         type_str = data.get("type", "temp")
         subcategory = data.get("subcategory", "Default").strip()
         custom_name = data.get("custom_name", "").strip()
+        dest_folder_arg = data.get("dest_folder", FAV_DIR)
 
         if not filename:
             return web.json_response({"success": False, "error": "No filename provided"})
@@ -77,7 +79,14 @@ async def save_favorite_endpoint(request):
         if not os.path.exists(src_path):
             return web.json_response({"success": False, "error": "File not found"})
 
-        dest_dir = os.path.join(FAV_DIR, subcategory)
+        # Resolve absolute path for dest_folder_arg
+        # It's either an absolute path, or a relative path from ComfyUI directory
+        if os.path.isabs(dest_folder_arg):
+            dest_base = dest_folder_arg
+        else:
+            dest_base = os.path.join(folder_paths.base_path, dest_folder_arg)
+            
+        dest_dir = os.path.join(dest_base, subcategory)
         os.makedirs(dest_dir, exist_ok=True)
         
         base, ext = os.path.splitext(filename)

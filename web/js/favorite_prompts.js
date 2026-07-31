@@ -20,11 +20,12 @@ async function saveToFavorites(imgSrc, subcategory = "Default", custom_name = ""
         return;
     }
 
+    const favFolder = app.ui.settings.getSettingValue("FlowControl.FavoritesFolder", "output/favorites");
     try {
         const response = await api.fetchApi(`/flowcontrol/save_favorite`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ filename, type, subfolder, subcategory, custom_name })
+            body: JSON.stringify({ filename, type, subfolder, subcategory, custom_name, dest_folder: favFolder })
         });
         const res = await response.json();
         
@@ -46,7 +47,8 @@ async function saveToFavorites(imgSrc, subcategory = "Default", custom_name = ""
 
 async function promptForFavoriteDetails(defaultCategory = "", defaultName = "") {
     return new Promise((resolve) => {
-        api.fetchApi('/image_loader/get_images?folder=favorites')
+        const favFolder = app.ui.settings.getSettingValue("FlowControl.FavoritesFolder", "output/favorites");
+        api.fetchApi(`/image_loader/get_images?folder=${encodeURIComponent(favFolder)}`)
            .then(r => r.json())
            .then(data => {
                const categories = new Set();
@@ -95,10 +97,13 @@ async function promptForFavoriteDetails(defaultCategory = "", defaultName = "") 
                selectCat.onfocus = () => selectCat.style.borderColor = "#007acc";
                selectCat.onblur = () => selectCat.style.borderColor = "#444";
                
-               const rootOpt = document.createElement("option");
-               rootOpt.value = "";
-               rootOpt.innerText = "/ (Root)";
-               selectCat.appendChild(rootOpt);
+               // Optional: an empty category that acts as root. We won't show it if they want to hide "root".
+               if(categories.size === 0) {
+                   const defaultOpt = document.createElement("option");
+                   defaultOpt.value = "";
+                   defaultOpt.innerText = "(No existing categories)";
+                   selectCat.appendChild(defaultOpt);
+               }
                
                categories.forEach(cat => {
                    const opt = document.createElement("option");
@@ -112,10 +117,11 @@ async function promptForFavoriteDetails(defaultCategory = "", defaultName = "") 
                newOpt.innerText = "+ Create New Category...";
                selectCat.appendChild(newOpt);
                
-               if (categories.has(defaultCategory)) {
+               if (categories.has(defaultCategory) && defaultCategory !== "") {
                    selectCat.value = defaultCategory;
-               } else if (defaultCategory) {
-                   selectCat.value = "";
+               } else if (categories.size > 0) {
+                   // default to the first one instead of empty root
+                   selectCat.value = Array.from(categories)[0];
                }
                
                dialog.appendChild(selectCat);
@@ -214,14 +220,23 @@ async function promptForFavoriteDetails(defaultCategory = "", defaultName = "") 
                
                document.body.appendChild(dialog);
                dialog.showModal();
-               inputCat.focus();
+               selectCat.focus();
            }).catch(e => {
-               const subcategory = prompt("Enter subcategory:", defaultCategory);
-               if (subcategory) resolve({subcategory, custom_name: ""});
-               else resolve(null);
+               console.error("[FlowControl] Error fetching favorites folder data:", e);
+               alert("FlowControl: Error fetching favorites folder. Check your FlowControl Favorites Folder setting or console logs.");
+               resolve(null);
            });
     });
 }
+
+// Register settings
+app.ui.settings.addSetting({
+    id: "FlowControl.FavoritesFolder",
+    name: "🍃 FlowControl Favorites Folder",
+    type: "text",
+    defaultValue: "output/favorites",
+    tooltip: "Path to store and load favorite prompts. Relative to ComfyUI directory, or absolute.",
+});
 
 // 1. Hook into Node Context Menu (Right Click)
 app.registerExtension({

@@ -78,10 +78,11 @@ async def get_images_endpoint(request):
     if clean_folder.endswith("*"):
         clean_folder = clean_folder[:-1].rstrip("\\/")
         
-    if clean_folder == "__FAVORITES__":
-        clean_folder = os.path.join(folder_paths.get_output_directory(), "favorites")
-        
     folder = clean_folder
+    
+    # Resolve relative paths
+    if not os.path.isabs(folder):
+        folder = os.path.join(folder_paths.base_path, folder)
     
     if not folder or not os.path.exists(folder):
         return web.json_response({"names": [], "mapping": {}, "prompts": {}})
@@ -138,10 +139,10 @@ async def get_thumbnail_endpoint(request):
     if clean_folder.endswith("*"):
         clean_folder = clean_folder[:-1].rstrip("\\/")
         
-    if clean_folder == "__FAVORITES__":
-        clean_folder = os.path.join(folder_paths.get_output_directory(), "favorites")
-        
     folder = clean_folder
+    
+    if not os.path.isabs(folder):
+        folder = os.path.join(folder_paths.base_path, folder)
     
     image_rel = request.query.get("image", "")
     
@@ -165,10 +166,10 @@ async def get_full_image_endpoint(request):
     if clean_folder.endswith("*"):
         clean_folder = clean_folder[:-1].rstrip("\\/")
         
-    if clean_folder == "__FAVORITES__":
-        clean_folder = os.path.join(folder_paths.get_output_directory(), "favorites")
-        
     folder = clean_folder
+    
+    if not os.path.isabs(folder):
+        folder = os.path.join(folder_paths.base_path, folder)
     
     image_rel = request.query.get("image", "")
     
