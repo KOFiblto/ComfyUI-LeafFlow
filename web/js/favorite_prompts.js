@@ -424,7 +424,10 @@ function injectAssetsStarButton() {
     gridItems.forEach(item => {
         if (item.querySelector('.flowcontrol-grid-star')) return;
         
-        const shrinkContainer = item.querySelector('.shrink-0');
+        // Find the bottom right container that holds the layers/outputs button
+        const bottomRow = item.querySelector('.flex.items-end.justify-between');
+        const shrinkContainer = bottomRow ? bottomRow.querySelector('.shrink-0') : null;
+        
         if (shrinkContainer) {
             const img = item.querySelector('img');
             if (!img || !img.src) return;
