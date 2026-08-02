@@ -5,6 +5,9 @@ import random
 from aiohttp import web
 from server import PromptServer
 import folder_paths
+from PIL import Image, ImageOps
+import torch
+import numpy as np
 from .image_loader import ImageLoaderVisualPrettyV2
 from nodes import PreviewImage
 
@@ -48,7 +51,23 @@ class FavoritePromptLoader(ImageLoaderVisualPrettyV2):
 
     def load_favorite(self, display_mode="Scrollable", _selected_image="", _favorites_folder="output/favorites"):
         folder_path = _favorites_folder
-        return super().load_image(folder_path, display_mode, _selected_image)
+        if not os.path.isabs(folder_path):
+            folder_path = os.path.join(folder_paths.base_path, folder_path)
+            
+        img, prompt, w, h = super().load_image(folder_path, display_mode, _selected_image)
+        
+        mask = torch.zeros((64, 64), dtype=torch.float32, device="cpu")
+        full_path = os.path.normpath(os.path.join(folder_path, _selected_image))
+        if _selected_image and os.path.exists(full_path):
+            i = Image.open(full_path)
+            i = ImageOps.exif_transpose(i)
+            if 'A' in i.getbands():
+                mask = np.array(i.getchannel('A')).astype(np.float32) / 255.0
+                mask = 1. - torch.from_numpy(mask)
+            else:
+                mask = torch.zeros((i.size[1], i.size[0]), dtype=torch.float32, device="cpu")
+                
+        return (img, prompt, mask, w, h)
 
 server = PromptServer.instance
 routes = server.routes
@@ -109,5 +128,34 @@ async def save_favorite_endpoint(request):
         shutil.copy2(src_path, dest_path)
         
         return web.json_response({"success": True, "dest": dest_path})
+    except Exception as e:
+        return web.json_response({"success": False, "error": str(e)})
+
+@routes.get("/flowcontrol/get_image_prompt")
+async def get_image_prompt_endpoint(request):
+    try:
+        filename = request.query.get("filename")
+        subfolder = request.query.get("subfolder", "")
+        type_str = request.query.get("type", "temp")
+        
+        if not filename:
+            return web.json_response({"success": False, "error": "No filename provided"})
+            
+        src_dir = folder_paths.get_directory_by_type(type_str)
+        if not src_dir:
+            return web.json_response({"success": False, "error": "Invalid type"})
+            
+        if subfolder:
+            src_dir = os.path.join(src_dir, subfolder)
+            
+        src_path = os.path.join(src_dir, filename)
+        if not os.path.exists(src_path):
+            return web.json_response({"success": False, "error": "File not found"})
+            
+        # extract prompt
+        from .image_loader import extract_metadata_from_image
+        prompt, _, _ = extract_metadata_from_image(src_path)
+        
+        return web.json_response({"success": True, "prompt": prompt})
     except Exception as e:
         return web.json_response({"success": False, "error": str(e)})

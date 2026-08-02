@@ -45,6 +45,52 @@ async function saveToFavorites(imgSrc, subcategory = "Default", custom_name = ""
     }
 }
 
+async function copyImagePrompt(imgSrc) {
+    if (!imgSrc) return false;
+    let url;
+    try { url = new URL(imgSrc, window.location.origin); } catch (e) { return false; }
+    
+    let filename = url.searchParams.get("filename");
+    let type = url.searchParams.get("type") || "temp";
+    let subfolder = url.searchParams.get("subfolder") || "";
+    
+    if (!filename) return false;
+    
+    try {
+        const response = await api.fetchApi(`/flowcontrol/get_image_prompt?filename=${encodeURIComponent(filename)}&type=${encodeURIComponent(type)}&subfolder=${encodeURIComponent(subfolder)}`);
+        const res = await response.json();
+        if (res.success && res.prompt) {
+            await navigator.clipboard.writeText(res.prompt);
+            return true;
+        }
+    } catch(e) {
+        console.error(e);
+    }
+    return false;
+}
+
+async function loadWorkflowFromImage(imgSrc) {
+    if (!imgSrc) return false;
+    let url;
+    try { url = new URL(imgSrc, window.location.origin); } catch (e) { return false; }
+    
+    let filename = url.searchParams.get("filename");
+    if (!filename) return false;
+    
+    try {
+        const response = await fetch(imgSrc);
+        const blob = await response.blob();
+        const file = new File([blob], filename, { type: blob.type });
+        if (app.handleFile) {
+            await app.handleFile(file);
+            return true;
+        }
+    } catch(e) {
+        console.error(e);
+    }
+    return false;
+}
+
 async function promptForFavoriteDetails(defaultCategory = "", defaultName = "") {
     return new Promise((resolve) => {
         const favFolder = app.ui.settings.getSettingValue("FlowControl.FavoritesFolder", "output/favorites");
@@ -267,6 +313,25 @@ app.registerExtension({
                         });
                     }
                 });
+                options.push({
+                    content: "📋 Copy Prompt",
+                    callback: async () => {
+                        let img = this.imgs[this.imageIndex || 0];
+                        if (!img || !img.src) return;
+                        const success = await copyImagePrompt(img.src);
+                        if (success) alert("Prompt copied to clipboard!");
+                        else alert("Failed to copy prompt.");
+                    }
+                });
+                options.push({
+                    content: "📥 Load Workflow",
+                    callback: async () => {
+                        let img = this.imgs[this.imageIndex || 0];
+                        if (!img || !img.src) return;
+                        if (!confirm("Load workflow from this image? This will replace your current workspace.")) return;
+                        await loadWorkflowFromImage(img.src);
+                    }
+                });
             }
         };
 
@@ -415,8 +480,70 @@ function injectAssetsStarButton() {
             }
         };
         
-        // Insert between Inspect and More
-        targetContainer.insertBefore(starBtn, moreBtn);
+        const copyBtn = document.createElement("button");
+        copyBtn.className = inspectBtn.className + " flowcontrol-copy-btn";
+        if (inspectBtn.getAttribute("aria-label") === "Zoom in") {
+            copyBtn.innerHTML = "📋";
+            copyBtn.setAttribute("aria-label", "Copy Prompt");
+            copyBtn.title = "Copy Prompt";
+        } else {
+            copyBtn.innerHTML = "<span>📋 Copy</span>";
+        }
+        
+        const loadBtn = document.createElement("button");
+        loadBtn.className = inspectBtn.className + " flowcontrol-load-btn";
+        if (inspectBtn.getAttribute("aria-label") === "Zoom in") {
+            loadBtn.innerHTML = "📥";
+            loadBtn.setAttribute("aria-label", "Load Workflow");
+            loadBtn.title = "Load Workflow";
+        } else {
+            loadBtn.innerHTML = "<span>📥 Load</span>";
+        }
+        
+        copyBtn.onclick = async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            let container = targetContainer;
+            let img = null;
+            while (container && container !== document.body) {
+                const found = container.querySelector("img");
+                if (found && found.src && found.src.includes("filename=")) { img = found; break; }
+                if (container.previousElementSibling && container.previousElementSibling.tagName === "IMG") { img = container.previousElementSibling; break; }
+                container = container.parentElement;
+            }
+            if (img) {
+                copyImagePrompt(img.src).then(success => {
+                    if (success) {
+                        const oldText = copyBtn.innerHTML;
+                        copyBtn.innerHTML = inspectBtn.getAttribute("aria-label") === "Zoom in" ? "✅" : "<span>✅ Copied</span>";
+                        setTimeout(() => copyBtn.innerHTML = oldText, 2000);
+                    }
+                });
+            }
+        };
+        
+        loadBtn.onclick = async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            let container = targetContainer;
+            let img = null;
+            while (container && container !== document.body) {
+                const found = container.querySelector("img");
+                if (found && found.src && found.src.includes("filename=")) { img = found; break; }
+                if (container.previousElementSibling && container.previousElementSibling.tagName === "IMG") { img = container.previousElementSibling; break; }
+                container = container.parentElement;
+            }
+            if (img) {
+                if(confirm("Load workflow from this image? This will replace your current workspace.")) {
+                    loadWorkflowFromImage(img.src);
+                }
+            }
+        };
+        
+        // Insert buttons
+        targetContainer.insertBefore(loadBtn, moreBtn);
+        targetContainer.insertBefore(copyBtn, loadBtn);
+        targetContainer.insertBefore(starBtn, copyBtn);
     }
 
     // 2. Inject into Asset Grid Items directly (for the main assets pane)
@@ -439,6 +566,16 @@ function injectAssetsStarButton() {
             starBtn.className = btnClass + " flowcontrol-grid-star";
             starBtn.innerHTML = "<span>🍃</span>";
             starBtn.title = "Save to Favorites";
+            
+            const copyBtn = document.createElement("button");
+            copyBtn.className = btnClass + " flowcontrol-grid-copy";
+            copyBtn.innerHTML = "<span>📋</span>";
+            copyBtn.title = "Copy Prompt";
+            
+            const loadBtn = document.createElement("button");
+            loadBtn.className = btnClass + " flowcontrol-grid-load";
+            loadBtn.innerHTML = "<span>📥</span>";
+            loadBtn.title = "Load Workflow";
             
             shrinkContainer.style.display = "flex";
             shrinkContainer.style.gap = "4px";
@@ -464,7 +601,26 @@ function injectAssetsStarButton() {
                 }
             };
             
+            copyBtn.onclick = async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (await copyImagePrompt(img.src)) {
+                    copyBtn.innerHTML = "<span>✅</span>";
+                    setTimeout(() => copyBtn.innerHTML = "<span>📋</span>", 2000);
+                }
+            };
+            
+            loadBtn.onclick = async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if(confirm("Load workflow from this image? This will replace your current workspace.")) {
+                    loadWorkflowFromImage(img.src);
+                }
+            };
+            
             shrinkContainer.insertBefore(starBtn, shrinkContainer.firstChild);
+            shrinkContainer.insertBefore(copyBtn, shrinkContainer.firstChild);
+            shrinkContainer.insertBefore(loadBtn, shrinkContainer.firstChild);
         }
     });
 }
