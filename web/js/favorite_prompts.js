@@ -323,15 +323,6 @@ app.registerExtension({
                         else alert("Failed to copy prompt.");
                     }
                 });
-                options.push({
-                    content: "📥 Load Workflow",
-                    callback: async () => {
-                        let img = this.imgs[this.imageIndex || 0];
-                        if (!img || !img.src) return;
-                        if (!confirm("Load workflow from this image? This will replace your current workspace.")) return;
-                        await loadWorkflowFromImage(img.src);
-                    }
-                });
             }
         };
 
@@ -483,21 +474,11 @@ function injectAssetsStarButton() {
         const copyBtn = document.createElement("button");
         copyBtn.className = inspectBtn.className + " flowcontrol-copy-btn";
         if (inspectBtn.getAttribute("aria-label") === "Zoom in") {
-            copyBtn.innerHTML = "📋";
+            copyBtn.innerHTML = "🍃";
             copyBtn.setAttribute("aria-label", "Copy Prompt");
             copyBtn.title = "Copy Prompt";
         } else {
-            copyBtn.innerHTML = "<span>📋 Copy</span>";
-        }
-        
-        const loadBtn = document.createElement("button");
-        loadBtn.className = inspectBtn.className + " flowcontrol-load-btn";
-        if (inspectBtn.getAttribute("aria-label") === "Zoom in") {
-            loadBtn.innerHTML = "📥";
-            loadBtn.setAttribute("aria-label", "Load Workflow");
-            loadBtn.title = "Load Workflow";
-        } else {
-            loadBtn.innerHTML = "<span>📥 Load</span>";
+            copyBtn.innerHTML = "<span>🍃 Copy</span>";
         }
         
         copyBtn.onclick = async (e) => {
@@ -522,27 +503,8 @@ function injectAssetsStarButton() {
             }
         };
         
-        loadBtn.onclick = async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            let container = targetContainer;
-            let img = null;
-            while (container && container !== document.body) {
-                const found = container.querySelector("img");
-                if (found && found.src && found.src.includes("filename=")) { img = found; break; }
-                if (container.previousElementSibling && container.previousElementSibling.tagName === "IMG") { img = container.previousElementSibling; break; }
-                container = container.parentElement;
-            }
-            if (img) {
-                if(confirm("Load workflow from this image? This will replace your current workspace.")) {
-                    loadWorkflowFromImage(img.src);
-                }
-            }
-        };
-        
         // Insert buttons
-        targetContainer.insertBefore(loadBtn, moreBtn);
-        targetContainer.insertBefore(copyBtn, loadBtn);
+        targetContainer.insertBefore(copyBtn, moreBtn);
         targetContainer.insertBefore(starBtn, copyBtn);
     }
 
@@ -569,13 +531,8 @@ function injectAssetsStarButton() {
             
             const copyBtn = document.createElement("button");
             copyBtn.className = btnClass + " flowcontrol-grid-copy";
-            copyBtn.innerHTML = "<span>📋</span>";
+            copyBtn.innerHTML = "<span>🍃</span>";
             copyBtn.title = "Copy Prompt";
-            
-            const loadBtn = document.createElement("button");
-            loadBtn.className = btnClass + " flowcontrol-grid-load";
-            loadBtn.innerHTML = "<span>📥</span>";
-            loadBtn.title = "Load Workflow";
             
             shrinkContainer.style.display = "flex";
             shrinkContainer.style.gap = "4px";
@@ -606,21 +563,12 @@ function injectAssetsStarButton() {
                 e.stopPropagation();
                 if (await copyImagePrompt(img.src)) {
                     copyBtn.innerHTML = "<span>✅</span>";
-                    setTimeout(() => copyBtn.innerHTML = "<span>📋</span>", 2000);
-                }
-            };
-            
-            loadBtn.onclick = async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if(confirm("Load workflow from this image? This will replace your current workspace.")) {
-                    loadWorkflowFromImage(img.src);
+                    setTimeout(() => copyBtn.innerHTML = "<span>🍃</span>", 2000);
                 }
             };
             
             shrinkContainer.insertBefore(starBtn, shrinkContainer.firstChild);
             shrinkContainer.insertBefore(copyBtn, shrinkContainer.firstChild);
-            shrinkContainer.insertBefore(loadBtn, shrinkContainer.firstChild);
         }
     });
 }
