@@ -179,6 +179,11 @@ app.registerExtension({
         const applyKeyMasking = () => {
             const inputs = document.querySelectorAll('input');
             inputs.forEach(input => {
+                // Skip if already a color picker or attached
+                if (input.type === "color" || input.dataset.isColorPicker === "true" || input.dataset.colorPickerAttached === "true") {
+                    return;
+                }
+
                 // Find parent container that includes the label text
                 // LiteGraph uses <tr>, Vue V2 uses Flex/Grid <div> layouts
                 const settingRow = input.closest('tr') || 
@@ -227,6 +232,8 @@ app.registerExtension({
                     
                     const colorPicker = document.createElement("input");
                     colorPicker.type = "color";
+                    colorPicker.dataset.isColorPicker = "true";
+                    colorPicker.dataset.colorPickerAttached = "true";
                     colorPicker.value = input.value || (isUnpaused ? "#059669" : "#ea580c");
                     colorPicker.style.cssText = "width: 28px; height: 28px; border: none; border-radius: 4px; cursor: pointer; padding: 0; background: none; vertical-align: middle; margin-left: 8px;";
                     

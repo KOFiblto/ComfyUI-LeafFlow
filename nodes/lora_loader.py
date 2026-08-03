@@ -381,12 +381,29 @@ class FolderLoraLoader:
         return (model_lora, clip_lora)
 
 class FolderLoraLoaderPretty(FolderLoraLoader):
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "model": ("MODEL",),
+                "clip": ("CLIP",),
+                "folder": ("STRING", {"default": ""}),
+                "lora_name": (["[ NONE ]"], {}),
+                "strength_model": ("FLOAT", {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01}),
+                "strength_clip": ("FLOAT", {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01}),
+                "output_name": (["Parsed Name", "Filename"], {"default": "Parsed Name"}),
+            },
+            "hidden": {
+                "_selected_lora": ("STRING", {"default": "[ NONE ]"}),
+            }
+        }
+
     RETURN_TYPES = ("MODEL", "CLIP", "STRING")
-    RETURN_NAMES = ("MODEL", "CLIP", "pretty_name")
+    RETURN_NAMES = ("MODEL", "CLIP", "lora_name")
     DESCRIPTION = "LoRA Loader filtered by folder directory with formatted pretty names."
 
-    def load_lora(self, model, clip, folder, lora_name, strength_model, strength_clip, _selected_lora="[ NONE ]"):
-        active_lora = _selected_lora if _selected_lora else lora_name
+    def load_lora(self, model, clip, folder, lora_name, strength_model, strength_clip, output_name="Parsed Name", _selected_lora="[ NONE ]"):
+        active_lora = _selected_lora if _selected_lora and _selected_lora != "[ NONE ]" else lora_name
         if active_lora == "[ NONE ]" or not active_lora:
             return (model, clip, "")
 
@@ -403,11 +420,6 @@ class FolderLoraLoaderPretty(FolderLoraLoader):
         if " - " in active_lora:
             display_name = active_lora.split(" - ", 1)[1]
 
-        pretty_name_output = re.sub(r'\s+V\d+(\.\d+)?$', '', display_name, flags=re.IGNORECASE).strip()
-
-        if strength_model == 0 and strength_clip == 0:
-            return (model, clip, pretty_name_output)
-
         mapping = get_filtered_loras_mapping(folder, pretty=True)
         resolved_path = mapping.get(active_lora)
         
@@ -422,12 +434,20 @@ class FolderLoraLoaderPretty(FolderLoraLoader):
                     resolved_path = lora
                     break
 
+        if output_name == "Filename" and resolved_path:
+            pretty_name_output = os.path.splitext(os.path.basename(resolved_path))[0]
+        else:
+            pretty_name_output = re.sub(r'\s+V\d+(\.\d+)?$', '', display_name, flags=re.IGNORECASE).strip()
+
+        if strength_model == 0 and strength_clip == 0:
+            return (model, clip, pretty_name_output)
+
         if not resolved_path:
-            return (model, clip, "")
+            return (model, clip, pretty_name_output)
 
         lora_path = folder_paths.get_full_path("loras", resolved_path)
         if not lora_path or not os.path.exists(lora_path):
-            return (model, clip, "")
+            return (model, clip, pretty_name_output)
             
         lora = load_torch_file(lora_path, safe_load=True)
         model_lora, clip_lora = comfy.sd.load_lora_for_models(
@@ -446,6 +466,7 @@ class FolderLoraLoaderVisualPretty(FolderLoraLoaderPretty):
                 "folder": ("STRING", {"default": ""}),
                 "strength_model": ("FLOAT", {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01}),
                 "strength_clip": ("FLOAT", {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01}),
+                "output_name": (["Parsed Name", "Filename"], {"default": "Parsed Name"}),
             },
             "hidden": {
                 "_selected_lora": ("STRING", {"default": "[ NONE ]"}),
@@ -460,7 +481,7 @@ class FolderLoraLoaderVisualPretty(FolderLoraLoaderPretty):
             return random.random()
         return ""
 
-    def load_lora(self, model, clip, folder, strength_model, strength_clip, _selected_lora="[ NONE ]"):
+    def load_lora(self, model, clip, folder, strength_model, strength_clip, output_name="Parsed Name", _selected_lora="[ NONE ]"):
         return super().load_lora(
             model=model,
             clip=clip,
@@ -468,6 +489,7 @@ class FolderLoraLoaderVisualPretty(FolderLoraLoaderPretty):
             lora_name=_selected_lora,  
             strength_model=strength_model,
             strength_clip=strength_clip,
+            output_name=output_name,
             _selected_lora=_selected_lora
         )
 

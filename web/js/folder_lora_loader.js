@@ -299,9 +299,10 @@ app.registerExtension({
             let hiddenWidget = node.widgets.find(w => w.name === "_selected_lora");
             if (!hiddenWidget) {
                 hiddenWidget = node.addWidget("text", "_selected_lora", "[ NONE ]", () => {}, { serialize: true });
-                hiddenWidget.type = "hidden";
-                hiddenWidget.computeSize = () => [0, -4];
             }
+            hiddenWidget.type = "hidden";
+            hiddenWidget.hidden = true;
+            hiddenWidget.computeSize = () => [0, 0];
 
             if (folderWidget && loraWidget) {
                 let activeRequest = null;
