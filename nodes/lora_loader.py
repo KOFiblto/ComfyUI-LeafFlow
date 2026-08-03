@@ -79,6 +79,31 @@ def parse_pretty_name_with_version(filepath):
             return f"{pretty_name} {version_candidate.upper()}"
     return pretty_name
 
+def parse_clean_person_name(filepath):
+    filename = os.path.basename(filepath)
+    base = os.path.splitext(filename)[0]
+    
+    parts = base.split('_')
+    name_candidate = base
+    
+    if len(parts) >= 2:
+        if len(parts[0]) <= 8 or parts[0].lower() in ["krea2", "lora", "sdxl", "flux", "v1", "v2"]:
+            name_candidate = parts[1]
+        else:
+            name_candidate = parts[0]
+            
+    name_candidate = re.sub(r'(?<=[a-z])(?=[A-Z])', ' ', name_candidate)
+    name_candidate = name_candidate.replace('-', ' ').replace('.', ' ')
+    
+    noise_words = {
+        "v1", "v2", "v3", "v4", "v5", "v1.0", "v2.0", "v3.0", "v4.0",
+        "onetrainer", "kohya", "lora", "nsfw", "fp16", "fp32", "sd15", "sdxl", "flux", "dmd2", "loras"
+    }
+    
+    words = [w.strip() for w in name_candidate.split() if w.strip().lower() not in noise_words]
+    clean_name = " ".join([w.capitalize() for w in words])
+    return clean_name if clean_name else base
+
 def load_usage_data():
     usage_file = os.path.join(CURRENT_DIR, "lora_usage.json")
     usage_data = {}
@@ -208,29 +233,42 @@ def scrape_missing_images_sync():
             # 2. Try TMDB API search if enabled and TMDB key is provided
             if not success and tmdb_enabled and tmdb_key:
                 try:
+                    clean_person = parse_clean_person_name(lora)
+                    search_terms = [clean_person]
+                    words = clean_person.split()
+                    if len(words) >= 2:
+                        search_terms.append(" ".join(words[1:]))
+
                     tmdb_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
                     if tmdb_key.startswith("eyJ"):
                         tmdb_headers['Authorization'] = f"Bearer {tmdb_key}"
-                        url = f"https://api.themoviedb.org/3/search/person?query={urllib.parse.quote(pretty_name)}&include_adult=true"
-                    else:
-                        tmdb_headers['Authorization'] = f"Bearer {tmdb_key}"
-                        url = f"https://api.themoviedb.org/3/search/person?api_key={tmdb_key}&query={urllib.parse.quote(pretty_name)}&include_adult=true"
 
-                    req = urllib.request.Request(url, headers=tmdb_headers)
-                    with urllib.request.urlopen(req, timeout=10) as response:
-                        data = json.loads(response.read().decode('utf-8'))
-                    results = data.get("results", [])
-                    if results and len(results) > 0:
-                        profile_path = results[0].get("profile_path")
-                        if profile_path:
-                            img_url = f"https://image.tmdb.org/t/p/w500{profile_path}"
-                            dest_path = os.path.splitext(lora_path)[0] + ".jpg"
-                            img_req = urllib.request.Request(img_url, headers=tmdb_headers)
-                            with urllib.request.urlopen(img_req, timeout=15) as img_resp:
-                                with open(dest_path, "wb") as f:
-                                    f.write(img_resp.read())
-                            print(f"[FlowControl] Scraped TMDB preview for {pretty_name}")
-                            success = True
+                    for term in search_terms:
+                        if success:
+                            break
+                        encoded_term = urllib.parse.quote(term)
+                        if tmdb_key.startswith("eyJ"):
+                            url = f"https://api.themoviedb.org/3/search/person?query={encoded_term}&include_adult=true"
+                        else:
+                            tmdb_headers['Authorization'] = f"Bearer {tmdb_key}"
+                            url = f"https://api.themoviedb.org/3/search/person?api_key={tmdb_key}&query={encoded_term}&include_adult=true"
+
+                        req = urllib.request.Request(url, headers=tmdb_headers)
+                        with urllib.request.urlopen(req, timeout=10) as response:
+                            data = json.loads(response.read().decode('utf-8'))
+                        results = data.get("results", [])
+                        for res in results:
+                            profile_path = res.get("profile_path")
+                            if profile_path:
+                                img_url = f"https://image.tmdb.org/t/p/w500{profile_path}"
+                                dest_path = os.path.splitext(lora_path)[0] + ".jpg"
+                                img_req = urllib.request.Request(img_url, headers=tmdb_headers)
+                                with urllib.request.urlopen(img_req, timeout=15) as img_resp:
+                                    with open(dest_path, "wb") as f:
+                                        f.write(img_resp.read())
+                                print(f"[FlowControl] Scraped TMDB preview for {pretty_name} (via '{term}')")
+                                success = True
+                                break
                 except Exception as tmdb_err:
                     pass
 
