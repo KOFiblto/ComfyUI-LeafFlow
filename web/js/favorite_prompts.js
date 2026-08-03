@@ -474,11 +474,11 @@ function injectAssetsStarButton() {
         const copyBtn = document.createElement("button");
         copyBtn.className = inspectBtn.className + " flowcontrol-copy-btn";
         if (inspectBtn.getAttribute("aria-label") === "Zoom in") {
-            copyBtn.innerHTML = "🍃";
+            copyBtn.innerHTML = "📋";
             copyBtn.setAttribute("aria-label", "Copy Prompt");
             copyBtn.title = "Copy Prompt";
         } else {
-            copyBtn.innerHTML = "<span>🍃 Copy</span>";
+            copyBtn.innerHTML = "<span>📋 Copy</span>";
         }
         
         copyBtn.onclick = async (e) => {
@@ -531,7 +531,7 @@ function injectAssetsStarButton() {
             
             const copyBtn = document.createElement("button");
             copyBtn.className = btnClass + " flowcontrol-grid-copy";
-            copyBtn.innerHTML = "<span>🍃</span>";
+            copyBtn.innerHTML = "<span>📋</span>";
             copyBtn.title = "Copy Prompt";
             
             shrinkContainer.style.display = "flex";
@@ -563,7 +563,7 @@ function injectAssetsStarButton() {
                 e.stopPropagation();
                 if (await copyImagePrompt(img.src)) {
                     copyBtn.innerHTML = "<span>✅</span>";
-                    setTimeout(() => copyBtn.innerHTML = "<span>🍃</span>", 2000);
+                    setTimeout(() => copyBtn.innerHTML = "<span>📋</span>", 2000);
                 }
             };
             
