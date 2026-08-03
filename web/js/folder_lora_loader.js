@@ -272,6 +272,71 @@ visualStyles.textContent = `
         border: 1px solid #fff !important;
         box-shadow: 0 0 6px rgba(205, 127, 50, 0.8) !important;
     }
+
+    /* Over 100x Special Effects & Animations */
+    @keyframes pulseGold100 {
+        0% { box-shadow: 0 0 8px #ffd700, inset 0 0 4px #ffe600; border-color: #ffd700; }
+        50% { box-shadow: 0 0 20px #ffaa00, inset 0 0 10px #ffea00; border-color: #ffffff; }
+        100% { box-shadow: 0 0 8px #ffd700, inset 0 0 4px #ffe600; border-color: #ffd700; }
+    }
+    @keyframes pulseSilver100 {
+        0% { box-shadow: 0 0 8px #e2e8f0, inset 0 0 4px #ffffff; border-color: #cbd5e1; }
+        50% { box-shadow: 0 0 20px #ffffff, inset 0 0 10px #f8fafc; border-color: #ffffff; }
+        100% { box-shadow: 0 0 8px #e2e8f0, inset 0 0 4px #ffffff; border-color: #cbd5e1; }
+    }
+    @keyframes pulseBronze100 {
+        0% { box-shadow: 0 0 8px #cd7f32, inset 0 0 4px #d97706; border-color: #cd7f32; }
+        50% { box-shadow: 0 0 20px #f59e0b, inset 0 0 10px #fbbf24; border-color: #ffedd5; }
+        100% { box-shadow: 0 0 8px #cd7f32, inset 0 0 4px #d97706; border-color: #cd7f32; }
+    }
+    @keyframes pulseOver100 {
+        0% { box-shadow: 0 0 6px #a855f7; border-color: #a855f7; }
+        50% { box-shadow: 0 0 16px #c084fc; border-color: #e9d5ff; }
+        100% { box-shadow: 0 0 6px #a855f7; border-color: #a855f7; }
+    }
+
+    .lora-tile.rank-1-100:not(.selected) {
+        animation: pulseGold100 2s infinite ease-in-out !important;
+    }
+    .lora-tile.rank-2-100:not(.selected) {
+        animation: pulseSilver100 2s infinite ease-in-out !important;
+    }
+    .lora-tile.rank-3-100:not(.selected) {
+        animation: pulseBronze100 2s infinite ease-in-out !important;
+    }
+    .lora-tile.over-100:not(.selected) {
+        animation: pulseOver100 2s infinite ease-in-out !important;
+    }
+
+    .lora-tile-badge.rank-1-100 {
+        background: linear-gradient(135deg, #fff700, #ff8800) !important;
+        color: #000 !important;
+        border: 1.5px solid #ffffff !important;
+        box-shadow: 0 0 10px #ffd700 !important;
+        font-weight: 900 !important;
+    }
+    .lora-tile-badge.rank-2-100 {
+        background: linear-gradient(135deg, #ffffff, #64748b) !important;
+        color: #000 !important;
+        border: 1.5px solid #ffffff !important;
+        box-shadow: 0 0 10px #f8fafc !important;
+        font-weight: 900 !important;
+    }
+    .lora-tile-badge.rank-3-100 {
+        background: linear-gradient(135deg, #f59e0b, #78350f) !important;
+        color: #fff !important;
+        border: 1.5px solid #ffffff !important;
+        box-shadow: 0 0 10px #f59e0b !important;
+        font-weight: 900 !important;
+    }
+    .lora-tile-badge.over-100 {
+        background: linear-gradient(135deg, #a855f7, #581c87) !important;
+        color: #fff !important;
+        border: 1.5px solid #f3e8ff !important;
+        box-shadow: 0 0 10px #c084fc !important;
+        font-weight: 900 !important;
+    }
+
     /* Top 3 Glow styling for non-selected tiles */
     .lora-tile.rank-1:not(.selected) {
         border-color: #ffd700 !important;
@@ -594,22 +659,30 @@ app.registerExtension({
                         }
                         tilePrettyName = tilePrettyName.replace(/\s+V\d+(\.\d+)?$/i, "").trim();
 
+                        const systemPath = data.mapping[loraName];
+                        const usageCount = (data.usage && systemPath) ? (data.usage[systemPath] || 0) : 0;
+                        const isOver100 = usageCount >= 100;
+
                         let rankClass = "";
-                        if (ranks.rank1.includes(tilePrettyName)) rankClass = "rank-1";
-                        else if (ranks.rank2.includes(tilePrettyName)) rankClass = "rank-2";
-                        else if (ranks.rank3.includes(tilePrettyName)) rankClass = "rank-3";
+                        if (ranks.rank1.includes(tilePrettyName)) {
+                            rankClass = isOver100 ? "rank-1-100" : "rank-1";
+                        } else if (ranks.rank2.includes(tilePrettyName)) {
+                            rankClass = isOver100 ? "rank-2-100" : "rank-2";
+                        } else if (ranks.rank3.includes(tilePrettyName)) {
+                            rankClass = isOver100 ? "rank-3-100" : "rank-3";
+                        } else if (isOver100) {
+                            rankClass = "over-100";
+                        }
 
                         if (rankClass) {
                             tile.classList.add(rankClass);
                         }
 
-                        const systemPath = data.mapping[loraName];
-                        const usageCount = (data.usage && systemPath) ? (data.usage[systemPath] || 0) : 0;
                         if (usageCount > 0) {
                             const badge = document.createElement("div");
                             badge.className = "lora-tile-badge";
                             if (rankClass) badge.classList.add(rankClass);
-                            badge.innerText = usageCount;
+                            badge.innerText = isOver100 ? `🔥 ${usageCount}` : usageCount;
                             tile.appendChild(badge);
                         }
 
@@ -1143,11 +1216,18 @@ app.registerExtension({
 
                             // Rank classification based on versionless pretty name
                             let tilePrettyName = item.prettyName.replace(/\s+V\d+(\.\d+)?$/i, "").trim();
+                            const isOver100 = item.usageCount >= 100;
 
                             let rankClass = "";
-                            if (ranks.rank1.includes(tilePrettyName)) rankClass = "rank-1";
-                            else if (ranks.rank2.includes(tilePrettyName)) rankClass = "rank-2";
-                            else if (ranks.rank3.includes(tilePrettyName)) rankClass = "rank-3";
+                            if (ranks.rank1.includes(tilePrettyName)) {
+                                rankClass = isOver100 ? "rank-1-100" : "rank-1";
+                            } else if (ranks.rank2.includes(tilePrettyName)) {
+                                rankClass = isOver100 ? "rank-2-100" : "rank-2";
+                            } else if (ranks.rank3.includes(tilePrettyName)) {
+                                rankClass = isOver100 ? "rank-3-100" : "rank-3";
+                            } else if (isOver100) {
+                                rankClass = "over-100";
+                            }
 
                             if (rankClass) {
                                 tile.classList.add(rankClass);
@@ -1157,7 +1237,7 @@ app.registerExtension({
                                 const badge = document.createElement("div");
                                 badge.className = "lora-tile-badge";
                                 if (rankClass) badge.classList.add(rankClass);
-                                badge.innerText = item.usageCount;
+                                badge.innerText = isOver100 ? `🔥 ${item.usageCount}` : item.usageCount;
                                 tile.appendChild(badge);
                             }
 

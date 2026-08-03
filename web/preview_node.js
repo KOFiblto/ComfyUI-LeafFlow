@@ -140,6 +140,39 @@ app.registerExtension({
                 setTimeout(updateAllPreviewNodeDropdowns, 100);
             };
 
+            nodeType.prototype.computeSize = function() {
+                return [this.size[0], Math.max(200, this.size[1])];
+            };
+
+            nodeType.prototype.onDrawBackground = function(ctx) {
+                if (this.flags.collapsed) return;
+                if (this.imgs && this.imgs.length) {
+                    const img = this.imgs[this.imageIndex || 0];
+                    if (!img || !img.complete || (img.naturalWidth === 0 && img.width === 0)) return;
+                    
+                    const margin = 8;
+                    const topY = 55;
+                    const maxW = this.size[0] - margin * 2;
+                    const maxH = this.size[1] - topY - margin;
+                    if (maxW <= 0 || maxH <= 0) return;
+                    
+                    const w = img.naturalWidth || img.width;
+                    const h = img.naturalHeight || img.height;
+                    const imgAspect = w / h;
+                    let drawW = maxW;
+                    let drawH = maxW / imgAspect;
+                    if (drawH > maxH) {
+                        drawH = maxH;
+                        drawW = maxH * imgAspect;
+                    }
+                    
+                    const drawX = margin + (maxW - drawW) / 2;
+                    const drawY = topY + (maxH - drawH) / 2;
+                    
+                    ctx.drawImage(img, drawX, drawY, drawW, drawH);
+                }
+            };
+
             const onRemoved = nodeType.prototype.onRemoved;
             nodeType.prototype.onRemoved = function() {
                 if (onRemoved) {

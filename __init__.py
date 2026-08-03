@@ -95,6 +95,7 @@ async def save_settings(request):
         default_pause_mode = data.get("default_pause_mode")
         enable_civitai = data.get("enable_civitai_scraping")
         enable_tmdb = data.get("enable_tmdb_scraping")
+        enable_lora_usage = data.get("enable_lora_usage")
         restored_state = data.get("persistent_queue_restored_state")
 
         lines = []
@@ -113,6 +114,7 @@ async def save_settings(request):
         has_pause_mode = False
         has_civ_enable = False
         has_tmdb_enable = False
+        has_lora_usage = False
         has_restored_state = False
 
         for line in lines:
@@ -137,6 +139,9 @@ async def save_settings(request):
             elif line.strip().startswith("ENABLE_TMDB_SCRAPING=") and enable_tmdb is not None:
                 new_lines.append(f"ENABLE_TMDB_SCRAPING={enable_tmdb}\n")
                 has_tmdb_enable = True
+            elif line.strip().startswith("ENABLE_LORA_USAGE=") and enable_lora_usage is not None:
+                new_lines.append(f"ENABLE_LORA_USAGE={enable_lora_usage}\n")
+                has_lora_usage = True
             elif line.strip().startswith("PERSISTENT_QUEUE_RESTORED_STATE=") and restored_state is not None:
                 new_lines.append(f"PERSISTENT_QUEUE_RESTORED_STATE={restored_state}\n")
                 has_restored_state = True
@@ -157,6 +162,8 @@ async def save_settings(request):
             new_lines.append(f"ENABLE_CIVITAI_SCRAPING={enable_civitai}\n")
         if not has_tmdb_enable and enable_tmdb is not None:
             new_lines.append(f"ENABLE_TMDB_SCRAPING={enable_tmdb}\n")
+        if not has_lora_usage and enable_lora_usage is not None:
+            new_lines.append(f"ENABLE_LORA_USAGE={enable_lora_usage}\n")
         if not has_restored_state and restored_state is not None:
             new_lines.append(f"PERSISTENT_QUEUE_RESTORED_STATE={restored_state}\n")
 
@@ -167,6 +174,16 @@ async def save_settings(request):
             os.environ["CIVITAI_API_KEY"] = civitai_key
         if tmdb_key is not None:
             os.environ["TMDB_API_KEY"] = tmdb_key
+        if enable_lora_usage is not None:
+            os.environ["ENABLE_LORA_USAGE"] = enable_lora_usage
+
+        # Reset failed scrapes cache when keys/settings update
+        failed_file = os.path.join(CURRENT_DIR, "failed_scrapes.json")
+        try:
+            with open(failed_file, "w", encoding="utf-8") as f:
+                f.write("{}")
+        except Exception:
+            pass
 
     except Exception as e:
         print(f"[FlowControl] 🍃 Error saving settings to .env: {e}")

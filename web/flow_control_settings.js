@@ -20,6 +20,22 @@ app.registerExtension({
             }
         });
 
+        // 1b. Enable LoRA Usage Tracking Setting
+        app.ui.settings.addSetting({
+            id: "FlowControl.EnableLoraUsage",
+            name: "🍃 FlowControl: Enable LoRA Usage Tracking",
+            type: "boolean",
+            defaultValue: true,
+            tooltip: "Enable/disable tracking and displaying LoRA usage counts & rankings. Existing usage history is preserved when disabled.",
+            onChange(value) {
+                api.fetchApi("/flow_control/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ enable_lora_usage: value ? "true" : "false" })
+                }).catch(() => {});
+            }
+        });
+
         // 2. Civitai API Key Setting with Password Masking & Eye Icon Toggle
         app.ui.settings.addSetting({
             id: "FlowControl.CivitaiAPIKey",

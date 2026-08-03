@@ -99,6 +99,8 @@ def load_usage_data():
 def increment_lora_usage(lora_path):
     if not lora_path or lora_path == "[ NONE ]":
         return
+    if get_env_setting("ENABLE_LORA_USAGE", "true").lower() != "true":
+        return
     try:
         usage_file = os.path.join(CURRENT_DIR, "lora_usage.json")
         usage_data = load_usage_data()
@@ -206,8 +208,15 @@ def scrape_missing_images_sync():
             # 2. Try TMDB API search if enabled and TMDB key is provided
             if not success and tmdb_enabled and tmdb_key:
                 try:
-                    url = f"https://api.themoviedb.org/3/search/person?api_key={tmdb_key}&query={urllib.parse.quote(pretty_name)}&include_adult=true"
-                    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                    tmdb_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+                    if tmdb_key.startswith("eyJ"):
+                        tmdb_headers['Authorization'] = f"Bearer {tmdb_key}"
+                        url = f"https://api.themoviedb.org/3/search/person?query={urllib.parse.quote(pretty_name)}&include_adult=true"
+                    else:
+                        tmdb_headers['Authorization'] = f"Bearer {tmdb_key}"
+                        url = f"https://api.themoviedb.org/3/search/person?api_key={tmdb_key}&query={urllib.parse.quote(pretty_name)}&include_adult=true"
+
+                    req = urllib.request.Request(url, headers=tmdb_headers)
                     with urllib.request.urlopen(req, timeout=10) as response:
                         data = json.loads(response.read().decode('utf-8'))
                     results = data.get("results", [])
@@ -216,13 +225,13 @@ def scrape_missing_images_sync():
                         if profile_path:
                             img_url = f"https://image.tmdb.org/t/p/w500{profile_path}"
                             dest_path = os.path.splitext(lora_path)[0] + ".jpg"
-                            img_req = urllib.request.Request(img_url, headers={'User-Agent': 'Mozilla/5.0'})
+                            img_req = urllib.request.Request(img_url, headers=tmdb_headers)
                             with urllib.request.urlopen(img_req, timeout=15) as img_resp:
                                 with open(dest_path, "wb") as f:
                                     f.write(img_resp.read())
                             print(f"[FlowControl] Scraped TMDB preview for {pretty_name}")
                             success = True
-                except Exception:
+                except Exception as tmdb_err:
                     pass
 
             if not success:
@@ -299,12 +308,15 @@ async def get_loras_endpoint(request):
     if scrape_on_new:
         start_async_scraping()
     
-    usage_data = load_usage_data()
-    all_loras = folder_paths.get_filename_list("loras")
+    usage_enabled = get_env_setting("ENABLE_LORA_USAGE", "true").lower() == "true"
     usage_by_path = {}
-    for lora in all_loras:
-        pretty_name = parse_pretty_name(lora)
-        usage_by_path[lora] = usage_data.get(pretty_name, 0)
+    
+    if usage_enabled:
+        usage_data = load_usage_data()
+        all_loras = folder_paths.get_filename_list("loras")
+        for lora in all_loras:
+            pretty_name = parse_pretty_name(lora)
+            usage_by_path[lora] = usage_data.get(pretty_name, 0)
 
     return web.json_response({
         "names": list(mapping.keys()),
