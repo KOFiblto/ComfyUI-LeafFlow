@@ -79,30 +79,6 @@ def parse_pretty_name_with_version(filepath):
             return f"{pretty_name} {version_candidate.upper()}"
     return pretty_name
 
-def parse_clean_person_name(filepath):
-    filename = os.path.basename(filepath)
-    base = os.path.splitext(filename)[0]
-    
-    parts = base.split('_')
-    name_candidate = base
-    
-    if len(parts) >= 2:
-        if len(parts[0]) <= 8 or parts[0].lower() in ["krea2", "lora", "sdxl", "flux", "v1", "v2"]:
-            name_candidate = parts[1]
-        else:
-            name_candidate = parts[0]
-            
-    name_candidate = re.sub(r'(?<=[a-z])(?=[A-Z])', ' ', name_candidate)
-    name_candidate = name_candidate.replace('-', ' ').replace('.', ' ')
-    
-    noise_words = {
-        "v1", "v2", "v3", "v4", "v5", "v1.0", "v2.0", "v3.0", "v4.0",
-        "onetrainer", "kohya", "lora", "nsfw", "fp16", "fp32", "sd15", "sdxl", "flux", "dmd2", "loras"
-    }
-    
-    words = [w.strip() for w in name_candidate.split() if w.strip().lower() not in noise_words]
-    clean_name = " ".join([w.capitalize() for w in words])
-    return clean_name if clean_name else base
 
 def load_usage_data():
     usage_file = os.path.join(CURRENT_DIR, "lora_usage.json")
@@ -233,7 +209,7 @@ def scrape_missing_images_sync():
             # 2. Try TMDB API search if enabled and TMDB key is provided
             if not success and tmdb_enabled and tmdb_key:
                 try:
-                    clean_person = parse_clean_person_name(lora)
+                    clean_person = parse_pretty_name(lora)
                     search_terms = [clean_person]
                     words = clean_person.split()
                     if len(words) >= 2:

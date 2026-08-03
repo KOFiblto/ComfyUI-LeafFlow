@@ -6,7 +6,6 @@ class AspectRatioFinder:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "text": ("STRING", {"forceInput": True}),
                 "aspect_ratios": ("STRING", {
                     "default": "1:1, 2:3, 3:2, 3:4, 4:3, 9:16, 16:9, 21:9",
                     "multiline": False
@@ -49,6 +48,9 @@ class AspectRatioFinder:
                     "display": "number",
                     "advanced": True
                 }),
+            },
+            "optional": {
+                "text": ("STRING", {"forceInput": True}),
             }
         }
 
@@ -56,20 +58,20 @@ class AspectRatioFinder:
     RETURN_NAMES = ("width", "height")
     FUNCTION = "find_aspect_ratio"
     CATEGORY = "🍃 FlowControl/Utils"
-    DESCRIPTION = "Searches input text for aspect ratios (e.g. 16:9), syntax checks them, and calculates width & height for target megapixels."
+    DESCRIPTION = "Searches text for aspect ratios (e.g. 16:9), syntax checks them, and calculates width & height for target megapixels."
 
     def find_aspect_ratio(
         self,
-        text,
         aspect_ratios="1:1, 2:3, 3:2, 3:4, 4:3, 9:16, 16:9, 21:9",
         search_mode="First match (Front)",
         target_mp=1.0,
         default_aspect_ratio="1:1",
         multiple_of=8,
         min_mp=0.1,
-        max_mp=16.0
+        max_mp=16.0,
+        text=None
     ):
-        text_str = str(text or "")
+        text_str = str(text) if text is not None else ""
 
         # Clamp target_mp between min_mp and max_mp
         min_v = float(min_mp)
