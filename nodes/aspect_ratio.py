@@ -54,8 +54,8 @@ class AspectRatioFinder:
             }
         }
 
-    RETURN_TYPES = ("INT", "INT")
-    RETURN_NAMES = ("width", "height")
+    RETURN_TYPES = ("INT", "INT", "STRING")
+    RETURN_NAMES = ("width", "height", "aspect_ratio")
     FUNCTION = "find_aspect_ratio"
     CATEGORY = "🍃 FlowControl/Utils"
     DESCRIPTION = "Searches text for aspect ratios (e.g. 16:9), syntax checks them, and calculates width & height for target megapixels."
@@ -131,4 +131,4 @@ class AspectRatioFinder:
         width = max(m, int(round(raw_w / m)) * m)
         height = max(m, int(round(raw_h / m)) * m)
 
-        return (width, height)
+        return (width, height, found_ratio)

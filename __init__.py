@@ -17,6 +17,7 @@ from .nodes.preview_latent import PreviewLatentLiveNode
 from .nodes.decision_node import FlowControlDecision
 from .nodes.favorite_prompts import FavoritePromptLoader, SaveFavoritePreview
 from .nodes.aspect_ratio import AspectRatioFinder
+from .nodes.lora_finder import LoraTextFinder
 
 
 NODE_CLASS_MAPPINGS = {
@@ -32,7 +33,8 @@ NODE_CLASS_MAPPINGS = {
     "FlowControlDecision": FlowControlDecision,
     "FavoritePromptLoader": FavoritePromptLoader,
     "SaveFavoritePreview": SaveFavoritePreview,
-    "AspectRatioFinder": AspectRatioFinder
+    "AspectRatioFinder": AspectRatioFinder,
+    "LoraTextFinder": LoraTextFinder
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -48,7 +50,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "FlowControlDecision": "🍃 FlowControl Decision",
     "FavoritePromptLoader": "🍃 Favorite Prompts",
     "SaveFavoritePreview": "🍃 Save Favorite Preview",
-    "AspectRatioFinder": "🍃 Aspect Ratio Finder"
+    "AspectRatioFinder": "🍃 Aspect Ratio Finder",
+    "LoraTextFinder": "🍃 Text LoRA Finder"
 }
 
 WEB_DIRECTORY = "./web"
@@ -62,7 +65,7 @@ ENV_FILE = os.path.join(CURRENT_DIR, ".env")
 
 routes = server.routes
 
-print("[ComfyUI-FlowControl] 🍃 Loaded 12 nodes & visual endpoints successfully.")
+print("[ComfyUI-FlowControl] 🍃 Loaded 13 nodes & visual endpoints successfully.")
 
 @routes.get("/flow_control/settings")
 async def get_settings(request):
