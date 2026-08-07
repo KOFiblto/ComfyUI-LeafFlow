@@ -104,7 +104,7 @@ class AspectRatioFinder:
         if text_str:
             for ratio in valid_ratios:
                 w_p, h_p = ratio.split(":")
-                pattern = r'(?<!\d)' + re.escape(w_p) + r'\s*[:xX/]\s*' + re.escape(h_p) + r'(?!\d)'
+                pattern = r'(?<![\d.])' + re.escape(w_p) + r'\s*[:xX/]\s*' + re.escape(h_p) + r'(?![\d.])'
                 for m in re.finditer(pattern, text_str):
                     matches.append((m.start(), ratio))
 
