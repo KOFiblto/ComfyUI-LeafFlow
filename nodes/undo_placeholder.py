@@ -46,7 +46,7 @@ def get_pretty_names_for_folder(folder):
             
     return sorted(list(pretty_names), key=len, reverse=True)
 
-class UndoPlaceholder:
+class BackToPlaceholder:
     @classmethod
     def INPUT_TYPES(s):
         return {
@@ -61,7 +61,7 @@ class UndoPlaceholder:
     RETURN_NAMES = ("prompt",)
     FUNCTION = "undo_placeholder"
     CATEGORY = UTILS_CATEGORY
-    DESCRIPTION = "Scans prompt string for names matching LoRA files in the given folder and replaces them back with a placeholder token (e.g. %celeb%)."
+    DESCRIPTION = "Execution anchor node that undoes placing content into a placeholder slot by restoring placeholder tokens (e.g. %celeb%)."
 
     def undo_placeholder(self, prompt, lora_folder, placeholder):
         if not prompt or not lora_folder:

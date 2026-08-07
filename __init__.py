@@ -9,7 +9,7 @@ from .nodes.lora_loader import (
     FolderLoraLoaderVisualPrettyV2
 )
 from .nodes.image_loader import ImageLoaderVisualPrettyV2
-from .nodes.undo_placeholder import UndoPlaceholder
+from .nodes.undo_placeholder import BackToPlaceholder
 from .nodes.auto_watcher import LoadImageFromFolder
 from .nodes.load_recent import LoadRecentOutputs
 from .nodes.preview_latent import PreviewLatentLiveNode
@@ -26,7 +26,8 @@ NODE_CLASS_MAPPINGS = {
     "FolderLoraLoaderPretty": FolderLoraLoaderPretty,
     "FolderLoraLoaderVisualPrettyV2": FolderLoraLoaderVisualPrettyV2,
     "ImageLoaderVisualPrettyV2": ImageLoaderVisualPrettyV2,
-    "UndoPlaceholder": UndoPlaceholder,
+    "BackToPlaceholder": BackToPlaceholder,
+    "UndoPlaceholder": BackToPlaceholder, # Backward compatibility alias
     "LoadImageFromFolder": LoadImageFromFolder,
     "LoadRecentOutputs": LoadRecentOutputs,
     "PreviewLatentLive": PreviewLatentLiveNode,
@@ -44,7 +45,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "FolderLoraLoaderPretty": "🍃 LoRA Loader (Pretty)",
     "FolderLoraLoaderVisualPrettyV2": "🍃 Visual LoRA Loader",
     "ImageLoaderVisualPrettyV2": "🍃 Visual Image Loader",
-    "UndoPlaceholder": "🍃 Undo Placeholder",
+    "BackToPlaceholder": "🍃 Back To Placeholder",
+    "UndoPlaceholder": "🍃 Back To Placeholder",
     "LoadImageFromFolder": "🍃 Load Image From Folder",
     "LoadRecentOutputs": "🍃 Recent Outputs",
     "PreviewLatentLive": "🍃 Live Latent Preview",
