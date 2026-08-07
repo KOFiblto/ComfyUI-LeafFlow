@@ -44,15 +44,20 @@ class LoadRecentOutputs:
 
         valid_extensions = ('.png', '.jpg', '.jpeg', '.webp', '.bmp')
         file_list = []
-        for root, _, files in os.walk(output_dir):
-            for file in files:
-                if file.lower().endswith(valid_extensions):
-                    path = os.path.join(root, file)
-                    try:
-                        mtime = os.path.getmtime(path)
-                        file_list.append((path, mtime))
-                    except OSError:
-                        continue
+        try:
+            for root, dirs, files in os.walk(output_dir):
+                for file in files:
+                    if file.lower().endswith(valid_extensions):
+                        path = os.path.join(root, file)
+                        try:
+                            mtime = os.path.getmtime(path)
+                            file_list.append((path, mtime))
+                        except OSError:
+                            continue
+        except Exception as e:
+            print(f"[FlowControl] 🍃 Error scanning output folder '{output_dir}': {e}")
+            dummy = torch.zeros((1, 64, 64, 3), dtype=torch.float32)
+            return (dummy,)
 
         if not file_list:
             dummy = torch.zeros((1, 64, 64, 3), dtype=torch.float32)
