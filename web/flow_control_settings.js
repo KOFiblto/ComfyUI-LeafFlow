@@ -36,7 +36,7 @@ app.registerExtension({
             }
         });
 
-        // 2. Civitai API Key Setting with Password Masking & Eye Icon Toggle
+        // 2. Civitai API Key Setting
         app.ui.settings.addSetting({
             id: "FlowControl.CivitaiAPIKey",
             name: "🍃 FlowControl: Civitai API Key",
@@ -69,7 +69,7 @@ app.registerExtension({
             }
         });
 
-        // 4. TMDB API Key Setting with Password Masking & Eye Icon Toggle
+        // 4. TMDB API Key Setting
         app.ui.settings.addSetting({
             id: "FlowControl.TMDBAPIKey",
             name: "🍃 FlowControl: TMDB API Key / Read Access Token",
@@ -192,111 +192,5 @@ app.registerExtension({
                 }).catch(() => {});
             }
         });
-
-        // Masking password inputs, adding color pickers and reset buttons in ComfyUI settings dialog
-        const applyKeyMasking = () => {
-            const inputs = document.querySelectorAll('input');
-            inputs.forEach(input => {
-                // Skip if already a color picker or attached
-                if (input.type === "color" || input.dataset.isColorPicker === "true" || input.dataset.colorPickerAttached === "true") {
-                    return;
-                }
-
-                const settingRow = input.closest('tr') || 
-                                   input.closest('.p-4') || 
-                                   input.parentElement?.parentElement || 
-                                   input.parentElement;
-                
-                if (!settingRow) return;
-                const text = settingRow.textContent || "";
-                
-                // Password masking for API keys
-                if ((text.includes("Civitai API Key") || text.includes("TMDB API Key")) && !input.dataset.masked) {
-                    input.dataset.masked = "true";
-                    input.type = "password";
-                    input.style.paddingRight = "2.2rem";
-                    
-                    const toggleBtn = document.createElement("button");
-                    toggleBtn.type = "button";
-                    toggleBtn.innerHTML = "👁️";
-                    toggleBtn.style.cssText = "position: absolute; right: 0.5rem; background: none; border: none; cursor: pointer; font-size: 1rem; color: #a1a1aa; padding: 2px;";
-                    toggleBtn.title = "Toggle Show/Hide Key";
-                    
-                    toggleBtn.onclick = (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (input.type === "password") {
-                            input.type = "text";
-                            toggleBtn.innerHTML = "🙈";
-                        } else {
-                            input.type = "password";
-                            toggleBtn.innerHTML = "👁️";
-                        }
-                    };
-
-                    const container = input.parentElement;
-                    if (container) {
-                        container.style.position = "relative";
-                        container.appendChild(toggleBtn);
-                    }
-                }
-
-                // Color picker popup & Reset Default button for Pause button colors
-                if ((text.includes("Pause Button Unpaused Color") || text.includes("Pause Button Paused Color")) && !input.dataset.colorPickerAttached) {
-                    input.dataset.colorPickerAttached = "true";
-                    const isUnpaused = text.includes("Unpaused Color");
-                    const defaultHex = isUnpaused ? "#059669" : "#ea580c";
-                    
-                    const colorPicker = document.createElement("input");
-                    colorPicker.type = "color";
-                    colorPicker.dataset.isColorPicker = "true";
-                    colorPicker.dataset.colorPickerAttached = "true";
-                    colorPicker.value = input.value || defaultHex;
-                    colorPicker.style.cssText = "width: 28px; height: 28px; border: none; border-radius: 4px; cursor: pointer; padding: 0; background: none; vertical-align: middle; margin-left: 8px;";
-                    
-                    const resetBtn = document.createElement("button");
-                    resetBtn.type = "button";
-                    resetBtn.innerText = "↺ Reset";
-                    resetBtn.title = `Reset to default color (${defaultHex})`;
-                    resetBtn.style.cssText = "margin-left: 8px; padding: 2px 8px; background: #333; color: #ccc; border: 1px solid #444; border-radius: 4px; font-size: 11px; cursor: pointer;";
-                    resetBtn.onmouseover = () => resetBtn.style.background = "#444";
-                    resetBtn.onmouseout = () => resetBtn.style.background = "#333";
-                    
-                    resetBtn.onclick = (e) => {
-                        e.preventDefault();
-                        input.value = defaultHex;
-                        colorPicker.value = defaultHex;
-                        input.dispatchEvent(new Event("change", { bubbles: true }));
-                        const varName = isUnpaused ? "--pq-unpaused-color" : "--pq-paused-color";
-                        document.documentElement.style.setProperty(varName, defaultHex);
-                    };
-
-                    colorPicker.oninput = (e) => {
-                        input.value = e.target.value;
-                        input.dispatchEvent(new Event("change", { bubbles: true }));
-                        const varName = isUnpaused ? "--pq-unpaused-color" : "--pq-paused-color";
-                        document.documentElement.style.setProperty(varName, e.target.value);
-                    };
-
-                    input.oninput = (e) => {
-                        colorPicker.value = e.target.value;
-                        const varName = isUnpaused ? "--pq-unpaused-color" : "--pq-paused-color";
-                        document.documentElement.style.setProperty(varName, e.target.value);
-                    };
-
-                    const container = input.parentElement;
-                    if (container) {
-                        container.style.display = "flex";
-                        container.style.alignItems = "center";
-                        container.appendChild(colorPicker);
-                        container.appendChild(resetBtn);
-                    }
-                }
-            });
-        };
-
-        setInterval(() => {
-            applyKeyMasking();
-        }, 1000);
     }
 });
