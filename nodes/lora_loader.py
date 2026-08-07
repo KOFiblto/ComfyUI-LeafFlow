@@ -32,20 +32,7 @@ def get_api_keys():
         except Exception:
             pass
             
-    if not tmdb_key:
-        tmdb_key = "3b637679827fb7f94df8bfa9d604acb1"
-        env_path = "D:\\Apps\\WankRank\\.env"
-        if os.path.exists(env_path):
-            try:
-                with open(env_path, "r", encoding="utf-8") as f:
-                    for line in f:
-                        if line.strip().startswith("TMDB_API_KEY="):
-                            tmdb_key = line.strip().split("=", 1)[1].strip()
-                            break
-            except Exception:
-                pass
-                
-    return civitai_key, tmdb_key
+    return civitai_key.strip(), tmdb_key.strip()
 
 scraping_thread = None
 scraping_lock = threading.Lock()

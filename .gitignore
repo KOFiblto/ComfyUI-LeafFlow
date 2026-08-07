@@ -13,6 +13,8 @@ persistent_queue.json.tmp
 lora_usage.json
 failed_scrapes.json
 image_prompts_cache.json
+user/
+*.json.tmp
 
 # IDE and OS metadata
 .idea/
