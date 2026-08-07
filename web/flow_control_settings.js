@@ -10,7 +10,7 @@ app.registerExtension({
             name: "🍃 FlowControl: Enable Civitai Auto-Scraping",
             type: "boolean",
             defaultValue: true,
-            tooltip: "Enable/disable downloading LoRA preview thumbnails from Civitai.",
+            tooltip: "Toggles automated downloading of preview thumbnails for new LoRAs from Civitai via SHA256 file hashes. Disabling this blocks Civitai network calls (local preview images next to LoRAs will still work).",
             onChange(value) {
                 api.fetchApi("/flow_control/settings", {
                     method: "POST",
@@ -26,7 +26,7 @@ app.registerExtension({
             name: "🍃 FlowControl: Enable LoRA Usage Tracking",
             type: "boolean",
             defaultValue: true,
-            tooltip: "Enable/disable tracking and displaying LoRA usage counts & rankings. Existing usage history is preserved when disabled.",
+            tooltip: "Toggles tracking and displaying LoRA usage counts & visual rank badges (🔥, Gold, Silver, Bronze). Existing usage history is preserved when disabled.",
             onChange(value) {
                 api.fetchApi("/flow_control/settings", {
                     method: "POST",
@@ -42,12 +42,13 @@ app.registerExtension({
             name: "🍃 FlowControl: Civitai API Key",
             type: "text",
             defaultValue: "",
-            tooltip: "Optional. Civitai API works publicly without a key for normal models. Only required for NSFW models, private models, or higher API rate limits.",
+            tooltip: "Optional. Civitai SHA256 search works publicly without a key for normal models. Only needed for NSFW/private models or higher rate limits. Whitespace is automatically stripped.",
             onChange(value) {
+                const cleanKey = (value || "").trim();
                 api.fetchApi("/flow_control/settings", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ civitai_api_key: value })
+                    body: JSON.stringify({ civitai_api_key: cleanKey })
                 }).catch(() => {});
             }
         });
@@ -58,7 +59,7 @@ app.registerExtension({
             name: "🍃 FlowControl: Enable TMDB Auto-Scraping",
             type: "boolean",
             defaultValue: true,
-            tooltip: "Enable/disable downloading celebrity preview thumbnails from TMDB.",
+            tooltip: "Toggles automated downloading of celebrity preview thumbnails from TMDB. Disabling this blocks TMDB network calls.",
             onChange(value) {
                 api.fetchApi("/flow_control/settings", {
                     method: "POST",
@@ -71,15 +72,16 @@ app.registerExtension({
         // 4. TMDB API Key Setting with Password Masking & Eye Icon Toggle
         app.ui.settings.addSetting({
             id: "FlowControl.TMDBAPIKey",
-            name: "🍃 FlowControl: TMDB API Key",
+            name: "🍃 FlowControl: TMDB API Key / Read Access Token",
             type: "text",
             defaultValue: "",
-            tooltip: "Optional. Only needed if auto-scraping celebrity preview thumbnails from TMDB.",
+            tooltip: "Optional. Accepts TMDB v3 API keys or TMDB v4 Read Access Tokens (eyJ...). Whitespace is automatically stripped.",
             onChange(value) {
+                const cleanKey = (value || "").trim();
                 api.fetchApi("/flow_control/settings", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ tmdb_api_key: value })
+                    body: JSON.stringify({ tmdb_api_key: cleanKey })
                 }).catch(() => {});
             }
         });
@@ -101,16 +103,16 @@ app.registerExtension({
             }
         });
 
-        // 6. Default Pause Queue Mode (Finish vs Instant)
+        // 6. Default Pause Queue Mode (Finish Active Prompt vs Instant Resume Node)
         app.ui.settings.addSetting({
             id: "FlowControl.DefaultPauseMode",
             name: "🍃 FlowControl: Default Pause Queue Mode on Launch",
             type: "combo",
-            options: ["Pause (Finish)", "Pause (Instant)"],
-            defaultValue: "Pause (Finish)",
+            options: ["Finish Active Prompt", "Instant Resume Node"],
+            defaultValue: "Finish Active Prompt",
             tooltip: "Choose default pause behavior mode on ComfyUI startup.",
             onChange(value) {
-                const modeKey = value === "Pause (Instant)" ? "instantly" : "after_finish";
+                const modeKey = (value === "Instant Resume Node" || value === "Pause (Instant)") ? "instantly" : "after_finish";
                 api.fetchApi("/flow_control/settings", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -191,7 +193,7 @@ app.registerExtension({
             }
         });
 
-        // Masking password inputs and adding color pickers in ComfyUI settings dialog
+        // Masking password inputs, adding color pickers and reset buttons in ComfyUI settings dialog
         const applyKeyMasking = () => {
             const inputs = document.querySelectorAll('input');
             inputs.forEach(input => {
@@ -200,8 +202,6 @@ app.registerExtension({
                     return;
                 }
 
-                // Find parent container that includes the label text
-                // LiteGraph uses <tr>, Vue V2 uses Flex/Grid <div> layouts
                 const settingRow = input.closest('tr') || 
                                    input.closest('.p-4') || 
                                    input.parentElement?.parentElement || 
@@ -241,18 +241,36 @@ app.registerExtension({
                     }
                 }
 
-                // Color picker popup for Pause button colors
+                // Color picker popup & Reset Default button for Pause button colors
                 if ((text.includes("Pause Button Unpaused Color") || text.includes("Pause Button Paused Color")) && !input.dataset.colorPickerAttached) {
                     input.dataset.colorPickerAttached = "true";
                     const isUnpaused = text.includes("Unpaused Color");
+                    const defaultHex = isUnpaused ? "#059669" : "#ea580c";
                     
                     const colorPicker = document.createElement("input");
                     colorPicker.type = "color";
                     colorPicker.dataset.isColorPicker = "true";
                     colorPicker.dataset.colorPickerAttached = "true";
-                    colorPicker.value = input.value || (isUnpaused ? "#059669" : "#ea580c");
+                    colorPicker.value = input.value || defaultHex;
                     colorPicker.style.cssText = "width: 28px; height: 28px; border: none; border-radius: 4px; cursor: pointer; padding: 0; background: none; vertical-align: middle; margin-left: 8px;";
                     
+                    const resetBtn = document.createElement("button");
+                    resetBtn.type = "button";
+                    resetBtn.innerText = "↺ Reset";
+                    resetBtn.title = `Reset to default color (${defaultHex})`;
+                    resetBtn.style.cssText = "margin-left: 8px; padding: 2px 8px; background: #333; color: #ccc; border: 1px solid #444; border-radius: 4px; font-size: 11px; cursor: pointer;";
+                    resetBtn.onmouseover = () => resetBtn.style.background = "#444";
+                    resetBtn.onmouseout = () => resetBtn.style.background = "#333";
+                    
+                    resetBtn.onclick = (e) => {
+                        e.preventDefault();
+                        input.value = defaultHex;
+                        colorPicker.value = defaultHex;
+                        input.dispatchEvent(new Event("change", { bubbles: true }));
+                        const varName = isUnpaused ? "--pq-unpaused-color" : "--pq-paused-color";
+                        document.documentElement.style.setProperty(varName, defaultHex);
+                    };
+
                     colorPicker.oninput = (e) => {
                         input.value = e.target.value;
                         input.dispatchEvent(new Event("change", { bubbles: true }));
@@ -271,6 +289,7 @@ app.registerExtension({
                         container.style.display = "flex";
                         container.style.alignItems = "center";
                         container.appendChild(colorPicker);
+                        container.appendChild(resetBtn);
                     }
                 }
             });
