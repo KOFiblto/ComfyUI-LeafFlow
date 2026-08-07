@@ -103,7 +103,8 @@ app.registerExtension({
                 // Create robust DOM container for V2 overlay
                 const viewContainer = document.createElement("div");
                 viewContainer.style.width = "100%";
-                viewContainer.style.height = "100%";
+                viewContainer.style.height = "calc(100% - 55px)";
+                viewContainer.style.maxHeight = "calc(100% - 55px)";
                 viewContainer.style.display = "flex";
                 viewContainer.style.alignItems = "center";
                 viewContainer.style.justifyContent = "center";
@@ -112,6 +113,7 @@ app.registerExtension({
                 viewContainer.style.fontFamily = "Inter, sans-serif";
                 viewContainer.style.fontSize = "14px";
                 viewContainer.style.overflow = "hidden";
+                viewContainer.style.boxSizing = "border-box";
                 
                 const fallbackText = document.createElement("div");
                 fallbackText.className = "flowcontrol-live-preview-fallback";
@@ -122,6 +124,8 @@ app.registerExtension({
                 imgElement.className = "flowcontrol-live-preview-img";
                 imgElement.style.maxWidth = "100%";
                 imgElement.style.maxHeight = "100%";
+                imgElement.style.width = "auto";
+                imgElement.style.height = "auto";
                 imgElement.style.objectFit = "contain";
                 imgElement.style.display = "none";
                 viewContainer.appendChild(imgElement);
@@ -141,7 +145,12 @@ app.registerExtension({
             };
 
             nodeType.prototype.computeSize = function() {
-                return [this.size[0], Math.max(200, this.size[1])];
+                return [Math.max(200, this.size[0]), Math.max(200, this.size[1])];
+            };
+
+            nodeType.prototype.onResize = function(size) {
+                this.size[0] = Math.max(200, size[0]);
+                this.size[1] = Math.max(200, size[1]);
             };
 
             nodeType.prototype.onDrawBackground = function(ctx) {
@@ -152,13 +161,14 @@ app.registerExtension({
                     
                     const margin = 8;
                     const topY = 55;
-                    const maxW = this.size[0] - margin * 2;
-                    const maxH = this.size[1] - topY - margin;
+                    const maxW = Math.max(10, this.size[0] - margin * 2);
+                    const maxH = Math.max(10, this.size[1] - topY - margin);
                     if (maxW <= 0 || maxH <= 0) return;
                     
                     const w = img.naturalWidth || img.width;
                     const h = img.naturalHeight || img.height;
                     const imgAspect = w / h;
+                    
                     let drawW = maxW;
                     let drawH = maxW / imgAspect;
                     if (drawH > maxH) {

@@ -330,90 +330,72 @@ app.registerExtension({
     }
 });
 
-// --- 2. Hook into Assets Pane Submenu (3-Dots Options Menu) ---
-function injectSubmenuItems(menu) {
-    if (!menu || menu.querySelector(".flowcontrol-menu-star")) return;
+// --- 2. Hook into Standard Top Hover Action Bar (White Popup Hover Menu over Asset/Preview Images) ---
+function injectHoverOverlayActions(overlayBar) {
+    if (!overlayBar || overlayBar.querySelector(".flowcontrol-hover-fav")) return;
     
-    // Check if this container is a popup menu
-    const isMenu = menu.getAttribute("role") === "menu" || 
-                   menu.matches?.('[data-radix-popper-content-wrapper]') ||
-                   menu.querySelector('[role="menuitem"]');
-    if (!isMenu) return;
-    
-    // Sample class from existing menu item
-    const sampleItem = menu.querySelector('[role="menuitem"], button, div');
-    const baseClass = sampleItem ? sampleItem.className : "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 gap-2";
+    // Locate parent image card or asset item container
+    const parentCard = overlayBar.closest('div[data-virtual-grid-item], .asset-card, [data-node-id], .lg-node, div.relative');
+    const img = parentCard ? parentCard.querySelector("img") : overlayBar.parentElement?.querySelector("img");
+    if (!img || !img.src) return;
 
-    const getActiveAssetImage = () => {
-        const activeItem = document.querySelector('div[data-virtual-grid-item][data-selected="true"]') || 
-                           document.querySelector('div[data-virtual-grid-item]:hover');
-        let img = activeItem ? activeItem.querySelector("img") : document.querySelector("img[src*='filename=']");
-        return img;
-    };
-
-    // 1. Save to Favorites
-    const starItem = document.createElement("div");
-    starItem.setAttribute("role", "menuitem");
-    starItem.className = baseClass + " flowcontrol-menu-star cursor-pointer";
-    starItem.innerHTML = "<span>🍃 Save to Favorites</span>";
-    
-    starItem.onclick = async (e) => {
+    // 1. Save to Favorites Button
+    const favBtn = document.createElement("button");
+    favBtn.className = "flowcontrol-hover-fav px-2 py-1 text-xs bg-white/90 hover:bg-white text-black rounded shadow-md flex items-center gap-1 font-medium border border-gray-200 cursor-pointer pointer-events-auto transition-transform active:scale-95";
+    favBtn.innerHTML = "<span>🍃 Favorites</span>";
+    favBtn.title = "Save to Favorites";
+    favBtn.onclick = async (e) => {
         e.preventDefault();
         e.stopPropagation();
-        const img = getActiveAssetImage();
-        if (img && img.src) {
-            let url = new URL(img.src, window.location.origin);
-            let filename = url.searchParams.get("filename") || "";
-            let defaultName = filename.replace(/\.[^/.]+$/, "");
-            const details = await promptForFavoriteDetails("", defaultName);
-            if (details) {
-                saveToFavorites(img.src, details.subcategory, details.custom_name).then(success => {
-                    if (success) {
-                        starItem.innerHTML = "<span>✅ Saved!</span>";
-                        setTimeout(() => starItem.innerHTML = "<span>🍃 Save to Favorites</span>", 2000);
-                    }
-                });
-            }
-        } else {
-            alert("FlowControl: Could not locate asset image source.");
-        }
-    };
-    
-    // 2. Copy Prompt
-    const copyItem = document.createElement("div");
-    copyItem.setAttribute("role", "menuitem");
-    copyItem.className = baseClass + " flowcontrol-menu-copy cursor-pointer";
-    copyItem.innerHTML = "<span>📋 Copy Prompt</span>";
-    
-    copyItem.onclick = async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const img = getActiveAssetImage();
-        if (img && img.src) {
-            copyImagePrompt(img.src).then(success => {
+        let url = new URL(img.src, window.location.origin);
+        let filename = url.searchParams.get("filename") || "";
+        let defaultName = filename.replace(/\.[^/.]+$/, "");
+        
+        const details = await promptForFavoriteDetails("", defaultName);
+        if (details) {
+            saveToFavorites(img.src, details.subcategory, details.custom_name).then(success => {
                 if (success) {
-                    copyItem.innerHTML = "<span>✅ Prompt Copied!</span>";
-                    setTimeout(() => copyItem.innerHTML = "<span>📋 Copy Prompt</span>", 2000);
+                    favBtn.innerHTML = "<span>✅ Saved!</span>";
+                    setTimeout(() => favBtn.innerHTML = "<span>🍃 Favorites</span>", 2000);
                 }
             });
         }
     };
-    
-    menu.appendChild(starItem);
-    menu.appendChild(copyItem);
+
+    // 2. Copy Prompt Button
+    const copyBtn = document.createElement("button");
+    copyBtn.className = "flowcontrol-hover-copy px-2 py-1 text-xs bg-white/90 hover:bg-white text-black rounded shadow-md flex items-center gap-1 font-medium border border-gray-200 cursor-pointer pointer-events-auto transition-transform active:scale-95";
+    copyBtn.innerHTML = "<span>📋 Copy Prompt</span>";
+    copyBtn.title = "Copy Prompt";
+    copyBtn.onclick = async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        copyImagePrompt(img.src).then(success => {
+            if (success) {
+                copyBtn.innerHTML = "<span>✅ Copied!</span>";
+                setTimeout(() => copyBtn.innerHTML = "<span>📋 Copy Prompt</span>", 2000);
+            }
+        });
+    };
+
+    // Append to top hover bar overlay
+    overlayBar.appendChild(favBtn);
+    overlayBar.appendChild(copyBtn);
 }
 
-// Observe DOM mutations for opening popover dropdown menus
+// Observe DOM mutations to attach buttons whenever a top hover overlay bar appears over an image
 const observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
         if (mutation.type === "childList") {
             mutation.addedNodes.forEach(node => {
                 if (node.nodeType === Node.ELEMENT_NODE) {
-                    if (node.getAttribute?.("role") === "menu" || node.matches?.('[data-radix-popper-content-wrapper]')) {
-                        injectSubmenuItems(node);
+                    // Target top hover overlay bars (e.g. .absolute.top-2, .asset-card-overlay, .hover-overlay)
+                    const selectors = '.absolute.top-2, .absolute.top-1, .asset-card-overlay, [data-testid="asset-card-actions"]';
+                    if (node.matches?.(selectors)) {
+                        injectHoverOverlayActions(node);
                     } else if (node.querySelectorAll) {
-                        const menus = node.querySelectorAll('[role="menu"], [data-radix-popper-content-wrapper]');
-                        menus.forEach(menu => injectSubmenuItems(menu));
+                        const overlays = node.querySelectorAll(selectors);
+                        overlays.forEach(overlay => injectHoverOverlayActions(overlay));
                     }
                 }
             });
