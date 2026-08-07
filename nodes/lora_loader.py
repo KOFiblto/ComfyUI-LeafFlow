@@ -417,7 +417,7 @@ class FolderLoraLoaderPretty(FolderLoraLoader):
                 "lora_name": (["[ NONE ]"], {}),
                 "strength_model": ("FLOAT", {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01}),
                 "strength_clip": ("FLOAT", {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01}),
-                "output_name": (["Parsed Name", "Filename"], {"default": "Parsed Name"}),
+                "output_name": (["Parsed Name", "Filename"], {"default": "Parsed Name", "advanced": True}),
             },
             "hidden": {
                 "_selected_lora": ("STRING", {"default": "[ NONE ]"}),
@@ -482,7 +482,7 @@ class FolderLoraLoaderPretty(FolderLoraLoader):
         increment_lora_usage(resolved_path)
         return (model_lora, clip_lora, pretty_name_output)
 
-class FolderLoraLoaderVisualPretty(FolderLoraLoaderPretty):
+class FolderLoraLoaderVisualPrettyV2(FolderLoraLoaderPretty):
     @classmethod
     def INPUT_TYPES(s):
         return {
@@ -492,45 +492,8 @@ class FolderLoraLoaderVisualPretty(FolderLoraLoaderPretty):
                 "folder": ("STRING", {"default": ""}),
                 "strength_model": ("FLOAT", {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01}),
                 "strength_clip": ("FLOAT", {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01}),
-                "output_name": (["Parsed Name", "Filename"], {"default": "Parsed Name"}),
-            },
-            "hidden": {
-                "_selected_lora": ("STRING", {"default": "[ NONE ]"}),
-            }
-        }
-
-    @classmethod
-    def IS_CHANGED(cls, **kwargs):
-        selected = kwargs.get("_selected_lora", "[ NONE ]")
-        if selected == "[ RANDOM ]":
-            import random
-            return random.random()
-        return ""
-
-    def load_lora(self, model, clip, folder, strength_model, strength_clip, output_name="Parsed Name", _selected_lora="[ NONE ]"):
-        return super().load_lora(
-            model=model,
-            clip=clip,
-            folder=folder,
-            lora_name=_selected_lora,  
-            strength_model=strength_model,
-            strength_clip=strength_clip,
-            output_name=output_name,
-            _selected_lora=_selected_lora
-        )
-
-class FolderLoraLoaderVisualPrettyV2(FolderLoraLoaderVisualPretty):
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "model": ("MODEL",),
-                "clip": ("CLIP",),
-                "folder": ("STRING", {"default": ""}),
-                "strength_model": ("FLOAT", {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01}),
-                "strength_clip": ("FLOAT", {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01}),
-                "display_mode": (["Scrollable", "Show All"], {"default": "Scrollable"}),
-                "output_name": (["Parsed Name", "Filename"], {"default": "Parsed Name"}),
+                "display_mode": (["Scrollable", "Show All"], {"default": "Scrollable", "advanced": True}),
+                "output_name": (["Parsed Name", "Filename"], {"default": "Parsed Name", "advanced": True}),
             },
             "hidden": {
                 "_selected_lora": ("STRING", {"default": "[]"}),

@@ -6,7 +6,6 @@ from .nodes.queue_control import PauseQueueNode, PersistentQueueNode, setup_queu
 from .nodes.lora_loader import (
     FolderLoraLoader,
     FolderLoraLoaderPretty,
-    FolderLoraLoaderVisualPretty,
     FolderLoraLoaderVisualPrettyV2
 )
 from .nodes.image_loader import ImageLoaderVisualPrettyV2
@@ -25,7 +24,6 @@ from .nodes.text_replacer import MultiTextReplacer
 NODE_CLASS_MAPPINGS = {
     "FolderLoraLoader": FolderLoraLoader,
     "FolderLoraLoaderPretty": FolderLoraLoaderPretty,
-    "FolderLoraLoaderVisualPretty": FolderLoraLoaderVisualPretty,
     "FolderLoraLoaderVisualPrettyV2": FolderLoraLoaderVisualPrettyV2,
     "ImageLoaderVisualPrettyV2": ImageLoaderVisualPrettyV2,
     "UndoPlaceholder": UndoPlaceholder,
@@ -44,7 +42,6 @@ NODE_CLASS_MAPPINGS = {
 NODE_DISPLAY_NAME_MAPPINGS = {
     "FolderLoraLoader": "🍃 LoRA Loader (by Folder)",
     "FolderLoraLoaderPretty": "🍃 LoRA Loader (Pretty)",
-    "FolderLoraLoaderVisualPretty": "🍃 Visual LoRA Picker",
     "FolderLoraLoaderVisualPrettyV2": "🍃 Visual LoRA Loader",
     "ImageLoaderVisualPrettyV2": "🍃 Visual Image Loader",
     "UndoPlaceholder": "🍃 Undo Placeholder",
