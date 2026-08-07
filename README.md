@@ -274,52 +274,26 @@ Searches input text for multiple search targets specified in a comma-separated l
 
 ---
 
-## ⚙️ ComfyUI Settings Evaluation & Reference
+## ⚙️ ComfyUI Settings Menu Reference
 
-Expand the section below to view the evaluation and reference for all FlowControl settings registered under ComfyUI Settings (⚙ gear menu).
+Configure options directly under ComfyUI Settings (⚙ gear icon):
 
 <details>
-<summary><b>⚙️ FlowControl Settings Evaluation & Reference</b></summary>
+<summary><b>⚙️ FlowControl Settings</b></summary>
 
-### 1. `FlowControl.FavoritesFolder`
-- **Purpose:** Specifies disk path for saving and reading favorite prompts/images (default `output/favorites`).
-- **Needed:** **Yes** (Essential for Favorites feature).
-- **Well Done:** **Yes** (Supports both relative paths from ComfyUI root and absolute system paths).
-- **Complexity:** **Simple** (Text field).
-- **Status & Stability:** **Works & Stable** (Path sanitization applied).
-- **Combine / Split:** **Keep Single**.
-
-### 2. `FlowControl.EnableLoraUsage`
-- **Purpose:** Toggles LoRA usage tracking and visual rank badges (🔥, Gold, Silver, Bronze) ON/OFF without deleting `lora_usage.json`.
-- **Needed:** **Yes** (Gives users control over visual badges).
-- **Well Done:** **Yes** (Preserves usage statistics when toggled off).
-- **Complexity:** **Simple** (Boolean toggle).
-- **Status & Stability:** **Works & Stable**.
-- **Combine / Split:** **Keep Single**.
-
-### 3. API Key Settings (`CivitaiKey` & `TMDBKey`)
-- **Purpose:** Stores optional Civitai API keys & TMDB Read Access Tokens for automatic model thumbnail scraping.
-- **Needed:** **Yes** (Required for authenticated API requests).
-- **Well Done:** **Yes** (Supports Civitai Bearer tokens & TMDB v4 Read Access Tokens starting with `eyJ`).
-- **Complexity:** **Simple** (Masked key fields in settings).
-- **Status & Stability:** **Works & Stable** (Stored securely in local `.env`).
-- **Combine / Split:** **Keep Separate**.
-
-### 4. Auto-Scraping Toggles (`EnableCivitaiScraping` & `EnableTMDBScraping`)
-- **Purpose:** Toggles automated thumbnail fetching from Civitai or TMDB.
-- **Needed:** **Yes** (Allows users on offline machines or slow networks to disable network calls).
-- **Well Done:** **Yes** (Honors no-internet boundary rules when disabled).
-- **Complexity:** **Simple** (Boolean toggles).
-- **Status & Stability:** **Works & Stable**.
-- **Combine / Split:** **Keep Separate**.
-
-### 5. Queue Control Settings (`EnablePersistentQueue`, `DefaultPauseState`, `DefaultPauseMode`)
-- **Purpose:** Controls toolbar pause queue behavior and crash-recovery persistent queue saving.
-- **Needed:** **Yes** (Essential for queue management features).
-- **Well Done:** **Yes** (Integrated into ComfyUI V2 action bar and background queue manager).
-- **Complexity:** **Simple** (Dropdowns & toggles).
-- **Status & Stability:** **Works & Stable**.
-- **Combine / Split:** **Keep Grouped under Queue Settings**.
+- **🍃 FlowControl: Favorites Folder**: Path to store and load favorite prompts/images (default `output/favorites`).
+- **🍃 FlowControl: Enable LoRA Usage Tracking**: Toggle LoRA usage counting and visual rank badges (🔥, Gold, Silver, Bronze) ON/OFF.
+- **🍃 FlowControl: Enable Civitai Auto-Scraping**: Automatically download model preview images from Civitai via SHA256 file hashes.
+- **🍃 FlowControl: Civitai API Key**: Optional key for Civitai SHA256 model preview search (`Authorization: Bearer <key>`).
+- **🍃 FlowControl: Enable TMDB Auto-Scraping**: Automatically download celebrity preview images from TMDB.
+- **🍃 FlowControl: TMDB API Key**: Optional key or Read Access Token (`eyJ...`) for celebrity preview search.
+- **🍃 FlowControl: Default Pause Queue State on Launch**: Sets whether the queue should start `Unpaused` or `Paused` on boot.
+- **🍃 FlowControl: Default Pause Queue Mode on Launch**: Sets the default pause behavior (`Finish Active Prompt` vs `Instant Resume Node`).
+- **🍃 FlowControl: Persistent Queue Restored Launch State**: Controls what happens to crash-recovered queue items (`Start Paused` or `Start Unpaused`).
+- **🍃 FlowControl: Pause Button Unpaused Color**: Customizable hex color for the toolbar unpaused state.
+- **🍃 FlowControl: Pause Button Paused Color**: Customizable hex color for the toolbar paused/pausing state.
+- **🍃 FlowControl: Enable Pause Queue Toolbar Button**: Toggle top action bar Pause & Continue button ON/OFF.
+- **🍃 FlowControl: Enable Persistent Queue (Auto-Recovery)**: Toggle the real-time crash recovery queue saving on or off.
 </details>
 
 ---
