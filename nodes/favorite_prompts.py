@@ -79,7 +79,12 @@ async def save_favorite_endpoint(request):
         filename = data.get("filename")
         subfolder = data.get("subfolder", "")
         type_str = data.get("type", "temp")
-        subcategory = data.get("subcategory", "Default").strip()
+        subcategory = data.get("subcategory", "").strip()
+        # Sanitize subcategory to allow / for subfolders but remove illegal OS characters \ : * ? " < > |
+        subcategory = re.sub(r'[\\:*?"<>|]', '', subcategory).strip().strip('/')
+        if not subcategory:
+            subcategory = "Root"
+
         custom_name = data.get("custom_name", "").strip()
         dest_folder_arg = data.get("dest_folder", FAV_DIR)
 
