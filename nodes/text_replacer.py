@@ -21,8 +21,8 @@ class MultiTextReplacer:
             "required": {
                 "find": ("STRING", {"default": "", "multiline": True}),
                 "replace": ("STRING", {"default": "", "multiline": False}),
-                "case_sensitive": ("BOOLEAN", {"default": False}),
-                "search_mode": (["Comma Separated List", "Regex Pattern"], {"default": "Comma Separated List"}),
+                "case_sensitive": ("BOOLEAN", {"default": False, "advanced": True}),
+                "search_mode": (["Comma Separated List", "Regex Pattern"], {"default": "Comma Separated List", "advanced": True}),
             },
             "optional": {
                 "text": ("STRING", {"default": "", "multiline": True, "forceInput": True}),

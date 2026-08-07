@@ -67,6 +67,9 @@ class PromptQueueIterator:
             },
             "optional": {
                 "prompt": ("STRING", {"forceInput": True}),
+            },
+            "hidden": {
+                "unique_id": "UNIQUE_ID",
             }
         }
 
@@ -85,15 +88,16 @@ class PromptQueueIterator:
         self,
         pop_mode="Pop Top & Delete",
         separator=">1 Empty Line",
-        prompt=None
+        prompt=None,
+        unique_id="default"
     ):
         text_str = str(prompt) if prompt is not None else ""
         if not text_str.strip():
             return ("", "", 0)
 
-        # Hash input text to maintain distinct queue state per input prompt block
+        # Scope state key by node instance ID and prompt text hash
         text_hash = hashlib.sha256(text_str.encode('utf-8')).hexdigest()[:16]
-        state_key = f"{text_hash}_{separator}_{pop_mode}"
+        state_key = f"node_{unique_id}_{text_hash}_{separator}_{pop_mode}"
         
         state = load_state()
         cached_list = state.get(state_key)
