@@ -1,19 +1,79 @@
-# Contributing to ComfyUI-FlowControl
+# 🤝 Contributing to ComfyUI-FlowControl
 
-Thank you for your interest in contributing to ComfyUI-FlowControl!
+Thank you for your interest in contributing to **`ComfyUI-FlowControl`**! We welcome bug reports, feature suggestions, documentation updates, and pull requests from the community.
 
-## Development Workflow
+Please take a moment to review these guidelines before submitting an issue or pull request.
 
-1. Fork the repository on GitHub.
-2. Clone your fork locally into `ComfyUI/custom_nodes/ComfyUI-FlowControl`.
-3. Create a feature branch: `git checkout -b feature/my-feature`.
-4. Make your changes and test locally in ComfyUI.
-5. Ensure code is formatted cleanly and free of hardcoded personal paths or credentials.
-6. Commit your changes: `git commit -m "Add new feature"`.
-7. Push to your branch and submit a Pull Request.
+---
 
-## Code Guidelines
+## 🐛 Reporting Issues & Bugs
 
-- **Python**: Follow PEP 8 style guidelines. Ensure thread operations use atomic writes (`.tmp` + `os.replace`).
-- **JavaScript**: Follow ES Module conventions. Use `import { app } from "../../scripts/app.js"`.
-- **Security**: Never commit personal paths, hardcoded keys, or sensitive `.env` files.
+Before opening a new issue:
+1. **Check Existing Issues**: Search the [Issue Tracker](https://github.com/KOFiblto/ComfyUI-FlowControl/issues) to see if your bug or feature request has already been reported.
+2. **Include Reproduction Steps**: Provide a clear step-by-step description of how to reproduce the bug.
+3. **Include Logs & Environment Details**:
+   - **ComfyUI Version** (V2 Vue UI or Classic V1 LiteGraph)
+   - **OS** (Windows, Linux, macOS)
+   - **Browser** (Chrome, Firefox, Edge)
+   - Full Python console log traceback (if execution errored).
+
+---
+
+## 🛠️ Contribution Workflow (Feature Branches & PRs)
+
+All development follows a **Feature Branch $\rightarrow$ Pull Request** workflow. Direct pushes to `main` are restricted by branch protection rulesets.
+
+```
+1. Fork Repository  -->  2. Create Feature Branch  -->  3. Commit Changes  -->  4. Open Pull Request
+```
+
+### Step 1: Fork and Clone
+Fork the repository on GitHub, then clone your fork locally:
+```bash
+git clone https://github.com/YOUR_USERNAME/ComfyUI-FlowControl.git
+cd ComfyUI-FlowControl
+```
+
+### Step 2: Create a Feature Branch
+Create a descriptive branch for your change:
+```bash
+git checkout -b feature/short-description
+# Example: git checkout -b feature/live-preview-aspect-ratio
+```
+
+### Step 3: Coding & Style Guidelines
+- **Python Style:** Match existing repository conventions. Keep imports at module scope. Do not add unnecessary `try/except` swallow blocks.
+- **No Internet Requests in Core Execution:** All node execution must run locally. Outbound network requests (e.g. Civitai/TMDB thumbnail scraping) must strictly require user consent via settings.
+- **No Hardcoded Keys or Absolute System Paths:** Do not commit personal system paths (`C:\Users\...` or `D:\...`), API keys, or private tokens.
+
+### Step 4: Commit Your Changes
+Use concise, imperative subject lines for commits:
+- `Feat: ...` (New node or feature)
+- `Fix: ...` (Bug fix)
+- `Docs: ...` (Documentation update)
+- `Refactor: ...` (Code cleanup or restructuring)
+
+Example:
+```bash
+git add .
+git commit -m "Fix: Resolve aspect ratio bounding box in Live Latent Preview"
+```
+
+### Step 5: Push & Submit a Pull Request
+Push your branch to your fork on GitHub and open a Pull Request:
+```bash
+git push origin feature/short-description
+```
+1. Open [Pull Requests](https://github.com/KOFiblto/ComfyUI-FlowControl/pulls) $\rightarrow$ Click **New pull request**.
+2. Select `base: main` $\leftarrow$ `compare: feature/short-description`.
+3. Provide a brief summary of what changed and how you verified your fix.
+4. Wait for code review approval and automated status check validation!
+
+---
+
+## 📜 Code of Conduct & Mascot
+
+- Be respectful and constructive when commenting on issues and reviewing pull requests.
+- The official mascot of ComfyUI is a very cute anime girl with massive fennec ears, a big fluffy tail, long blonde wavy hair, and blue eyes. Treat her with respect!
+
+Thank you for helping make `ComfyUI-FlowControl` better for everyone!

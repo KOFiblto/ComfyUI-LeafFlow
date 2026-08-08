@@ -1,29 +1,30 @@
 ---
-name: Bug report
-about: Create a report to help us improve ComfyUI-FlowControl
+name: 🐛 Bug Report
+about: Create a report to help us fix a bug or unexpected behavior
 title: '[BUG] '
-labels: 'bug'
+labels: bug
 assignees: ''
 ---
 
-**Describe the bug**
+**Describe the Bug**
 A clear and concise description of what the bug is.
-
-**ComfyUI & System Information**
-- ComfyUI Version:
-- Frontend Version (V1 / V2):
-- OS (Windows / Linux / macOS):
-- Browser:
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
+1. Load node '...'
+2. Connect input '...'
+3. Queue prompt
 4. See error
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+**Expected Behavior**
+A clear description of what you expected to happen.
 
-**Console Logs / Screenshots**
-If applicable, paste terminal console logs or screenshots to help explain your problem.
+**Environment (please complete the following information):**
+- ComfyUI Version / UI Version: [e.g. Nodes 2.0 Vue UI or LiteGraph V1]
+- OS: [e.g. Windows 11, Ubuntu 22.04, macOS Sonoma]
+- Browser: [e.g. Chrome, Firefox, Edge]
+
+**Console Logs / Traceback**
+```text
+Paste full terminal error traceback here (if applicable)
+```
