@@ -349,7 +349,7 @@ function injectHoverOverlayActions(overlayBar) {
                     iconGroup.querySelector('button[aria-label="More"]') ||
                     iconGroup.lastElementChild;
 
-    const baseBtnClass = "flowcontrol-hover-btn relative inline-flex items-center justify-center gap-1 cursor-pointer touch-manipulation whitespace-nowrap appearance-none border-none text-xs font-medium font-inter transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-white text-gray-700 hover:bg-gray-100 h-8 px-2 rounded-none pointer-events-auto border-r border-gray-100";
+    const baseBtnClass = "flowcontrol-hover-btn relative inline-flex items-center justify-center gap-1.5 cursor-pointer touch-manipulation whitespace-nowrap appearance-none border-none text-xs font-medium font-inter transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-white text-gray-700 hover:bg-gray-100 h-8 px-2.5 rounded-none pointer-events-auto border-r border-gray-200 shrink-0 min-w-max";
 
     // 1. Save to Favorites Button
     const favBtn = document.createElement("button");
