@@ -20,6 +20,20 @@ function getFolderBorderColor(folderName) {
 // Global CSS injection for the visual node styling
 const visualStyles = document.createElement("style");
 visualStyles.textContent = `
+    .lora-visual-container.right-aligned-mode {
+        align-items: flex-end;
+    }
+    .lora-visual-container.right-aligned-mode .lora-folder-header {
+        flex-direction: row-reverse;
+        justify-content: flex-start;
+    }
+    .lora-visual-container.right-aligned-mode .lora-folder-grid,
+    .lora-visual-container.right-aligned-mode .lora-none-container {
+        justify-content: flex-end;
+    }
+    .lora-visual-container.right-aligned-mode .lora-control-bar {
+        flex-direction: row-reverse;
+    }
     .lora-visual-container {
         width: 100%;
         display: flex;
@@ -1113,6 +1127,13 @@ app.registerExtension({
                     const sortLorasMode = getWidgetVal("sort_loras_by", "Name (A-Z)");
                     const sortFoldersMode = getWidgetVal("sort_folders_by", "Name (A-Z)");
                     const folderPosMode = getWidgetVal("folder_position", "Folders First");
+                    const contentAlignMode = getWidgetVal("content_alignment", "Left Aligned");
+
+                    if (contentAlignMode === "Right Aligned") {
+                        viewContainer.classList.add("right-aligned-mode");
+                    } else {
+                        viewContainer.classList.remove("right-aligned-mode");
+                    }
 
                     // Sort individual LoRAs inside each folder
                     Object.keys(foldersMap).forEach(subFolder => {
@@ -1363,7 +1384,7 @@ app.registerExtension({
                 debounceTimer = setTimeout(() => updateVisualGrid(), 350);
             };
 
-            ["sort_loras_by", "sort_folders_by", "folder_position"].forEach(wName => {
+            ["sort_loras_by", "sort_folders_by", "folder_position", "content_alignment"].forEach(wName => {
                 const w = node.widgets ? node.widgets.find(x => x.name === wName) : null;
                 if (w) {
                     const origCb = w.callback;

@@ -506,6 +506,7 @@ class FolderLoraLoaderVisualPrettyV2(FolderLoraLoaderPretty):
                 "sort_loras_by": (["Name (A-Z)", "Name (Z-A)", "Usage (High to Low)", "Usage (Low to High)", "Date Modified (Newest First)", "Date Modified (Oldest First)"], {"default": "Name (A-Z)", "advanced": True}),
                 "sort_folders_by": (["Name (A-Z)", "Name (Z-A)", "Total Usage (High to Low)", "Average Usage (High to Low)", "Total LoRAs (Most First)"], {"default": "Name (A-Z)", "advanced": True}),
                 "folder_position": (["Folders First", "Root LoRAs First"], {"default": "Folders First", "advanced": True}),
+                "content_alignment": (["Left Aligned", "Right Aligned"], {"default": "Left Aligned", "advanced": True}),
                 "output_name": (["Parsed Name", "Filename"], {"default": "Parsed Name", "advanced": True}),
             },
             "hidden": {
@@ -523,7 +524,7 @@ class FolderLoraLoaderVisualPrettyV2(FolderLoraLoaderPretty):
             return random.random()
         return ""
 
-    def load_lora(self, model, clip, folder, strength_model, strength_clip, display_mode="Scrollable", sort_loras_by="Name (A-Z)", sort_folders_by="Name (A-Z)", folder_position="Folders First", output_name="Parsed Name", _selected_lora="[]", _selection_mode="All", _scrape_on_new="true"):
+    def load_lora(self, model, clip, folder, strength_model, strength_clip, display_mode="Scrollable", sort_loras_by="Name (A-Z)", sort_folders_by="Name (A-Z)", folder_position="Folders First", content_alignment="Left Aligned", output_name="Parsed Name", _selected_lora="[]", _selection_mode="All", _scrape_on_new="true"):
         return super().load_lora(
             model=model,
             clip=clip,
