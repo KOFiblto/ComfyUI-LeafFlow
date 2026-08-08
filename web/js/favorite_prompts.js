@@ -334,16 +334,28 @@ app.registerExtension({
 function injectHoverOverlayActions(overlayBar) {
     if (!overlayBar || overlayBar.querySelector(".flowcontrol-hover-fav")) return;
     
+    // Locate the white icon group container (div.flex.shrink-0) inside the overlay
+    const iconGroup = overlayBar.querySelector('.flex.shrink-0') || 
+                      overlayBar.querySelector('button[aria-label="Zoom in"]')?.parentElement ||
+                      overlayBar;
+
     // Locate parent image card or asset item container
     const parentCard = overlayBar.closest('div[data-virtual-grid-item], .asset-card, [data-node-id], .lg-node, div.relative');
     const img = parentCard ? parentCard.querySelector("img") : overlayBar.parentElement?.querySelector("img");
     if (!img || !img.src) return;
 
+    // Find the 'More options' button (3-dots ellipsis) to insert before it
+    const moreBtn = iconGroup.querySelector('button[aria-label="More options"]') ||
+                    iconGroup.querySelector('button[aria-label="More"]') ||
+                    iconGroup.lastElementChild;
+
+    const baseBtnClass = "flowcontrol-hover-btn relative inline-flex items-center justify-center gap-1 cursor-pointer touch-manipulation whitespace-nowrap appearance-none border-none text-xs font-medium font-inter transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-white text-gray-700 hover:bg-gray-100 h-8 px-2 rounded-none pointer-events-auto border-r border-gray-100";
+
     // 1. Save to Favorites Button
     const favBtn = document.createElement("button");
-    favBtn.className = "flowcontrol-hover-fav px-2 py-1 text-xs bg-white/90 hover:bg-white text-black rounded shadow-md flex items-center gap-1 font-medium border border-gray-200 cursor-pointer pointer-events-auto transition-transform active:scale-95";
-    favBtn.innerHTML = "<span>🍃 Favorites</span>";
+    favBtn.className = baseBtnClass + " flowcontrol-hover-fav";
     favBtn.title = "Save to Favorites";
+    favBtn.innerHTML = "<span>🍃 Favorites</span>";
     favBtn.onclick = async (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -364,9 +376,9 @@ function injectHoverOverlayActions(overlayBar) {
 
     // 2. Copy Prompt Button
     const copyBtn = document.createElement("button");
-    copyBtn.className = "flowcontrol-hover-copy px-2 py-1 text-xs bg-white/90 hover:bg-white text-black rounded shadow-md flex items-center gap-1 font-medium border border-gray-200 cursor-pointer pointer-events-auto transition-transform active:scale-95";
-    copyBtn.innerHTML = "<span>📋 Copy Prompt</span>";
+    copyBtn.className = baseBtnClass + " flowcontrol-hover-copy";
     copyBtn.title = "Copy Prompt";
+    copyBtn.innerHTML = "<span>📋 Copy Prompt</span>";
     copyBtn.onclick = async (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -378,9 +390,14 @@ function injectHoverOverlayActions(overlayBar) {
         });
     };
 
-    // Append to top hover bar overlay
-    overlayBar.appendChild(favBtn);
-    overlayBar.appendChild(copyBtn);
+    // Insert between Zoom in and More options inside the white button group
+    if (moreBtn && moreBtn.parentElement === iconGroup) {
+        iconGroup.insertBefore(favBtn, moreBtn);
+        iconGroup.insertBefore(copyBtn, moreBtn);
+    } else {
+        iconGroup.appendChild(favBtn);
+        iconGroup.appendChild(copyBtn);
+    }
 }
 
 // Observe DOM mutations to attach buttons whenever a top hover overlay bar appears over an image
