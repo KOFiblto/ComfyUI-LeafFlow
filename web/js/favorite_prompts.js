@@ -349,13 +349,13 @@ function injectHoverOverlayActions(overlayBar) {
                     iconGroup.querySelector('button[aria-label="More"]') ||
                     iconGroup.lastElementChild;
 
-    const baseBtnClass = "flowcontrol-hover-btn relative inline-flex items-center justify-center gap-1.5 cursor-pointer touch-manipulation whitespace-nowrap appearance-none border-none text-xs font-medium font-inter transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-white text-gray-700 hover:bg-gray-100 h-8 px-2.5 rounded-none pointer-events-auto border-r border-gray-200 shrink-0 min-w-max";
+    const baseBtnClass = "flowcontrol-hover-btn relative inline-flex items-center justify-center cursor-pointer touch-manipulation whitespace-nowrap appearance-none border-none text-xs font-medium font-inter transition-all duration-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-white text-gray-700 hover:bg-gray-100 size-8 hover:w-auto hover:px-2.5 rounded-none pointer-events-auto border-r border-gray-200 shrink-0 group";
 
     // 1. Save to Favorites Button
     const favBtn = document.createElement("button");
     favBtn.className = baseBtnClass + " flowcontrol-hover-fav";
     favBtn.title = "Save to Favorites";
-    favBtn.innerHTML = "<span>🍃 Favorites</span>";
+    favBtn.innerHTML = "<span class='text-sm'>🍃</span><span class='flowcontrol-btn-label hidden group-hover:inline ml-1 text-xs font-medium'>Favorites</span>";
     favBtn.onclick = async (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -367,8 +367,8 @@ function injectHoverOverlayActions(overlayBar) {
         if (details) {
             saveToFavorites(img.src, details.subcategory, details.custom_name).then(success => {
                 if (success) {
-                    favBtn.innerHTML = "<span>✅ Saved!</span>";
-                    setTimeout(() => favBtn.innerHTML = "<span>🍃 Favorites</span>", 2000);
+                    favBtn.innerHTML = "<span class='text-sm'>✅</span><span class='flowcontrol-btn-label hidden group-hover:inline ml-1 text-xs font-medium'>Saved!</span>";
+                    setTimeout(() => favBtn.innerHTML = "<span class='text-sm'>🍃</span><span class='flowcontrol-btn-label hidden group-hover:inline ml-1 text-xs font-medium'>Favorites</span>", 2000);
                 }
             });
         }
@@ -378,14 +378,14 @@ function injectHoverOverlayActions(overlayBar) {
     const copyBtn = document.createElement("button");
     copyBtn.className = baseBtnClass + " flowcontrol-hover-copy";
     copyBtn.title = "Copy Prompt";
-    copyBtn.innerHTML = "<span>📋 Copy Prompt</span>";
+    copyBtn.innerHTML = "<span class='text-sm'>📋</span><span class='flowcontrol-btn-label hidden group-hover:inline ml-1 text-xs font-medium'>Copy Prompt</span>";
     copyBtn.onclick = async (e) => {
         e.preventDefault();
         e.stopPropagation();
         copyImagePrompt(img.src).then(success => {
             if (success) {
-                copyBtn.innerHTML = "<span>✅ Copied!</span>";
-                setTimeout(() => copyBtn.innerHTML = "<span>📋 Copy Prompt</span>", 2000);
+                copyBtn.innerHTML = "<span class='text-sm'>✅</span><span class='flowcontrol-btn-label hidden group-hover:inline ml-1 text-xs font-medium'>Copied!</span>";
+                setTimeout(() => copyBtn.innerHTML = "<span class='text-sm'>📋</span><span class='flowcontrol-btn-label hidden group-hover:inline ml-1 text-xs font-medium'>Copy Prompt</span>", 2000);
             }
         });
     };
