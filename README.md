@@ -64,6 +64,9 @@ Visual thumbnail LoRA browser with search, multi-selection, ranking badges (🔥
 - **`strength_model`** (`FLOAT`): Model strength.
 - **`strength_clip`** (`FLOAT`): CLIP strength.
 - **`display_mode`** (`COMBO`, *Advanced*): Choose between `Scrollable` (fixed height) or `Show All` (auto-expanding node card).
+- **`sort_loras_by`** (`COMBO`, *Advanced*): Sort LoRAs inside folders (`Name (A-Z)`, `Name (Z-A)`, `Usage (High to Low)`, `Usage (Low to High)`, `Date Modified (Newest First)`, `Date Modified (Oldest First)`).
+- **`sort_folders_by`** (`COMBO`, *Advanced*): Sort folder sections order (`Name (A-Z)`, `Name (Z-A)`, `Total Usage (High to Low)`, `Average Usage (High to Low)`, `Total LoRAs (Most First)`).
+- **`folder_position`** (`COMBO`, *Advanced*): Layout position of root LoRAs vs folders (`Folders First` vs `Root LoRAs First`).
 - **`output_name`** (`COMBO`, *Advanced*): Choose between `Parsed Name` or `Filename` output string format.
 
 #### Outputs
