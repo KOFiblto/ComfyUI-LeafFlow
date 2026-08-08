@@ -274,10 +274,13 @@ def get_filtered_loras_mapping(folder_filter, pretty=False):
             display_name += parse_pretty_name_with_version(lora) if pretty else lora
             mapping[display_name] = lora
         elif is_wildcard:
-            if norm_lora.lower().startswith(clean_filter.lower() + "/"):
-                subfolder_path = lora_dir[len(clean_filter):].strip("/")
-                sub_parts = subfolder_path.split('/')
-                sub_name = sub_parts[-1] if (sub_parts and sub_parts[0]) else ""
+            if clean_filter == "" or norm_lora.lower().startswith(clean_filter.lower() + "/") or norm_lora.lower() == clean_filter.lower():
+                subfolder_path = lora_dir[len(clean_filter):].strip("/") if clean_filter else lora_dir
+                sub_parts = [p for p in subfolder_path.split('/') if p]
+                if sub_parts:
+                    sub_name = sub_parts[-1]
+                else:
+                    sub_name = clean_filter.split('/')[-1] if clean_filter else ""
                 
                 display_name = ""
                 if sub_name and pretty:

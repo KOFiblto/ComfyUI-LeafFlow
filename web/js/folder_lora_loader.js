@@ -1090,15 +1090,6 @@ app.registerExtension({
                     const ranks = getTop3Ranks();
 
                     // --- Group items by folder ---
-                    data.names.forEach(loraName => {
-                        if (loraName === "[ NONE ]") return;
-                        const parts = loraName.split(" - ");
-                        const subFolder = parts.length > 1 ? parts[0] : "Root";
-                        const prettyName = parts.length > 1 ? parts.slice(1).join(" - ") : loraName;
-                        const systemPath = data.mapping[loraName];
-                        const usageCount = (data.usage && systemPath) ? (data.usage[systemPath] || 0) : 0;
-
-                    // --- Group items by folder ---
                     const mtimeMap = data.mtime || {};
                     data.names.forEach(loraName => {
                         if (loraName === "[ NONE ]") return;
