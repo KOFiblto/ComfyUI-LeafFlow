@@ -25,28 +25,28 @@ Every time you queue a prompt, FlowControl saves the entire queue state to your 
 
 ## 2. Advanced Nodes
 
-### 🍃 FlowControl Decision
+### 🍃 ⏸️ FlowControl Decision
 Sometimes you run a complex workflow that takes hours (e.g., upscaling), but you want to check a low-res preview first to ensure it's worth the compute time.
-1. Drop the **FlowControl Decision** node into your workflow between the low-res and high-res stages.
+1. Drop the **`🍃 ⏸️ FlowControl Decision`** node into your workflow between the low-res and high-res stages.
 2. When the execution reaches this node, your workflow will pause, and a native desktop notification (Windows/macOS/Linux) will alert you!
 3. You will see a popup UI on your ComfyUI canvas giving you three choices:
    - **Continue**: Proceeds with the workflow normally.
    - **Cancel**: Outputs a `True` signal. You can route this into a Switch node to bypass the high-res stage entirely.
    - **Stop Workflow**: Instantly aborts the generation queue, exactly like clicking the red X in ComfyUI.
 
-### 🍃 Load Image From Folder
+### 🍃 📂 Load Image From Folder
 An absolute powerhouse for automation. Point this node at any folder on your hard drive, and it will automatically ingest incoming images, convert them into tensors, and delete the original files to keep the folder clean.
 - **wait_if_folder_is_empty**: If set to `True`, the workflow will patiently pause and poll the folder at your `rescan_interval` until an image arrives. Perfect for linking ComfyUI to external tools like Photoshop or Blender auto-exports!
 - **Regex Filtering**: Only want it to grab images that start with `render_`? Just use standard regex like `^render_.*\.png$`.
 
-### 🍃 Visual LoRA & Image Loaders
+### 🍃 🖼️ Visual LoRA & Image Loaders
 Tired of guessing what a LoRA does based on its filename?
-1. Use the **Visual LoRA Loader**. It natively extracts preview images if you place an identically named `.png`/`.jpg` next to your `.safetensors` file.
+1. Use the **`🍃 🖼️ Visual LoRA Loader`**. It natively extracts preview images if you place an identically named `.png`/`.jpg` next to your `.safetensors` file.
 2. If you enable the **Civitai Auto-Scraper** in your ComfyUI Settings, the node will calculate the SHA256 hash of your LoRA and automatically download the official preview thumbnail directly from Civitai! 
 3. **Pretty Name String Output**: The node outputs the parsed, human-readable name of the loaded LoRA (e.g. "Addison Rae V1") by default, allowing you to route it into a text prompt or watermark node. You can easily switch this via the `output_name` toggle on the node to output the raw filename without extension instead. 
 
-### 🍃 Recent Outputs
-Want to quickly reference your recent generations without digging through Windows Explorer? The Recent Outputs node cycles chronologically through your `output/` directory, pulling your freshest creations right back into the workflow canvas.
+### 🍃 ⏱️ Recent Outputs
+Want to quickly reference your recent generations without digging through Windows Explorer? The **`🍃 ⏱️ Recent Outputs`** node cycles chronologically through your `output/` directory, pulling your freshest creations right back into the workflow canvas.
 
 ---
 

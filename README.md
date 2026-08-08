@@ -11,7 +11,7 @@ A unified custom node suite for **ComfyUI** featuring real-time queue controls, 
 Expand any node below to view its description, inputs, outputs, and usage documentation.
 
 <details>
-<summary><b>🍃 LoRA Loader (by Folder)</b> (<code>FolderLoraLoader</code>)</summary>
+<summary><b>🍃 📁 LoRA Loader (by Folder)</b> (<code>FolderLoraLoader</code>)</summary>
 
 #### Overview
 Loads a LoRA by folder path using raw filename matching (standard ComfyUI filename contract without pretty name transformations).
@@ -31,7 +31,7 @@ Loads a LoRA by folder path using raw filename matching (standard ComfyUI filena
 </details>
 
 <details>
-<summary><b>🍃 LoRA Loader (Pretty)</b> (<code>FolderLoraLoaderPretty</code>)</summary>
+<summary><b>🍃 ✨ LoRA Loader (Pretty)</b> (<code>FolderLoraLoaderPretty</code>)</summary>
 
 #### Overview
 Loads a LoRA using formatted pretty names (e.g. `Ana De Armas V1` instead of `krea2_Ana-De-Armas_v1.safetensors`).
@@ -52,7 +52,7 @@ Loads a LoRA using formatted pretty names (e.g. `Ana De Armas V1` instead of `kr
 </details>
 
 <details>
-<summary><b>🍃 Visual LoRA Loader</b> (<code>FolderLoraLoaderVisualPrettyV2</code>)</summary>
+<summary><b>🍃 🖼️ Visual LoRA Loader</b> (<code>FolderLoraLoaderVisualPrettyV2</code>)</summary>
 
 #### Overview
 Visual thumbnail LoRA browser with search, multi-selection, ranking badges (🔥, 🥇 Gold, 🥈 Silver, 🥉 Bronze), and automated Civitai SHA256 & TMDB preview image fetching.
@@ -73,7 +73,7 @@ Visual thumbnail LoRA browser with search, multi-selection, ranking badges (🔥
 </details>
 
 <details>
-<summary><b>🍃 Visual Image Loader</b> (<code>ImageLoaderVisualPrettyV2</code>)</summary>
+<summary><b>🍃 📷 Visual Image Loader</b> (<code>ImageLoaderVisualPrettyV2</code>)</summary>
 
 #### Overview
 Visual thumbnail browser for image folders with instant preview selection and EXIF positive prompt metadata extraction.
@@ -90,7 +90,7 @@ Visual thumbnail browser for image folders with instant preview selection and EX
 </details>
 
 <details>
-<summary><b>🍃 Back To Placeholder</b> (<code>BackToPlaceholder</code>)</summary>
+<summary><b>🍃 ↩️ Back To Placeholder</b> (<code>BackToPlaceholder</code>)</summary>
 
 #### Overview
 Execution anchor node that undoes placing content into a placeholder slot by scanning text for LoRA pretty names matching a folder and restoring placeholder tokens (e.g. `%celeb%`).
@@ -105,7 +105,7 @@ Execution anchor node that undoes placing content into a placeholder slot by sca
 </details>
 
 <details>
-<summary><b>🍃 Load Image From Folder</b> (<code>LoadImageFromFolder</code>)</summary>
+<summary><b>🍃 📂 Load Image From Folder</b> (<code>LoadImageFromFolder</code>)</summary>
 
 #### Overview
 Monitors a folder for incoming images, loads the target image into a PyTorch tensor, and removes processed files.
@@ -123,7 +123,7 @@ Monitors a folder for incoming images, loads the target image into a PyTorch ten
 </details>
 
 <details>
-<summary><b>🍃 Recent Outputs</b> (<code>LoadRecentOutputs</code>)</summary>
+<summary><b>🍃 ⏱️ Recent Outputs</b> (<code>LoadRecentOutputs</code>)</summary>
 
 #### Overview
 Chronologically cycles through recently generated output images from ComfyUI's output directory.
@@ -138,7 +138,7 @@ Chronologically cycles through recently generated output images from ComfyUI's o
 </details>
 
 <details>
-<summary><b>🍃 Live Latent Preview</b> (<code>PreviewLatentLiveNode</code>)</summary>
+<summary><b>🍃 👁️ Live Latent Preview</b> (<code>PreviewLatentLiveNode</code>)</summary>
 
 #### Overview
 Canvas rendering node that listens to sampler WebSocket latent binary streams and displays real-time live previews on the canvas during generation.
@@ -149,7 +149,7 @@ Canvas rendering node that listens to sampler WebSocket latent binary streams an
 </details>
 
 <details>
-<summary><b>🍃 FlowControl Decision</b> (<code>FlowControlDecision</code>)</summary>
+<summary><b>🍃 ⏸️ FlowControl Decision</b> (<code>FlowControlDecision</code>)</summary>
 
 #### Overview
 Pauses workflow execution at a specific step and displays an inline UI popup with Continue, Cancel, or Stop Workflow actions, plus optional native OS desktop notifications.
@@ -164,7 +164,7 @@ Pauses workflow execution at a specific step and displays an inline UI popup wit
 </details>
 
 <details>
-<summary><b>🍃 Favorite Prompts</b> (<code>FavoritePromptLoader</code>)</summary>
+<summary><b>🍃 ⭐ Favorite Prompts</b> (<code>FavoritePromptLoader</code>)</summary>
 
 #### Overview
 Visually browse saved favorite images and prompts from your favorites folder.
@@ -181,7 +181,7 @@ Visually browse saved favorite images and prompts from your favorites folder.
 </details>
 
 <details>
-<summary><b>🍃 Save Favorite Preview</b> (<code>SaveFavoritePreview</code>)</summary>
+<summary><b>🍃 💾 Save Favorite Preview</b> (<code>SaveFavoritePreview</code>)</summary>
 
 #### Overview
 Preview image node equipped with a native "Save Active to Favorites" button widget.
@@ -191,7 +191,7 @@ Preview image node equipped with a native "Save Active to Favorites" button widg
 </details>
 
 <details>
-<summary><b>🍃 Aspect Ratio Finder</b> (<code>AspectRatioFinder</code>)</summary>
+<summary><b>🍃 📐 Aspect Ratio Finder</b> (<code>AspectRatioFinder</code>)</summary>
 
 #### Overview
 Parses input text for aspect ratios (e.g. `16:9`, `2.35:1`), syntax-checks them, and calculates pixel resolution for a target megapixel target.
@@ -213,7 +213,7 @@ Parses input text for aspect ratios (e.g. `16:9`, `2.35:1`), syntax-checks them,
 </details>
 
 <details>
-<summary><b>🍃 Text LoRA Finder</b> (<code>LoraTextFinder</code>)</summary>
+<summary><b>🍃 🔎 Text LoRA Finder</b> (<code>LoraTextFinder</code>)</summary>
 
 #### Overview
 Scans text prompts for LoRA names or custom patterns, automatically loads matched LoRAs into MODEL and CLIP, and outputs the formatted LoRA list.
@@ -238,7 +238,7 @@ Scans text prompts for LoRA names or custom patterns, automatically loads matche
 </details>
 
 <details>
-<summary><b>🍃 Prompt Queue Iterator</b> (<code>PromptQueueIterator</code>)</summary>
+<summary><b>🍃 🔄 Prompt Queue Iterator</b> (<code>PromptQueueIterator</code>)</summary>
 
 #### Overview
 Parses multiline prompt text blocks, popping/selecting prompts per batch queue iteration with persistent queue state saved to disk across restarts.
@@ -255,7 +255,7 @@ Parses multiline prompt text blocks, popping/selecting prompts per batch queue i
 </details>
 
 <details>
-<summary><b>🍃 Multi Text Replacer</b> (<code>MultiTextReplacer</code>)</summary>
+<summary><b>🍃 🔤 Multi Text Replacer</b> (<code>MultiTextReplacer</code>)</summary>
 
 #### Overview
 Searches input text for multiple search targets specified in a comma-separated list or regex pattern and replaces all matches with a replacement string in a single-pass loop-safe execution.
