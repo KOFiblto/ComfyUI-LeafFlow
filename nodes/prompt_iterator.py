@@ -48,6 +48,8 @@ def parse_prompt_blocks(text_str, separator):
         raw_blocks = re.split(r'\n\s*\n+', clean_text)
         return [b.strip() for b in raw_blocks if b.strip()]
 
+from server import PromptServer
+
 class PromptQueueIterator:
     @classmethod
     def INPUT_TYPES(cls):
@@ -64,6 +66,7 @@ class PromptQueueIterator:
                     "Newline",
                     ">2 Empty Lines"
                 ], {"default": ">1 Empty Line"}),
+                "prompt_text": ("STRING", {"default": "", "multiline": True}),
             },
             "optional": {
                 "prompt": ("STRING", {"forceInput": True}),
@@ -77,7 +80,7 @@ class PromptQueueIterator:
     RETURN_NAMES = ("prompt", "remaining_text", "remaining_count")
     FUNCTION = "process_queue"
     CATEGORY = "🍃 FlowControl/Utils"
-    DESCRIPTION = "Parses multiline prompt text blocks, popping/selecting prompts per batch queue iteration with persistent queue state."
+    DESCRIPTION = "Parses multiline prompt text blocks, popping/selecting prompts per batch queue iteration with live UI text updates."
 
     @classmethod
     def IS_CHANGED(cls, **kwargs):
@@ -88,10 +91,12 @@ class PromptQueueIterator:
         self,
         pop_mode="Pop Top & Delete",
         separator=">1 Empty Line",
+        prompt_text="",
         prompt=None,
         unique_id="default"
     ):
-        text_str = str(prompt) if prompt is not None else ""
+        raw_input = prompt if prompt is not None else prompt_text
+        text_str = str(raw_input) if raw_input is not None else ""
         if not text_str.strip():
             return ("", "", 0)
 
@@ -134,5 +139,14 @@ class PromptQueueIterator:
         remaining_count = len(prompt_blocks)
         join_delim = "\n" if separator == "Newline" else ("\n\n\n" if separator == ">2 Empty Lines" else "\n\n")
         remaining_text = join_delim.join(prompt_blocks) if prompt_blocks else ""
+
+        # Send live UI update event to mutate prompt_text widget in real-time
+        try:
+            PromptServer.instance.send_sync("flowcontrol_update_prompt_iterator", {
+                "node_id": str(unique_id),
+                "remaining_text": remaining_text
+            })
+        except Exception:
+            pass
 
         return (selected_prompt, remaining_text, remaining_count)

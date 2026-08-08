@@ -41,22 +41,22 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "FolderLoraLoader": "🍃 LoRA Loader (by Folder)",
-    "FolderLoraLoaderPretty": "🍃 LoRA Loader (Pretty)",
-    "FolderLoraLoaderVisualPrettyV2": "🍃 Visual LoRA Loader",
-    "ImageLoaderVisualPrettyV2": "🍃 Visual Image Loader",
-    "BackToPlaceholder": "🍃 Back To Placeholder",
-    "UndoPlaceholder": "🍃 Back To Placeholder",
-    "LoadImageFromFolder": "🍃 Load Image From Folder",
-    "LoadRecentOutputs": "🍃 Recent Outputs",
-    "PreviewLatentLive": "🍃 Live Latent Preview",
-    "FlowControlDecision": "🍃 FlowControl Decision",
-    "FavoritePromptLoader": "🍃 Favorite Prompts",
-    "SaveFavoritePreview": "🍃 Save Favorite Preview",
-    "AspectRatioFinder": "🍃 Aspect Ratio Finder",
-    "LoraTextFinder": "🍃 Text LoRA Finder",
-    "PromptQueueIterator": "🍃 Prompt Queue Iterator",
-    "MultiTextReplacer": "🍃 Multi Text Replacer"
+    "FolderLoraLoader": "🍃 📁 LoRA Loader (by Folder)",
+    "FolderLoraLoaderPretty": "🍃 ✨ LoRA Loader (Pretty)",
+    "FolderLoraLoaderVisualPrettyV2": "🍃 🖼️ Visual LoRA Loader",
+    "ImageLoaderVisualPrettyV2": "🍃 📷 Visual Image Loader",
+    "BackToPlaceholder": "🍃 ↩️ Back To Placeholder",
+    "UndoPlaceholder": "🍃 ↩️ Back To Placeholder",
+    "LoadImageFromFolder": "🍃 📂 Load Image From Folder",
+    "LoadRecentOutputs": "🍃 ⏱️ Recent Outputs",
+    "PreviewLatentLive": "🍃 👁️ Live Latent Preview",
+    "FlowControlDecision": "🍃 ⏸️ FlowControl Decision",
+    "FavoritePromptLoader": "🍃 ⭐ Favorite Prompts",
+    "SaveFavoritePreview": "🍃 💾 Save Favorite Preview",
+    "AspectRatioFinder": "🍃 📐 Aspect Ratio Finder",
+    "LoraTextFinder": "🍃 🔎 Text LoRA Finder",
+    "PromptQueueIterator": "🍃 🔄 Prompt Queue Iterator",
+    "MultiTextReplacer": "🍃 🔤 Multi Text Replacer"
 }
 
 WEB_DIRECTORY = "./web"
