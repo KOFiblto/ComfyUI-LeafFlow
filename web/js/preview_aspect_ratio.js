@@ -12,7 +12,7 @@ app.registerExtension({
             nodeType.prototype.onNodeCreated = function() {
                 if (onNodeCreated) onNodeCreated.apply(this, arguments);
 
-                // STRICTLY REMOVE ALL OUTPUT SLOTS
+                // STRICTLY REMOVE ALL OUTPUT SLOTS (Once on node creation)
                 this.outputs = [];
                 if (this.outputs) this.outputs.length = 0;
 
@@ -155,8 +155,10 @@ app.registerExtension({
                     if (origOnDrawForeground) origOnDrawForeground.apply(this, arguments);
                     if (this.flags?.collapsed) return;
 
-                    if (this.outputs && this.outputs.length > 0) {
-                        this.outputs.length = 0;
+                    // HIGH-PERFORMANCE OPTIMIZATION:
+                    // If HTML DOM widget is active in document (Vue UI / V2), skip duplicate canvas drawing!
+                    if (viewContainer && viewContainer.isConnected && viewContainer.offsetParent !== null) {
+                        return;
                     }
 
                     const data = this.aspect_ratio_data || { ratio: 1.0, display_text: "1 x 1" };
