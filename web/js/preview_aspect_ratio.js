@@ -34,25 +34,19 @@ app.registerExtension({
 
                 ctx.save();
                 
-                // Determine card container position below widgets
+                // Determine drawing area below widgets
                 const widgetHeight = this.widgets ? (this.widgets.length * 24 + 30) : 40;
                 const startY = Math.max(45, widgetHeight);
                 
-                const cardX = 8;
-                const cardY = startY;
-                const cardW = Math.max(60, this.size[0] - 16);
-                const cardH = Math.max(45, this.size[1] - startY - 8);
+                const containerX = 12;
+                const containerY = startY;
+                const containerW = Math.max(60, this.size[0] - 24);
+                const containerH = Math.max(45, this.size[1] - startY - 10);
 
-                // 1. Dark Card Container (Matching UI aesthetic)
-                ctx.fillStyle = "#222226";
-                ctx.beginPath();
-                ctx.roundRect(cardX, cardY, cardW, cardH, 10);
-                ctx.fill();
-
-                // 2. White Aspect Ratio Outline Rectangle (Square Edged, Aesthetic White Line)
-                const textSpace = (showDim && data.display_text) ? 26 : 14;
-                const availW = Math.max(20, cardW - 24);
-                const availH = Math.max(20, cardH - textSpace - 16);
+                // White Aspect Ratio Outline Box (No dark card background, slightly rounded squared edges)
+                const textSpace = (showDim && data.display_text) ? 24 : 10;
+                const availW = Math.max(20, containerW - 16);
+                const availH = Math.max(20, containerH - textSpace - 10);
 
                 let boxW, boxH;
                 if (ratio >= availW / availH) {
@@ -63,27 +57,27 @@ app.registerExtension({
                     boxW = availH * ratio;
                 }
 
-                // Align outline box in upper right / top center of card
-                const boxX = cardX + cardW - boxW - 12;
-                const boxY = cardY + 12;
+                // Align outline box in top-right / top-center area
+                const boxX = containerX + containerW - boxW - 8;
+                const boxY = containerY + 6;
 
                 ctx.strokeStyle = "#ffffff";
                 ctx.lineWidth = 2.2;
-                ctx.lineJoin = "miter";
-                // Square edged sharp rectangle
-                ctx.strokeRect(Math.round(boxX), Math.round(boxY), Math.round(boxW), Math.round(boxH));
+                ctx.beginPath();
+                // Very slight squared corners (r = 3) for clean aesthetic
+                ctx.roundRect(Math.round(boxX), Math.round(boxY), Math.round(boxW), Math.round(boxH), 3);
+                ctx.stroke();
 
-                // 3. Dimension Summary Text (Bottom Left, Crisp White Font)
+                // Dimension Summary Text (Bottom Left, Crisp White Font)
                 if (showDim && data.display_text) {
                     ctx.fillStyle = "#ffffff";
                     ctx.font = "600 13px Inter, -apple-system, sans-serif";
                     ctx.textAlign = "left";
                     ctx.textBaseline = "bottom";
 
-                    // Truncate text if card width is very small
                     const textStr = String(data.display_text);
-                    const maxTextW = cardW - 24;
-                    ctx.fillText(textStr, cardX + 12, cardY + cardH - 10, maxTextW);
+                    const maxTextW = containerW - 16;
+                    ctx.fillText(textStr, containerX + 4, containerY + containerH - 4, maxTextW);
                 }
 
                 ctx.restore();
