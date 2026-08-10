@@ -99,11 +99,27 @@ class TextAspectRatioFinder:
         matches = []
         
         if text_str:
+            # 1. Match configured target aspect ratios
             for ratio in valid_ratios:
                 w_p, h_p = ratio.split(":")
                 pattern = r'(?<![\d.])' + re.escape(w_p) + r'\s*[:xX/]\s*' + re.escape(h_p) + r'(?!\d|\.\d)'
                 for m in re.finditer(pattern, text_str):
                     matches.append((m.start(), ratio))
+
+            # 2. General ratio pattern fallback to catch any valid ratio format (e.g. 16:9., 21:9, 1.77:1) regardless of trailing punctuation
+            gen_pattern = r'(?<![\d.])(\d+(?:\.\d+)?)\s*[:xX/]\s*(\d+(?:\.\d+)?)(?!\d|\.\d)'
+            for m in re.finditer(gen_pattern, text_str):
+                try:
+                    w_val = float(m.group(1))
+                    h_val = float(m.group(2))
+                    if w_val > 0 and h_val > 0:
+                        w_str = str(int(w_val)) if w_val.is_integer() else str(w_val)
+                        h_str = str(int(h_val)) if h_val.is_integer() else str(h_val)
+                        ratio_fmt = f"{w_str}:{h_str}"
+                        if not any(m_pos == m.start() for m_pos, _ in matches):
+                            matches.append((m.start(), ratio_fmt))
+                except Exception:
+                    pass
 
         if matches:
             matches.sort(key=lambda x: x[0])
