@@ -9,7 +9,7 @@ import folder_paths
 from PIL import Image, ImageOps
 import torch
 import numpy as np
-from .image_loader import ImageLoaderVisualPrettyV2
+from .image_loader import VisualImageLoader
 from nodes import PreviewImage
 
 FAV_DIR = os.path.join(folder_paths.get_output_directory(), "favorites")
@@ -31,12 +31,13 @@ class SaveFavoritePreview(PreviewImage):
     def save_images(self, images, filename_prefix="ComfyUI", prompt=None, extra_pnginfo=None):
         return super().save_images(images, filename_prefix, prompt, extra_pnginfo)
 
-class FavoritePromptLoader(ImageLoaderVisualPrettyV2):
+class FavoritePromptLoader(VisualImageLoader):
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
-                "display_mode": (["Scrollable", "Show All"], {"default": "Scrollable"}),
+                "display_mode": (["Scrollable", "Show All"], {"default": "Scrollable", "advanced": True}),
+                "sort_images_by": (["Name (A-Z)", "Name (Z-A)", "Date Modified (Newest First)", "Date Modified (Oldest First)"], {"default": "Date Modified (Newest First)", "advanced": True}),
             },
             "hidden": {
                 "_selected_image": ("STRING", {"default": ""}),
@@ -50,12 +51,12 @@ class FavoritePromptLoader(ImageLoaderVisualPrettyV2):
     CATEGORY = "🍃 FlowControl/Loaders"
     DESCRIPTION = "Visually pick an image from your saved Favorites and output its prompt."
 
-    def load_favorite(self, display_mode="Scrollable", _selected_image="", _favorites_folder="output/favorites"):
+    def load_favorite(self, display_mode="Scrollable", sort_images_by="Date Modified (Newest First)", _selected_image="", _favorites_folder="output/favorites", **kwargs):
         folder_path = _favorites_folder
         if not os.path.isabs(folder_path):
             folder_path = os.path.join(folder_paths.base_path, folder_path)
             
-        img, prompt, w, h = super().load_image(folder_path, display_mode, _selected_image)
+        img, prompt, w, h = super().load_image(folder=folder_path, display_mode=display_mode, sort_images_by=sort_images_by, _selected_image=_selected_image)
         
         mask = torch.zeros((64, 64), dtype=torch.float32, device="cpu")
         full_path = os.path.normpath(os.path.join(folder_path, _selected_image))
@@ -81,7 +82,6 @@ async def save_favorite_endpoint(request):
         subfolder = data.get("subfolder", "")
         type_str = data.get("type", "temp")
         subcategory = data.get("subcategory", "").strip()
-        # Sanitize subcategory to allow / for subfolders but remove illegal OS characters \ : * ? " < > |
         subcategory = re.sub(r'[\\:*?"<>|]', '', subcategory).strip().strip('/')
         if not subcategory:
             subcategory = "Root"
@@ -104,8 +104,6 @@ async def save_favorite_endpoint(request):
         if not os.path.exists(src_path):
             return web.json_response({"success": False, "error": "File not found"})
 
-        # Resolve absolute path for dest_folder_arg
-        # It's either an absolute path, or a relative path from ComfyUI directory
         if os.path.isabs(dest_folder_arg):
             dest_base = dest_folder_arg
         else:
@@ -116,7 +114,6 @@ async def save_favorite_endpoint(request):
         
         base, ext = os.path.splitext(filename)
         if custom_name:
-            # Sanitize
             custom_name = "".join([c for c in custom_name if c.isalnum() or c in " -_"]).strip()
             if not custom_name:
                 custom_name = base
@@ -158,7 +155,6 @@ async def get_image_prompt_endpoint(request):
         if not os.path.exists(src_path):
             return web.json_response({"success": False, "error": "File not found"})
             
-        # extract prompt
         from .image_loader import extract_metadata_from_image
         prompt, _, _ = extract_metadata_from_image(src_path)
         
