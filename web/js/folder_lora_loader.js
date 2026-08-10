@@ -20,6 +20,20 @@ function getFolderBorderColor(folderName) {
 // Global CSS injection for the visual node styling
 const visualStyles = document.createElement("style");
 visualStyles.textContent = `
+    .lora-visual-container.right-aligned-mode {
+        align-items: flex-end;
+    }
+    .lora-visual-container.right-aligned-mode .lora-folder-header {
+        flex-direction: row-reverse;
+        justify-content: flex-start;
+    }
+    .lora-visual-container.right-aligned-mode .lora-folder-grid,
+    .lora-visual-container.right-aligned-mode .lora-none-container {
+        justify-content: flex-end;
+    }
+    .lora-visual-container.right-aligned-mode .lora-control-bar {
+        flex-direction: row-reverse;
+    }
     .lora-visual-container {
         width: 100%;
         display: flex;
@@ -1090,6 +1104,7 @@ app.registerExtension({
                     const ranks = getTop3Ranks();
 
                     // --- Group items by folder ---
+                    const mtimeMap = data.mtime || {};
                     data.names.forEach(loraName => {
                         if (loraName === "[ NONE ]") return;
                         const parts = loraName.split(" - ");
@@ -1104,12 +1119,94 @@ app.registerExtension({
                         foldersMap[subFolder].push({ loraName, prettyName, usageCount, systemPath });
                     });
 
-                    // Sort folders: Root first, others alphabetically
-                    const sortedFolders = Object.keys(foldersMap).sort((a, b) => {
-                        if (a === "Root") return -1;
-                        if (b === "Root") return 1;
-                        return a.localeCompare(b);
+                    // Read sorting widgets
+                    const getWidgetVal = (wName, defaultVal) => {
+                        const w = node.widgets ? node.widgets.find(x => x.name === wName) : null;
+                        return w ? w.value : defaultVal;
+                    };
+                    const sortLorasMode = getWidgetVal("sort_loras_by", "Name (A-Z)");
+                    const sortFoldersMode = getWidgetVal("sort_folders_by", "Name (A-Z)");
+                    const folderPosMode = getWidgetVal("folder_position", "Folders First");
+                    const contentAlignMode = getWidgetVal("content_alignment", "Left Aligned");
+
+                    if (contentAlignMode === "Right Aligned") {
+                        viewContainer.classList.add("right-aligned-mode");
+                    } else {
+                        viewContainer.classList.remove("right-aligned-mode");
+                    }
+
+                    // Sort individual LoRAs inside each folder
+                    Object.keys(foldersMap).forEach(subFolder => {
+                        foldersMap[subFolder].sort((a, b) => {
+                            if (sortLorasMode === "Name (Z-A)") {
+                                return b.prettyName.localeCompare(a.prettyName);
+                            } else if (sortLorasMode === "Usage (High to Low)") {
+                                return (b.usageCount || 0) - (a.usageCount || 0) || a.prettyName.localeCompare(b.prettyName);
+                            } else if (sortLorasMode === "Usage (Low to High)") {
+                                return (a.usageCount || 0) - (b.usageCount || 0) || a.prettyName.localeCompare(b.prettyName);
+                            } else if (sortLorasMode === "Date Modified (Newest First)") {
+                                const timeA = mtimeMap[a.systemPath] || 0;
+                                const timeB = mtimeMap[b.systemPath] || 0;
+                                return timeB - timeA || a.prettyName.localeCompare(b.prettyName);
+                            } else if (sortLorasMode === "Date Modified (Oldest First)") {
+                                const timeA = mtimeMap[a.systemPath] || 0;
+                                const timeB = mtimeMap[b.systemPath] || 0;
+                                return timeA - timeB || a.prettyName.localeCompare(b.prettyName);
+                            } else { // "Name (A-Z)" default
+                                return a.prettyName.localeCompare(b.prettyName);
+                            }
+                        });
                     });
+
+                    // Sort folders (excluding Root for position ordering)
+                    const nonRootFolders = Object.keys(foldersMap).filter(f => f !== "Root").sort((a, b) => {
+                        const itemsA = foldersMap[a] || [];
+                        const itemsB = foldersMap[b] || [];
+                        const totalA = itemsA.reduce((sum, i) => sum + (i.usageCount || 0), 0);
+                        const totalB = itemsB.reduce((sum, i) => sum + (i.usageCount || 0), 0);
+                        const avgA = itemsA.length > 0 ? totalA / itemsA.length : 0;
+                        const avgB = itemsB.length > 0 ? totalB / itemsB.length : 0;
+
+                        if (sortFoldersMode === "Name (Z-A)") {
+                            return b.localeCompare(a);
+                        } else if (sortFoldersMode === "Total Usage (High to Low)") {
+                            return totalB - totalA || a.localeCompare(b);
+                        } else if (sortFoldersMode === "Average Usage (High to Low)") {
+                            return avgB - avgA || a.localeCompare(b);
+                        } else if (sortFoldersMode === "Total LoRAs (Most First)") {
+                            return itemsB.length - itemsA.length || a.localeCompare(b);
+                        } else { // "Name (A-Z)" default
+                            return a.localeCompare(b);
+                        }
+                    });
+
+                    // Combine folder keys based on folder_position
+                    let sortedFolders = [];
+                    const hasRoot = foldersMap["Root"] && foldersMap["Root"].length > 0;
+                    if (folderPosMode === "Root LoRAs First") {
+                        if (hasRoot) sortedFolders.push("Root");
+                        sortedFolders.push(...nonRootFolders);
+                    } else {
+                        sortedFolders.push(...nonRootFolders);
+                        if (hasRoot) sortedFolders.push("Root");
+                    }
+
+                    // Atomic DOM Fragment construction for maximum performance
+                    const fragment = document.createDocumentFragment();
+
+                    // Setup IntersectionObserver for high-performance lazy image decoding
+                    const imageObserver = new IntersectionObserver((entries, observer) => {
+                        entries.forEach(entry => {
+                            if (entry.isIntersecting) {
+                                const img = entry.target;
+                                if (img.dataset.src) {
+                                    img.src = img.dataset.src;
+                                    img.removeAttribute("data-src");
+                                }
+                                observer.unobserve(img);
+                            }
+                        });
+                    }, { root: viewContainer, rootMargin: "100px" });
 
                     // --- Render folder groups ---
                     sortedFolders.forEach(subFolder => {
@@ -1151,7 +1248,6 @@ app.registerExtension({
                         checkbox.className = "lora-folder-checkbox";
                         checkbox.title = "Select/Deselect all in folder";
                         
-                        // Prevent header toggle click when clicking checkbox
                         checkbox.addEventListener("click", (e) => {
                             e.stopPropagation();
                             const isChecked = checkbox.checked;
@@ -1172,7 +1268,6 @@ app.registerExtension({
 
                         header.appendChild(checkbox);
 
-                        // Collapse/Expand functionality
                         header.addEventListener("click", () => {
                             const collapsed = folderContainer.classList.toggle("collapsed");
                             header.classList.toggle("collapsed", collapsed);
@@ -1202,19 +1297,19 @@ app.registerExtension({
                             }
 
                             const img = document.createElement("img");
+                            img.loading = "lazy";
                             img.dataset.src = `/folder_lora_loader/get_preview?system_path=${encodeURIComponent(item.systemPath)}`;
-                            img.src = img.dataset.src;
+                            imageObserver.observe(img);
                             
                             img.onerror = () => {
                                 img.remove();
                                 const fallback = document.createElement("div");
                                 fallback.className = "lora-tile-fallback";
-                                fallback.innerText = item.prettyName; // V2 shows only prettyName inside the folder section!
+                                fallback.innerText = item.prettyName;
                                 tile.prepend(fallback);
                             };
                             tile.appendChild(img);
 
-                            // Rank classification based on versionless pretty name
                             let tilePrettyName = item.prettyName.replace(/\s+V\d+(\.\d+)?$/i, "").trim();
                             const isOver100 = item.usageCount >= 100;
 
@@ -1243,10 +1338,9 @@ app.registerExtension({
 
                             const label = document.createElement("div");
                             label.className = "lora-tile-label";
-                            label.innerText = item.prettyName; // V2 shows only prettyName inside the folder section!
+                            label.innerText = item.prettyName;
                             tile.appendChild(label);
 
-                            // Tile Click Handler (supporting Multi-Selection via Ctrl / Meta key)
                             tile.addEventListener("click", (e) => {
                                 let currentSelected = getSelectedLoras();
 
@@ -1271,8 +1365,11 @@ app.registerExtension({
                         });
 
                         folderContainer.appendChild(grid);
-                        viewContainer.appendChild(folderContainer);
+                        fragment.appendChild(folderContainer);
                     });
+
+                    // Append entire DocumentFragment in a single high-performance DOM pass
+                    viewContainer.appendChild(fragment);
 
                     // Set initial checkboxes state
                     updateFolderCheckboxes();
@@ -1286,6 +1383,17 @@ app.registerExtension({
                 clearTimeout(debounceTimer);
                 debounceTimer = setTimeout(() => updateVisualGrid(), 350);
             };
+
+            ["sort_loras_by", "sort_folders_by", "folder_position", "content_alignment"].forEach(wName => {
+                const w = node.widgets ? node.widgets.find(x => x.name === wName) : null;
+                if (w) {
+                    const origCb = w.callback;
+                    w.callback = function() {
+                        if (origCb) origCb.apply(this, arguments);
+                        updateVisualGrid();
+                    };
+                }
+            });
 
             const originalOnConfigure = node.onConfigure;
             node.onConfigure = function(config) {

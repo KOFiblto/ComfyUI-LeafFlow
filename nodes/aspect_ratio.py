@@ -104,7 +104,7 @@ class AspectRatioFinder:
         if text_str:
             for ratio in valid_ratios:
                 w_p, h_p = ratio.split(":")
-                pattern = r'(?<![\d.])' + re.escape(w_p) + r'\s*[:xX/]\s*' + re.escape(h_p) + r'(?![\d.])'
+                pattern = r'(?<![\d.])' + re.escape(w_p) + r'\s*[:xX/]\s*' + re.escape(h_p) + r'(?!\d|\.\d)'
                 for m in re.finditer(pattern, text_str):
                     matches.append((m.start(), ratio))
 
@@ -132,3 +132,79 @@ class AspectRatioFinder:
         height = max(m, int(round(raw_h / m)) * m)
 
         return (width, height, found_ratio)
+
+from server import PromptServer
+
+class PreviewImageSizeAspectRatio:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {},
+            "optional": {
+                "width": ("INT", {"default": 0, "min": 0, "max": 16384, "forceInput": True}),
+                "height": ("INT", {"default": 0, "min": 0, "max": 16384, "forceInput": True}),
+                "aspect_ratio": ("STRING", {"forceInput": True}),
+                "ratio_float": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 100.0, "step": 0.01, "forceInput": True}),
+            },
+            "hidden": {
+                "unique_id": "UNIQUE_ID",
+            }
+        }
+
+    RETURN_TYPES = ()
+    RETURN_NAMES = ()
+    FUNCTION = "process_preview"
+    CATEGORY = "🍃 FlowControl/Utils"
+    OUTPUT_NODE = True
+    DESCRIPTION = "Visual preview node that displays image aspect ratio and dimension summary."
+
+    def process_preview(
+        self,
+        width=None,
+        height=None,
+        aspect_ratio=None,
+        ratio_float=None,
+        unique_id="default"
+    ):
+        w_val = int(width) if width is not None and int(width) > 0 else 0
+        h_val = int(height) if height is not None and int(height) > 0 else 0
+        ar_str = str(aspect_ratio).strip() if aspect_ratio is not None else ""
+        r_flt = float(ratio_float) if ratio_float is not None and float(ratio_float) > 0 else 0.0
+
+        calc_ratio = 1.0
+        display_text = "1 x 1"
+
+        if w_val > 0 and h_val > 0:
+            calc_ratio = w_val / h_val
+            display_text = f"{w_val} x {h_val}"
+        elif ar_str:
+            match = re.match(r'^(\d+(?:\.\d+)?)\s*[:xX/]\s*(\d+(?:\.\d+)?)$', ar_str)
+            if match:
+                w_p = float(match.group(1))
+                h_p = float(match.group(2))
+                if w_p > 0 and h_p > 0:
+                    calc_ratio = w_p / h_p
+                    w_disp = int(w_p) if w_p.is_integer() else w_p
+                    h_disp = int(h_p) if h_p.is_integer() else h_p
+                    display_text = f"{w_disp} x {h_disp}"
+            else:
+                display_text = ar_str
+        elif r_flt > 0:
+            calc_ratio = r_flt
+            if r_flt >= 1.0:
+                w_disp = round(r_flt, 2)
+                display_text = f"{w_disp} x 1"
+            else:
+                h_disp = round(1.0 / r_flt, 2)
+                display_text = f"1 x {h_disp}"
+
+        try:
+            PromptServer.instance.send_sync("flowcontrol_update_preview_aspect_ratio", {
+                "node_id": str(unique_id),
+                "ratio": calc_ratio,
+                "display_text": display_text
+            })
+        except Exception:
+            pass
+
+        return {}

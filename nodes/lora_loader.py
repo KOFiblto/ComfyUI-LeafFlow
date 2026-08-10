@@ -274,10 +274,13 @@ def get_filtered_loras_mapping(folder_filter, pretty=False):
             display_name += parse_pretty_name_with_version(lora) if pretty else lora
             mapping[display_name] = lora
         elif is_wildcard:
-            if norm_lora.lower().startswith(clean_filter.lower() + "/"):
-                subfolder_path = lora_dir[len(clean_filter):].strip("/")
-                sub_parts = subfolder_path.split('/')
-                sub_name = sub_parts[-1] if (sub_parts and sub_parts[0]) else ""
+            if clean_filter == "" or norm_lora.lower().startswith(clean_filter.lower() + "/") or norm_lora.lower() == clean_filter.lower():
+                subfolder_path = lora_dir[len(clean_filter):].strip("/") if clean_filter else lora_dir
+                sub_parts = [p for p in subfolder_path.split('/') if p]
+                if sub_parts:
+                    sub_name = sub_parts[-1]
+                else:
+                    sub_name = clean_filter.split('/')[-1] if clean_filter else ""
                 
                 display_name = ""
                 if sub_name and pretty:
@@ -311,18 +314,28 @@ async def get_loras_endpoint(request):
     
     usage_enabled = get_env_setting("ENABLE_LORA_USAGE", "true").lower() == "true"
     usage_by_path = {}
+    mtime_by_path = {}
     
-    if usage_enabled:
-        usage_data = load_usage_data()
-        all_loras = folder_paths.get_filename_list("loras")
-        for lora in all_loras:
-            pretty_name = parse_pretty_name(lora)
+    all_loras = folder_paths.get_filename_list("loras")
+    usage_data = load_usage_data() if usage_enabled else {}
+    
+    for lora in all_loras:
+        pretty_name = parse_pretty_name(lora)
+        if usage_enabled:
             usage_by_path[lora] = usage_data.get(pretty_name, 0)
+        
+        full_path = folder_paths.get_full_path("loras", lora)
+        if full_path and os.path.exists(full_path):
+            try:
+                mtime_by_path[lora] = os.path.getmtime(full_path)
+            except OSError:
+                mtime_by_path[lora] = 0
 
     return web.json_response({
         "names": list(mapping.keys()),
         "mapping": mapping,
-        "usage": usage_by_path
+        "usage": usage_by_path,
+        "mtime": mtime_by_path
     })
 
 @routes.get("/folder_lora_loader/get_preview")
@@ -372,7 +385,7 @@ class FolderLoraLoader:
         return True
 
     def load_lora(self, model, clip, folder, lora_name, strength_model, strength_clip, _selected_lora="[ NONE ]"):
-        active_lora = _selected_lora if _selected_lora else lora_name
+        active_lora = _selected_lora if _selected_lora and _selected_lora != "[ NONE ]" else lora_name
         if active_lora == "[ NONE ]" or not active_lora:
             return (model, clip)
 
@@ -380,10 +393,20 @@ class FolderLoraLoader:
         resolved_path = mapping.get(active_lora)
         
         if not resolved_path or resolved_path == "[ NONE ]":
-            lora_path = folder_paths.get_full_path("loras", active_lora)
-        else:
-            lora_path = folder_paths.get_full_path("loras", resolved_path)
+            all_loras = folder_paths.get_filename_list("loras")
+            raw_filter = folder.replace("\\", "/").strip().rstrip("/").lower()
+            for lora in all_loras:
+                norm_lora = lora.replace("\\", "/").lower()
+                if raw_filter and not norm_lora.startswith(raw_filter):
+                    continue
+                if lora == active_lora or parse_pretty_name(lora) == active_lora:
+                    resolved_path = lora
+                    break
 
+        if not resolved_path:
+            return (model, clip)
+
+        lora_path = folder_paths.get_full_path("loras", resolved_path)
         if not lora_path or not os.path.exists(lora_path):
             return (model, clip)
 
@@ -416,7 +439,7 @@ class FolderLoraLoaderPretty(FolderLoraLoader):
     DESCRIPTION = "LoRA Loader filtered by folder directory with formatted pretty names."
 
     def load_lora(self, model, clip, folder, lora_name, strength_model, strength_clip, output_name="Parsed Name", _selected_lora="[ NONE ]"):
-        active_lora = _selected_lora if _selected_lora and _selected_lora != "[ NONE ]" else lora_name
+        active_lora = lora_name if lora_name != "[ NONE ]" else _selected_lora
         if active_lora == "[ NONE ]" or not active_lora:
             return (model, clip, "")
 
@@ -480,6 +503,10 @@ class FolderLoraLoaderVisualPrettyV2(FolderLoraLoaderPretty):
                 "strength_model": ("FLOAT", {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01}),
                 "strength_clip": ("FLOAT", {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01}),
                 "display_mode": (["Scrollable", "Show All"], {"default": "Scrollable", "advanced": True}),
+                "sort_loras_by": (["Name (A-Z)", "Name (Z-A)", "Usage (High to Low)", "Usage (Low to High)", "Date Modified (Newest First)", "Date Modified (Oldest First)"], {"default": "Name (A-Z)", "advanced": True}),
+                "sort_folders_by": (["Name (A-Z)", "Name (Z-A)", "Total Usage (High to Low)", "Average Usage (High to Low)", "Total LoRAs (Most First)"], {"default": "Name (A-Z)", "advanced": True}),
+                "folder_position": (["Folders First", "Root LoRAs First"], {"default": "Folders First", "advanced": True}),
+                "content_alignment": (["Left Aligned", "Right Aligned"], {"default": "Left Aligned", "advanced": True}),
                 "output_name": (["Parsed Name", "Filename"], {"default": "Parsed Name", "advanced": True}),
             },
             "hidden": {
@@ -497,7 +524,7 @@ class FolderLoraLoaderVisualPrettyV2(FolderLoraLoaderPretty):
             return random.random()
         return ""
 
-    def load_lora(self, model, clip, folder, strength_model, strength_clip, display_mode="Scrollable", output_name="Parsed Name", _selected_lora="[]", _selection_mode="All", _scrape_on_new="true"):
+    def load_lora(self, model, clip, folder, strength_model, strength_clip, display_mode="Scrollable", sort_loras_by="Name (A-Z)", sort_folders_by="Name (A-Z)", folder_position="Folders First", content_alignment="Left Aligned", output_name="Parsed Name", _selected_lora="[]", _selection_mode="All", _scrape_on_new="true"):
         active_lora = _selected_lora if _selected_lora else "[]"
         if active_lora == "[ NONE ]" or active_lora == "[]" or not active_lora:
             return (model, clip, "")
@@ -536,12 +563,12 @@ class FolderLoraLoaderVisualPrettyV2(FolderLoraLoaderPretty):
 
             if not resolved_path or resolved_path == "[ NONE ]":
                 all_loras = folder_paths.get_filename_list("loras")
-                raw_filter = folder.replace("\\", "/").strip().rstrip("/").lower()
+                raw_filter = folder.replace("\\", "/").strip().rstrip("/").rstrip("*").strip("/").lower()
                 for lora in all_loras:
                     norm_lora = lora.replace("\\", "/").lower()
                     if raw_filter and not norm_lora.startswith(raw_filter):
                         continue
-                    if parse_pretty_name(lora) == display_name:
+                    if lora == item or parse_pretty_name(lora) == display_name or parse_pretty_name_with_version(lora) == display_name:
                         resolved_path = lora
                         break
 

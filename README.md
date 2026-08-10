@@ -64,6 +64,10 @@ Visual thumbnail LoRA browser with search, multi-selection, ranking badges (🔥
 - **`strength_model`** (`FLOAT`): Model strength.
 - **`strength_clip`** (`FLOAT`): CLIP strength.
 - **`display_mode`** (`COMBO`, *Advanced*): Choose between `Scrollable` (fixed height) or `Show All` (auto-expanding node card).
+- **`sort_loras_by`** (`COMBO`, *Advanced*): Sort LoRAs inside folders (`Name (A-Z)`, `Name (Z-A)`, `Usage (High to Low)`, `Usage (Low to High)`, `Date Modified (Newest First)`, `Date Modified (Oldest First)`).
+- **`sort_folders_by`** (`COMBO`, *Advanced*): Sort folder sections order (`Name (A-Z)`, `Name (Z-A)`, `Total Usage (High to Low)`, `Average Usage (High to Low)`, `Total LoRAs (Most First)`).
+- **`folder_position`** (`COMBO`, *Advanced*): Layout position of root LoRAs vs folders (`Folders First` vs `Root LoRAs First`).
+- **`content_alignment`** (`COMBO`, *Advanced*): Align tiles and folder headers to the left or right (`Left Aligned` vs `Right Aligned`).
 - **`output_name`** (`COMBO`, *Advanced*): Choose between `Parsed Name` or `Filename` output string format.
 
 #### Outputs
@@ -210,6 +214,22 @@ Parses input text for aspect ratios (e.g. `16:9`, `2.35:1`), syntax-checks them,
 - **`width`** (`INT`): Calculated width.
 - **`height`** (`INT`): Calculated height.
 - **`aspect_ratio`** (`STRING`): Matched ratio string.
+</details>
+
+<details>
+<summary><b>🍃 📐 Preview Image Size & Aspect Ratio</b> (<code>PreviewImageSizeAspectRatio</code>)</summary>
+
+#### Overview
+Visual display node that draws a scaled outline box preview of the image aspect ratio and dimension summary (`W x H`).
+
+#### Inputs & Widgets
+- **`width`** (`INT`, *Optional Input*): Image width in pixels.
+- **`height`** (`INT`, *Optional Input*): Image height in pixels.
+- **`aspect_ratio`** (`STRING`, *Optional Input*): Aspect ratio string (e.g. `16:9` or `2:3`).
+- **`ratio_float`** (`FLOAT`, *Optional Input*): Aspect ratio float value (e.g. `1.777`).
+
+#### Outputs
+- *(None - Visual Display Node Only)*
 </details>
 
 <details>
