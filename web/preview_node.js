@@ -95,12 +95,12 @@ app.registerExtension({
                     updateAllPreviewNodeDropdowns();
                 };
                 
-                this.size = [240, 240];
-                this.min_size = [160, 160];
+                this.size = [200, 200];
+                // Reduced minimum size so user can shrink node smaller (e.g. [100, 100])
+                this.min_size = [100, 100];
                 this.resizable = true;
                 
-                // PERMANENTLY UNLOCK ASPECT RATIO RESIZING (Issue 3 fix)
-                // Overrides LiteGraph's internal aspect_ratio lock so users can freely resize node to 1:1 square or any shape
+                // PERMANENTLY UNLOCK ASPECT RATIO RESIZING
                 Object.defineProperty(this, "aspect_ratio", {
                     get() { return false; },
                     set(v) {},
@@ -146,7 +146,7 @@ app.registerExtension({
                     getValue() { return ""; },
                     setValue(val) {},
                     serialize: false,
-                    computeSize() { return [100, 100]; }
+                    computeSize() { return [60, 60]; }
                 });
                 
                 PreviewManager.registerNode(this);
@@ -154,12 +154,12 @@ app.registerExtension({
             };
 
             nodeType.prototype.computeSize = function() {
-                return [160, 160];
+                return [100, 100];
             };
 
             nodeType.prototype.onResize = function(size) {
-                this.size[0] = Math.max(160, size[0]);
-                this.size[1] = Math.max(160, size[1]);
+                this.size[0] = Math.max(100, size[0]);
+                this.size[1] = Math.max(100, size[1]);
             };
 
             nodeType.prototype.onDrawBackground = function(ctx) {

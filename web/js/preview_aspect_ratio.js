@@ -21,12 +21,12 @@ app.registerExtension({
                     display_text: "1 x 1"
                 };
 
+                // Minimum size set to [230, 160] to accommodate 5-digit labels on left and right margins cleanly
                 this.size = [240, 240];
-                this.min_size = [160, 160];
+                this.min_size = [230, 160];
                 this.resizable = true;
 
-                // PERMANENTLY UNLOCK ASPECT RATIO RESIZING (Issue 3 fix)
-                // Overrides LiteGraph's internal aspect_ratio lock so users can freely resize node to 1:1 square or any shape
+                // PERMANENTLY UNLOCK ASPECT RATIO RESIZING
                 Object.defineProperty(this, "aspect_ratio", {
                     get() { return false; },
                     set(v) {},
@@ -42,14 +42,13 @@ app.registerExtension({
                 viewContainer.style.display = "flex";
                 viewContainer.style.alignItems = "center";
                 viewContainer.style.justifyContent = "center";
-                // Equal 65px left and right padding so crop box stays PERFECTLY CENTERED horizontally (Issue 2 fix)
+                // Equal 65px left and right padding for horizontal balance
                 viewContainer.style.padding = "10px 65px 35px 65px";
                 viewContainer.style.boxSizing = "border-box";
                 viewContainer.style.pointerEvents = "none";
                 viewContainer.style.position = "relative";
                 viewContainer.style.overflow = "hidden";
 
-                // NO TRANSITIONS - Instant snap rendering (Issue 1 fix)
                 viewContainer.innerHTML = `
                     <div class="ar-box-wrapper" style="position: relative; display: flex; align-items: center; justify-content: center; width: 50px; height: 50px; transition: none !important;">
                         <svg class="ar-box-svg" style="position: absolute; top: 0; left: 0; display: block; overflow: visible; pointer-events: none; transition: none !important;" width="50" height="50" viewBox="0 0 50 50">
@@ -100,7 +99,6 @@ app.registerExtension({
                     if (heightEl) heightEl.innerText = partH;
 
                     if (boxWrapper && svgEl && pathEl) {
-                        // 130px total horizontal padding (65px left + 65px right) for perfect centering
                         const availW = Math.max(20, (this.size[0] || 240) - 130);
                         const availH = Math.max(20, (this.size[1] || 240) - 150);
 
@@ -127,7 +125,6 @@ app.registerExtension({
                         svgEl.setAttribute("height", h);
                         svgEl.setAttribute("viewBox", `0 0 ${w} ${h}`);
 
-                        // 1/5th proportional segment rule with size-relative curved corners
                         const cX = w * 0.20;
                         const cY = h * 0.20;
                         const r = Math.min(12, Math.min(cX, cY) * 0.5);
@@ -152,7 +149,7 @@ app.registerExtension({
                     computeSize() { return [100, 80]; }
                 });
 
-                // Canvas drawing fallback for LiteGraph (Classic V1) - Dynamic Curved Crop Handles
+                // Canvas drawing fallback for LiteGraph (Classic V1)
                 const origOnDrawForeground = this.onDrawForeground;
                 this.onDrawForeground = function(ctx) {
                     if (origOnDrawForeground) origOnDrawForeground.apply(this, arguments);
@@ -191,7 +188,6 @@ app.registerExtension({
 
                     const startY = 30 + (this.inputs ? this.inputs.length * 20 : 80);
 
-                    // Equal 65px left and right margins for horizontal centering
                     const marginLeft = 65;
                     const marginRight = 65;
                     const marginTop = startY + 10;
@@ -222,25 +218,25 @@ app.registerExtension({
                     ctx.lineJoin = "round";
                     ctx.beginPath();
 
-                    // Top-Left Corner (Curved)
+                    // Top-Left Corner
                     ctx.moveTo(boxX, boxY + cY);
                     ctx.lineTo(boxX, boxY + r);
                     ctx.arcTo(boxX, boxY, boxX + r, boxY, r);
                     ctx.lineTo(boxX + cX, boxY);
 
-                    // Top-Right Corner (Curved)
+                    // Top-Right Corner
                     ctx.moveTo(boxX + boxW - cX, boxY);
                     ctx.lineTo(boxX + boxW - r, boxY);
                     ctx.arcTo(boxX + boxW, boxY, boxX + boxW, boxY + r, r);
                     ctx.lineTo(boxX + boxW, boxY + cY);
 
-                    // Bottom-Left Corner (Curved)
+                    // Bottom-Left Corner
                     ctx.moveTo(boxX, boxY + boxH - cY);
                     ctx.lineTo(boxX, boxY + boxH - r);
                     ctx.arcTo(boxX, boxY + boxH, boxX + r, boxY + boxH, r);
                     ctx.lineTo(boxX + cX, boxY + boxH);
 
-                    // Bottom-Right Corner (Curved)
+                    // Bottom-Right Corner
                     ctx.moveTo(boxX + boxW - cX, boxY + boxH);
                     ctx.lineTo(boxX + boxW - r, boxY + boxH);
                     ctx.arcTo(boxX + boxW, boxY + boxH, boxX + boxW, boxY + boxH - r, r);
@@ -267,14 +263,12 @@ app.registerExtension({
                     ctx.fillStyle = "#ffffff";
                     ctx.font = "bold 13px Inter, -apple-system, sans-serif";
 
-                    // Height Label: Positioned EXACTLY 8px to the left of rectangle's left edge
                     if (partH) {
                         ctx.textAlign = "right";
                         ctx.textBaseline = "middle";
                         ctx.fillText(partH, boxX - 8, boxY + boxH / 2);
                     }
 
-                    // Width Label: Positioned EXACTLY centered 8px below rectangle's bottom edge
                     if (partW) {
                         ctx.textAlign = "center";
                         ctx.textBaseline = "top";
@@ -285,11 +279,11 @@ app.registerExtension({
                 };
 
                 nodeType.prototype.computeSize = function() {
-                    return [160, 160];
+                    return [230, 160];
                 };
 
                 nodeType.prototype.onResize = function(size) {
-                    this.size[0] = Math.max(160, size[0]);
+                    this.size[0] = Math.max(230, size[0]);
                     this.size[1] = Math.max(160, size[1]);
                     if (typeof this.updateDomPreview === "function") {
                         this.updateDomPreview();
