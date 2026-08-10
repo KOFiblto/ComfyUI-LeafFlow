@@ -13,8 +13,7 @@ app.registerExtension({
 
             this.aspect_ratio_data = {
                 ratio: 1.0,
-                display_text: "1 x 1",
-                show_dimensions: true
+                display_text: "1 x 1"
             };
 
             // Set compact initial node size (resizes smoothly with user dragging)
@@ -25,12 +24,8 @@ app.registerExtension({
                 if (origOnDrawForeground) origOnDrawForeground.apply(this, arguments);
                 if (this.flags?.collapsed) return;
 
-                const data = this.aspect_ratio_data || { ratio: 1.0, display_text: "1 x 1", show_dimensions: true };
+                const data = this.aspect_ratio_data || { ratio: 1.0, display_text: "1 x 1" };
                 const ratio = Math.max(0.05, Math.min(20.0, data.ratio || 1.0));
-                
-                // Read show_dimensions widget value if present
-                const showDimWidget = this.widgets ? this.widgets.find(w => w.name === "show_dimensions") : null;
-                const showDim = showDimWidget ? showDimWidget.value : data.show_dimensions;
 
                 ctx.save();
                 
@@ -44,7 +39,7 @@ app.registerExtension({
                 const containerH = Math.max(45, this.size[1] - startY - 10);
 
                 // White Aspect Ratio Outline Box (No dark card background, slightly rounded squared edges)
-                const textSpace = (showDim && data.display_text) ? 24 : 10;
+                const textSpace = data.display_text ? 24 : 10;
                 const availW = Math.max(20, containerW - 16);
                 const availH = Math.max(20, containerH - textSpace - 10);
 
@@ -69,7 +64,7 @@ app.registerExtension({
                 ctx.stroke();
 
                 // Dimension Summary Text (Bottom Left, Crisp White Font)
-                if (showDim && data.display_text) {
+                if (data.display_text) {
                     ctx.fillStyle = "#ffffff";
                     ctx.font = "600 13px Inter, -apple-system, sans-serif";
                     ctx.textAlign = "left";
@@ -95,8 +90,7 @@ api.addEventListener("flowcontrol_update_preview_aspect_ratio", (event) => {
     if (node && node.type === "PreviewImageSizeAspectRatio") {
         node.aspect_ratio_data = {
             ratio: detail.ratio,
-            display_text: detail.display_text,
-            show_dimensions: detail.show_dimensions
+            display_text: detail.display_text
         };
         app.graph.setDirtyCanvas(true, true);
     }

@@ -139,9 +139,7 @@ class PreviewImageSizeAspectRatio:
     @classmethod
     def INPUT_TYPES(cls):
         return {
-            "required": {
-                "show_dimensions": ("BOOLEAN", {"default": True}),
-            },
+            "required": {},
             "optional": {
                 "width": ("INT", {"default": 0, "min": 0, "max": 16384, "forceInput": True}),
                 "height": ("INT", {"default": 0, "min": 0, "max": 16384, "forceInput": True}),
@@ -153,16 +151,15 @@ class PreviewImageSizeAspectRatio:
             }
         }
 
-    RETURN_TYPES = ("INT", "INT", "STRING", "FLOAT")
-    RETURN_NAMES = ("width", "height", "aspect_ratio", "ratio_float")
+    RETURN_TYPES = ()
+    RETURN_NAMES = ()
     FUNCTION = "process_preview"
     CATEGORY = "🍃 FlowControl/Utils"
     OUTPUT_NODE = True
-    DESCRIPTION = "Renders a visual box preview of the image aspect ratio and dimension summary."
+    DESCRIPTION = "Visual preview node that displays image aspect ratio and dimension summary."
 
     def process_preview(
         self,
-        show_dimensions=True,
         width=None,
         height=None,
         aspect_ratio=None,
@@ -176,14 +173,10 @@ class PreviewImageSizeAspectRatio:
 
         calc_ratio = 1.0
         display_text = "1 x 1"
-        out_ar = "1:1"
 
         if w_val > 0 and h_val > 0:
             calc_ratio = w_val / h_val
             display_text = f"{w_val} x {h_val}"
-            out_ar = f"{w_val}:{h_val}" if not ar_str else ar_str
-            if r_flt == 0.0:
-                r_flt = round(calc_ratio, 4)
         elif ar_str:
             match = re.match(r'^(\d+(?:\.\d+)?)\s*[:xX/]\s*(\d+(?:\.\d+)?)$', ar_str)
             if match:
@@ -194,11 +187,7 @@ class PreviewImageSizeAspectRatio:
                     w_disp = int(w_p) if w_p.is_integer() else w_p
                     h_disp = int(h_p) if h_p.is_integer() else h_p
                     display_text = f"{w_disp} x {h_disp}"
-                    out_ar = ar_str
-                    if r_flt == 0.0:
-                        r_flt = round(calc_ratio, 4)
             else:
-                out_ar = ar_str
                 display_text = ar_str
         elif r_flt > 0:
             calc_ratio = r_flt
@@ -208,16 +197,14 @@ class PreviewImageSizeAspectRatio:
             else:
                 h_disp = round(1.0 / r_flt, 2)
                 display_text = f"1 x {h_disp}"
-            out_ar = f"{round(r_flt, 2)}:1"
 
         try:
             PromptServer.instance.send_sync("flowcontrol_update_preview_aspect_ratio", {
                 "node_id": str(unique_id),
                 "ratio": calc_ratio,
-                "display_text": display_text if show_dimensions else "",
-                "show_dimensions": bool(show_dimensions)
+                "display_text": display_text
             })
         except Exception:
             pass
 
-        return (w_val, h_val, out_ar, r_flt)
+        return {}

@@ -220,20 +220,16 @@ Parses input text for aspect ratios (e.g. `16:9`, `2.35:1`), syntax-checks them,
 <summary><b>🍃 📐 Preview Image Size & Aspect Ratio</b> (<code>PreviewImageSizeAspectRatio</code>)</summary>
 
 #### Overview
-Visual canvas node that draws a scaled preview box of the image aspect ratio and dimension summary (`W x H`).
+Visual display node that draws a scaled outline box preview of the image aspect ratio and dimension summary (`W x H`).
 
 #### Inputs & Widgets
-- **`show_dimensions`** (`BOOLEAN`): Toggle to display dimension text or only the ratio preview box.
 - **`width`** (`INT`, *Optional Input*): Image width in pixels.
 - **`height`** (`INT`, *Optional Input*): Image height in pixels.
 - **`aspect_ratio`** (`STRING`, *Optional Input*): Aspect ratio string (e.g. `16:9` or `2:3`).
 - **`ratio_float`** (`FLOAT`, *Optional Input*): Aspect ratio float value (e.g. `1.777`).
 
 #### Outputs
-- **`width`** (`INT`): Passed through or calculated width.
-- **`height`** (`INT`): Passed through or calculated height.
-- **`aspect_ratio`** (`STRING`): Ratio string.
-- **`ratio_float`** (`FLOAT`): Ratio float value.
+- *(None - Visual Display Node Only)*
 </details>
 
 <details>
