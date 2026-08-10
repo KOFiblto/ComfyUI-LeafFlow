@@ -15,7 +15,7 @@ from .nodes.load_recent import LoadRecentOutputs
 from .nodes.preview_latent import PreviewLatentLiveNode
 from .nodes.decision_node import FlowControlDecision
 from .nodes.favorite_prompts import FavoritePromptLoader, SaveFavoritePreview
-from .nodes.aspect_ratio import AspectRatioFinder
+from .nodes.aspect_ratio import AspectRatioFinder, PreviewImageSizeAspectRatio
 from .nodes.lora_finder import LoraTextFinder
 from .nodes.prompt_iterator import PromptQueueIterator
 from .nodes.text_replacer import MultiTextReplacer
@@ -35,6 +35,7 @@ NODE_CLASS_MAPPINGS = {
     "FavoritePromptLoader": FavoritePromptLoader,
     "SaveFavoritePreview": SaveFavoritePreview,
     "AspectRatioFinder": AspectRatioFinder,
+    "PreviewImageSizeAspectRatio": PreviewImageSizeAspectRatio,
     "LoraTextFinder": LoraTextFinder,
     "PromptQueueIterator": PromptQueueIterator,
     "MultiTextReplacer": MultiTextReplacer
@@ -54,6 +55,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "FavoritePromptLoader": "🍃 ⭐ Favorite Prompts",
     "SaveFavoritePreview": "🍃 💾 Save Favorite Preview",
     "AspectRatioFinder": "🍃 📐 Aspect Ratio Finder",
+    "PreviewImageSizeAspectRatio": "🍃 📐 Preview Image Size & Aspect Ratio",
     "LoraTextFinder": "🍃 🔎 Text LoRA Finder",
     "PromptQueueIterator": "🍃 🔄 Prompt Queue Iterator",
     "MultiTextReplacer": "🍃 🔤 Multi Text Replacer"
