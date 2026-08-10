@@ -34,21 +34,24 @@ app.registerExtension({
                 viewContainer.style.display = "flex";
                 viewContainer.style.alignItems = "center";
                 viewContainer.style.justifyContent = "center";
-                viewContainer.style.padding = "10px 15px 25px 35px";
+                // 65px left padding accommodates 1 to 5 digit height labels (e.g. 16384) without clipping
+                viewContainer.style.padding = "10px 15px 35px 65px";
                 viewContainer.style.boxSizing = "border-box";
                 viewContainer.style.pointerEvents = "none";
                 viewContainer.style.position = "relative";
                 viewContainer.style.overflow = "hidden";
 
                 viewContainer.innerHTML = `
-                    <div class="ar-box-container" style="position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
-                        <svg class="ar-box-svg" style="position: absolute; overflow: visible; pointer-events: none;" width="50" height="50" viewBox="0 0 50 50">
-                            <path class="ar-crop-path" d="" stroke="#ffffff" stroke-width="2.8" stroke-linecap="square" fill="none"/>
+                    <div class="ar-box-wrapper" style="position: relative; display: flex; align-items: center; justify-content: center; width: 50px; height: 50px; transition: width 0.1s ease-out, height 0.1s ease-out;">
+                        <svg class="ar-box-svg" style="position: absolute; top: 0; left: 0; display: block; overflow: visible; pointer-events: none;" width="50" height="50" viewBox="0 0 50 50">
+                            <path class="ar-crop-path" d="" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
                         </svg>
-                        <div class="ar-label-height" style="position: absolute; right: 100%; margin-right: 6px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 700; color: #ffffff; font-family: Inter, system-ui, sans-serif; white-space: nowrap;">1</div>
-                        <div class="ar-label-width" style="position: absolute; top: 100%; margin-top: 6px; left: 50%; transform: translateX(-50%); font-size: 13px; font-weight: 700; color: #ffffff; font-family: Inter, system-ui, sans-serif; white-space: nowrap;">1</div>
+                        <div class="ar-label-height" style="position: absolute; right: 100%; margin-right: 8px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 700; color: #ffffff; font-family: Inter, system-ui, sans-serif; white-space: nowrap;">1</div>
+                        <div class="ar-label-width" style="position: absolute; top: 100%; margin-top: 8px; left: 50%; transform: translateX(-50%); font-size: 13px; font-weight: 700; color: #ffffff; font-family: Inter, system-ui, sans-serif; white-space: nowrap;">1</div>
                     </div>
                 `;
+
+                this._last_render_cache = "";
 
                 this.updateDomPreview = function() {
                     if (!viewContainer) return;
@@ -80,14 +83,15 @@ app.registerExtension({
 
                     const widthEl = viewContainer.querySelector(".ar-label-width");
                     const heightEl = viewContainer.querySelector(".ar-label-height");
+                    const boxWrapper = viewContainer.querySelector(".ar-box-wrapper");
                     const svgEl = viewContainer.querySelector(".ar-box-svg");
                     const pathEl = viewContainer.querySelector(".ar-crop-path");
 
                     if (widthEl) widthEl.innerText = partW;
                     if (heightEl) heightEl.innerText = partH;
 
-                    if (svgEl && pathEl) {
-                        const availW = Math.max(20, (this.size[0] || 240) - 75);
+                    if (boxWrapper && svgEl && pathEl) {
+                        const availW = Math.max(20, (this.size[0] || 240) - 95);
                         const availH = Math.max(20, (this.size[1] || 260) - 150);
 
                         let w, h;
@@ -102,18 +106,26 @@ app.registerExtension({
                         w = Math.round(w);
                         h = Math.round(h);
 
+                        const cacheKey = `${w}_${h}_${partW}_${partH}`;
+                        if (this._last_render_cache === cacheKey) return;
+                        this._last_render_cache = cacheKey;
+
+                        boxWrapper.style.width = `${w}px`;
+                        boxWrapper.style.height = `${h}px`;
+
                         svgEl.setAttribute("width", w);
                         svgEl.setAttribute("height", h);
                         svgEl.setAttribute("viewBox", `0 0 ${w} ${h}`);
 
-                        // 1/5th proportional segment rule (0-20% Corner, 20-40% Gap, 40-60% Center, 60-80% Gap, 80-100% Corner)
+                        // 1/5th proportional segment rule with size-relative curved corners
                         const cX = w * 0.20;
                         const cY = h * 0.20;
+                        const r = Math.min(12, Math.min(cX, cY) * 0.5);
 
-                        const d = `M 0,${cY} L 0,0 L ${cX},0 ` +
-                                `M ${w - cX},0 L ${w},0 L ${w},${cY} ` +
-                                `M 0,${h - cY} L 0,${h} L ${cX},${h} ` +
-                                `M ${w - cX},${h} L ${w},${h} L ${w},${h - cY} ` +
+                        const d = `M 0,${cY} L 0,${r} A ${r} ${r} 0 0 1 ${r},0 L ${cX},0 ` +
+                                `M ${w - cX},0 L ${w - r},0 A ${r} ${r} 0 0 1 ${w},${r} L ${w},${cY} ` +
+                                `M 0,${h - cY} L 0,${h - r} A ${r} ${r} 0 0 0 ${r},${h} L ${cX},${h} ` +
+                                `M ${w - cX},${h} L ${w - r},${h} A ${r} ${r} 0 0 0 ${w},${h - r} L ${w},${h - cY} ` +
                                 `M ${w * 0.40},0 L ${w * 0.60},0 ` +
                                 `M ${w * 0.40},${h} L ${w * 0.60},${h} ` +
                                 `M 0,${h * 0.40} L 0,${h * 0.60} ` +
@@ -129,7 +141,7 @@ app.registerExtension({
                     serialize: false
                 });
 
-                // Canvas drawing fallback for LiteGraph (Classic V1) - 1/5 Proportional Crop Handles
+                // Canvas drawing fallback for LiteGraph (Classic V1) - Dynamic Curved Crop Handles
                 const origOnDrawForeground = this.onDrawForeground;
                 this.onDrawForeground = function(ctx) {
                     if (origOnDrawForeground) origOnDrawForeground.apply(this, arguments);
@@ -168,7 +180,8 @@ app.registerExtension({
 
                     const startY = 30 + (this.inputs ? this.inputs.length * 20 : 80);
 
-                    const marginLeft = 45;
+                    // 65px left margin allows up to 5 digit numbers (e.g. 16384) to be drawn next to left edge without overflowing node
+                    const marginLeft = 65;
                     const marginRight = 25;
                     const marginTop = startY + 10;
                     const marginBottom = 35;
@@ -190,30 +203,36 @@ app.registerExtension({
 
                     const cX = boxW * 0.20;
                     const cY = boxH * 0.20;
+                    const r = Math.min(12, Math.min(cX, cY) * 0.5);
 
                     ctx.strokeStyle = "#ffffff";
                     ctx.lineWidth = 2.8;
-                    ctx.lineCap = "square";
+                    ctx.lineCap = "round";
+                    ctx.lineJoin = "round";
                     ctx.beginPath();
 
-                    // Top-Left Corner
+                    // Top-Left Corner (Curved)
                     ctx.moveTo(boxX, boxY + cY);
-                    ctx.lineTo(boxX, boxY);
+                    ctx.lineTo(boxX, boxY + r);
+                    ctx.arcTo(boxX, boxY, boxX + r, boxY, r);
                     ctx.lineTo(boxX + cX, boxY);
 
-                    // Top-Right Corner
+                    // Top-Right Corner (Curved)
                     ctx.moveTo(boxX + boxW - cX, boxY);
-                    ctx.lineTo(boxX + boxW, boxY);
+                    ctx.lineTo(boxX + boxW - r, boxY);
+                    ctx.arcTo(boxX + boxW, boxY, boxX + boxW, boxY + r, r);
                     ctx.lineTo(boxX + boxW, boxY + cY);
 
-                    // Bottom-Left Corner
+                    // Bottom-Left Corner (Curved)
                     ctx.moveTo(boxX, boxY + boxH - cY);
-                    ctx.lineTo(boxX, boxY + boxH);
+                    ctx.lineTo(boxX, boxY + boxH - r);
+                    ctx.arcTo(boxX, boxY + boxH, boxX + r, boxY + boxH, r);
                     ctx.lineTo(boxX + cX, boxY + boxH);
 
-                    // Bottom-Right Corner
+                    // Bottom-Right Corner (Curved)
                     ctx.moveTo(boxX + boxW - cX, boxY + boxH);
-                    ctx.lineTo(boxX + boxW, boxY + boxH);
+                    ctx.lineTo(boxX + boxW - r, boxY + boxH);
+                    ctx.arcTo(boxX + boxW, boxY + boxH, boxX + boxW, boxY + boxH - r, r);
                     ctx.lineTo(boxX + boxW, boxY + boxH - cY);
 
                     // Top Center Handle
@@ -237,12 +256,14 @@ app.registerExtension({
                     ctx.fillStyle = "#ffffff";
                     ctx.font = "bold 13px Inter, -apple-system, sans-serif";
 
+                    // Height Label: Positioned EXACTLY 8px to the left of the rectangle's left edge (boxX - 8)
                     if (partH) {
                         ctx.textAlign = "right";
                         ctx.textBaseline = "middle";
                         ctx.fillText(partH, boxX - 8, boxY + boxH / 2);
                     }
 
+                    // Width Label: Positioned EXACTLY centered 8px below the rectangle's bottom edge
                     if (partW) {
                         ctx.textAlign = "center";
                         ctx.textBaseline = "top";
