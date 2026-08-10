@@ -95,9 +95,18 @@ app.registerExtension({
                     updateAllPreviewNodeDropdowns();
                 };
                 
-                this.size = [300, 300];
-                this.aspect_ratio = false; // Disable LiteGraph aspect ratio locking (Issue 3 fix)
+                this.size = [240, 240];
+                this.min_size = [160, 160];
                 this.resizable = true;
+                
+                // PERMANENTLY UNLOCK ASPECT RATIO RESIZING (Issue 3 fix)
+                // Overrides LiteGraph's internal aspect_ratio lock so users can freely resize node to 1:1 square or any shape
+                Object.defineProperty(this, "aspect_ratio", {
+                    get() { return false; },
+                    set(v) {},
+                    configurable: true
+                });
+
                 this.imgs = [];
                 this.imageIndex = 0;
                 
@@ -136,7 +145,8 @@ app.registerExtension({
                 this.addDOMWidget("preview_display", "HTML", viewContainer, {
                     getValue() { return ""; },
                     setValue(val) {},
-                    serialize: false
+                    serialize: false,
+                    computeSize() { return [100, 100]; }
                 });
                 
                 PreviewManager.registerNode(this);
@@ -144,18 +154,16 @@ app.registerExtension({
             };
 
             nodeType.prototype.computeSize = function() {
-                return [Math.max(200, this.size[0]), Math.max(200, this.size[1])];
+                return [160, 160];
             };
 
             nodeType.prototype.onResize = function(size) {
-                this.size[0] = Math.max(200, size[0]);
-                this.size[1] = Math.max(200, size[1]);
-                this.aspect_ratio = false;
+                this.size[0] = Math.max(160, size[0]);
+                this.size[1] = Math.max(160, size[1]);
             };
 
             nodeType.prototype.onDrawBackground = function(ctx) {
                 if (this.flags.collapsed) return;
-                this.aspect_ratio = false; // Prevent LiteGraph auto-lock on render
                 if (this.imgs && this.imgs.length) {
                     const img = this.imgs[this.imageIndex || 0];
                     if (!img || !img.complete || (img.naturalWidth === 0 && img.width === 0)) return;
@@ -207,7 +215,6 @@ app.registerExtension({
                     }
                 }
                 
-                this.aspect_ratio = false; // Prevent aspect ratio lock on new preview
                 this.imgs = [img];
                 this.imageIndex = 0;
                 

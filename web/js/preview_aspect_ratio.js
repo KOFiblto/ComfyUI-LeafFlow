@@ -21,9 +21,17 @@ app.registerExtension({
                     display_text: "1 x 1"
                 };
 
-                this.size = [240, 260];
-                this.aspect_ratio = false;
+                this.size = [240, 240];
+                this.min_size = [160, 160];
                 this.resizable = true;
+
+                // PERMANENTLY UNLOCK ASPECT RATIO RESIZING (Issue 3 fix)
+                // Overrides LiteGraph's internal aspect_ratio lock so users can freely resize node to 1:1 square or any shape
+                Object.defineProperty(this, "aspect_ratio", {
+                    get() { return false; },
+                    set(v) {},
+                    configurable: true
+                });
 
                 // DOM Container for ComfyUI V2 Vue UI
                 const viewContainer = document.createElement("div");
@@ -34,17 +42,18 @@ app.registerExtension({
                 viewContainer.style.display = "flex";
                 viewContainer.style.alignItems = "center";
                 viewContainer.style.justifyContent = "center";
-                // 65px left padding accommodates 1 to 5 digit height labels (e.g. 16384) without clipping
-                viewContainer.style.padding = "10px 15px 35px 65px";
+                // Equal 65px left and right padding so crop box stays PERFECTLY CENTERED horizontally (Issue 2 fix)
+                viewContainer.style.padding = "10px 65px 35px 65px";
                 viewContainer.style.boxSizing = "border-box";
                 viewContainer.style.pointerEvents = "none";
                 viewContainer.style.position = "relative";
                 viewContainer.style.overflow = "hidden";
 
+                // NO TRANSITIONS - Instant snap rendering (Issue 1 fix)
                 viewContainer.innerHTML = `
-                    <div class="ar-box-wrapper" style="position: relative; display: flex; align-items: center; justify-content: center; width: 50px; height: 50px; transition: width 0.1s ease-out, height 0.1s ease-out;">
-                        <svg class="ar-box-svg" style="position: absolute; top: 0; left: 0; display: block; overflow: visible; pointer-events: none;" width="50" height="50" viewBox="0 0 50 50">
-                            <path class="ar-crop-path" d="" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                    <div class="ar-box-wrapper" style="position: relative; display: flex; align-items: center; justify-content: center; width: 50px; height: 50px; transition: none !important;">
+                        <svg class="ar-box-svg" style="position: absolute; top: 0; left: 0; display: block; overflow: visible; pointer-events: none; transition: none !important;" width="50" height="50" viewBox="0 0 50 50">
+                            <path class="ar-crop-path" d="" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none" style="transition: none !important;"/>
                         </svg>
                         <div class="ar-label-height" style="position: absolute; right: 100%; margin-right: 8px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 700; color: #ffffff; font-family: Inter, system-ui, sans-serif; white-space: nowrap;">1</div>
                         <div class="ar-label-width" style="position: absolute; top: 100%; margin-top: 8px; left: 50%; transform: translateX(-50%); font-size: 13px; font-weight: 700; color: #ffffff; font-family: Inter, system-ui, sans-serif; white-space: nowrap;">1</div>
@@ -91,8 +100,9 @@ app.registerExtension({
                     if (heightEl) heightEl.innerText = partH;
 
                     if (boxWrapper && svgEl && pathEl) {
-                        const availW = Math.max(20, (this.size[0] || 240) - 95);
-                        const availH = Math.max(20, (this.size[1] || 260) - 150);
+                        // 130px total horizontal padding (65px left + 65px right) for perfect centering
+                        const availW = Math.max(20, (this.size[0] || 240) - 130);
+                        const availH = Math.max(20, (this.size[1] || 240) - 150);
 
                         let w, h;
                         if (ratio >= availW / availH) {
@@ -138,7 +148,8 @@ app.registerExtension({
                 this.addDOMWidget("ar_preview_display", "HTML", viewContainer, {
                     getValue() { return ""; },
                     setValue(val) {},
-                    serialize: false
+                    serialize: false,
+                    computeSize() { return [100, 80]; }
                 });
 
                 // Canvas drawing fallback for LiteGraph (Classic V1) - Dynamic Curved Crop Handles
@@ -180,9 +191,9 @@ app.registerExtension({
 
                     const startY = 30 + (this.inputs ? this.inputs.length * 20 : 80);
 
-                    // 65px left margin allows up to 5 digit numbers (e.g. 16384) to be drawn next to left edge without overflowing node
+                    // Equal 65px left and right margins for horizontal centering
                     const marginLeft = 65;
-                    const marginRight = 25;
+                    const marginRight = 65;
                     const marginTop = startY + 10;
                     const marginBottom = 35;
 
@@ -256,14 +267,14 @@ app.registerExtension({
                     ctx.fillStyle = "#ffffff";
                     ctx.font = "bold 13px Inter, -apple-system, sans-serif";
 
-                    // Height Label: Positioned EXACTLY 8px to the left of the rectangle's left edge (boxX - 8)
+                    // Height Label: Positioned EXACTLY 8px to the left of rectangle's left edge
                     if (partH) {
                         ctx.textAlign = "right";
                         ctx.textBaseline = "middle";
                         ctx.fillText(partH, boxX - 8, boxY + boxH / 2);
                     }
 
-                    // Width Label: Positioned EXACTLY centered 8px below the rectangle's bottom edge
+                    // Width Label: Positioned EXACTLY centered 8px below rectangle's bottom edge
                     if (partW) {
                         ctx.textAlign = "center";
                         ctx.textBaseline = "top";
@@ -274,12 +285,12 @@ app.registerExtension({
                 };
 
                 nodeType.prototype.computeSize = function() {
-                    return [Math.max(200, this.size[0]), Math.max(200, this.size[1])];
+                    return [160, 160];
                 };
 
                 nodeType.prototype.onResize = function(size) {
-                    this.size[0] = Math.max(200, size[0]);
-                    this.size[1] = Math.max(200, size[1]);
+                    this.size[0] = Math.max(160, size[0]);
+                    this.size[1] = Math.max(160, size[1]);
                     if (typeof this.updateDomPreview === "function") {
                         this.updateDomPreview();
                     }
