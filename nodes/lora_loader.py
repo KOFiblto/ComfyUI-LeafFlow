@@ -2,8 +2,9 @@ import os
 import re
 import fnmatch
 import json
-import folder_paths
+import time
 import hashlib
+import folder_paths
 import urllib.request
 import urllib.parse
 import threading
@@ -31,6 +32,30 @@ LORA_OUTPUT_FORMAT_CHOICES = [
 
 CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENV_FILE = os.path.join(CURRENT_DIR, ".env")
+LORA_STATE_FILE = os.path.join(CURRENT_DIR, "user", "lora_loader_state.json")
+
+def ensure_user_dir():
+    user_dir = os.path.dirname(LORA_STATE_FILE)
+    if not os.path.exists(user_dir):
+        os.makedirs(user_dir, exist_ok=True)
+
+def load_lora_cycle_state():
+    ensure_user_dir()
+    if os.path.exists(LORA_STATE_FILE):
+        try:
+            with open(LORA_STATE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+def save_lora_cycle_state(state):
+    ensure_user_dir()
+    try:
+        with open(LORA_STATE_FILE, "w", encoding="utf-8") as f:
+            json.dump(state, f, indent=4, ensure_ascii=False)
+    except Exception as e:
+        print(f"[FlowControl] Error saving lora loader cycle state: {e}")
 
 def get_api_keys():
     civitai_key = os.getenv("CIVITAI_API_KEY", "")
@@ -499,6 +524,7 @@ class VisualLoraLoader(FolderLoraLoaderPretty):
                 "_selected_lora": ("STRING", {"default": "[]"}),
                 "_selection_mode": ("STRING", {"default": "All"}),
                 "_scrape_on_new": ("STRING", {"default": "true"}),
+                "unique_id": "UNIQUE_ID",
             }
         }
 
@@ -509,12 +535,11 @@ class VisualLoraLoader(FolderLoraLoaderPretty):
     @classmethod
     def IS_CHANGED(cls, **kwargs):
         mode = kwargs.get("_selection_mode", "All")
-        if mode == "Random":
-            import random
-            return random.random()
+        if mode in ["Random", "Sequential", "Random (No Replace)"]:
+            return time.time()
         return ""
 
-    def load_lora(self, model, clip, folder, strength_model, strength_clip, display_mode="Scrollable", sort_loras_by="Name (A-Z)", sort_folders_by="Name (A-Z)", folder_position="Folders First", content_alignment="Left Aligned", output_format="Parsed Name", custom_regex="", output_name=None, _selected_lora="[]", _selection_mode="All", _scrape_on_new="true"):
+    def load_lora(self, model, clip, folder, strength_model, strength_clip, display_mode="Scrollable", sort_loras_by="Name (A-Z)", sort_folders_by="Name (A-Z)", folder_position="Folders First", content_alignment="Left Aligned", output_format="Parsed Name", custom_regex="", output_name=None, _selected_lora="[]", _selection_mode="All", _scrape_on_new="true", unique_id="default", **kwargs):
         active_format = output_name if output_name is not None else output_format
         active_lora = _selected_lora if _selected_lora else "[]"
         if active_lora == "[ NONE ]" or active_lora == "[]" or not active_lora:
@@ -529,11 +554,35 @@ class VisualLoraLoader(FolderLoraLoaderPretty):
         else:
             loras_to_load = [active_lora]
 
-        if _selection_mode == "Random" and len(loras_to_load) > 0:
-            import random
+        if _selection_mode in ["Random", "Sequential", "Random (No Replace)"] and len(loras_to_load) > 0:
             valid_choices = [item for item in loras_to_load if item != "[ NONE ]" and item]
             if valid_choices:
-                loras_to_load = [random.choice(valid_choices)]
+                if _selection_mode == "Random":
+                    import random
+                    loras_to_load = [random.choice(valid_choices)]
+                elif _selection_mode == "Sequential":
+                    state = load_lora_cycle_state()
+                    text_hash = hashlib.sha256(json.dumps(sorted(valid_choices)).encode('utf-8')).hexdigest()[:16]
+                    state_key = f"seq_{unique_id}_{text_hash}"
+                    idx = state.get(state_key, 0)
+                    selected_item = valid_choices[idx % len(valid_choices)]
+                    state[state_key] = idx + 1
+                    save_lora_cycle_state(state)
+                    loras_to_load = [selected_item]
+                elif _selection_mode == "Random (No Replace)":
+                    state = load_lora_cycle_state()
+                    text_hash = hashlib.sha256(json.dumps(sorted(valid_choices)).encode('utf-8')).hexdigest()[:16]
+                    state_key = f"noreplace_{unique_id}_{text_hash}"
+                    pool = state.get(state_key, [])
+                    pool = [x for x in pool if x in valid_choices]
+                    if not pool:
+                        import random
+                        pool = list(valid_choices)
+                        random.shuffle(pool)
+                    selected_item = pool.pop(0)
+                    state[state_key] = pool
+                    save_lora_cycle_state(state)
+                    loras_to_load = [selected_item]
             else:
                 loras_to_load = []
 

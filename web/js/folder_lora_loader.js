@@ -20,19 +20,23 @@ function getFolderBorderColor(folderName) {
 // Global CSS injection for the visual node styling
 const visualStyles = document.createElement("style");
 visualStyles.textContent = `
-    .lora-visual-container.right-aligned-mode {
-        align-items: flex-end;
-    }
-    .lora-visual-container.right-aligned-mode .lora-folder-header {
-        flex-direction: row-reverse;
-        justify-content: flex-start;
-    }
     .lora-visual-container.right-aligned-mode .lora-folder-grid,
     .lora-visual-container.right-aligned-mode .lora-none-container {
-        justify-content: flex-end;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: flex-end !important;
+        gap: 8px !important;
     }
-    .lora-visual-container.right-aligned-mode .lora-control-bar {
-        flex-direction: row-reverse;
+    .lora-visual-container .lora-folder-grid,
+    .lora-visual-container .lora-none-container {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: flex-start !important;
+        gap: 8px !important;
+    }
+    .lora-visual-container .lora-tile {
+        width: var(--lora-tile-size, 80px) !important;
+        flex-shrink: 0 !important;
     }
     .lora-visual-container {
         width: 100%;
@@ -856,7 +860,7 @@ app.registerExtension({
                 }
             };
 
-            // --- Control Bar for 2-Way HTML Toggle Button ---
+            // --- Control Bar for Mode Selector ---
             const controlBar = document.createElement("div");
             controlBar.className = "lora-control-bar";
 
@@ -868,39 +872,47 @@ app.registerExtension({
             toggleLabel.innerText = "Mode:";
             toggleContainer.appendChild(toggleLabel);
 
-            const allBtn = document.createElement("button");
-            allBtn.className = "lora-toggle-btn active";
-            allBtn.innerText = "All Loras";
+            const modeSelect = document.createElement("select");
+            modeSelect.className = "lora-mode-select";
+            modeSelect.style.background = "#252525";
+            modeSelect.style.border = "1px solid #353535";
+            modeSelect.style.color = "#fff";
+            modeSelect.style.fontSize = "10px";
+            modeSelect.style.fontWeight = "bold";
+            modeSelect.style.padding = "2px 4px";
+            modeSelect.style.borderRadius = "4px";
+            modeSelect.style.cursor = "pointer";
 
-            const randomBtn = document.createElement("button");
-            randomBtn.className = "lora-toggle-btn";
-            randomBtn.innerText = "Random Lora";
+            const modes = [
+                { value: "All", label: "All Loras" },
+                { value: "Random", label: "Random (With Dupes)" },
+                { value: "Sequential", label: "Sequential Cycle" },
+                { value: "Random (No Replace)", label: "Random (No Dupes)" }
+            ];
+
+            modes.forEach(m => {
+                const opt = document.createElement("option");
+                opt.value = m.value;
+                opt.innerText = m.label;
+                modeSelect.appendChild(opt);
+            });
 
             const syncModeToggleUI = () => {
                 const curModeWidget = getHiddenModeWidget();
-                if (curModeWidget.value === "Random") {
-                    randomBtn.classList.add("active");
-                    allBtn.classList.remove("active");
+                if (curModeWidget.value && modes.some(m => m.value === curModeWidget.value)) {
+                    modeSelect.value = curModeWidget.value;
                 } else {
-                    allBtn.classList.add("active");
-                    randomBtn.classList.remove("active");
+                    modeSelect.value = "All";
                 }
             };
 
-            allBtn.addEventListener("click", () => {
-                getHiddenModeWidget().value = "All";
+            modeSelect.addEventListener("change", (e) => {
+                getHiddenModeWidget().value = e.target.value;
                 syncModeToggleUI();
                 node.triggerSlotEvent?.(0);
             });
 
-            randomBtn.addEventListener("click", () => {
-                getHiddenModeWidget().value = "Random";
-                syncModeToggleUI();
-                node.triggerSlotEvent?.(0);
-            });
-
-            toggleContainer.appendChild(allBtn);
-            toggleContainer.appendChild(randomBtn);
+            toggleContainer.appendChild(modeSelect);
             controlBar.appendChild(toggleContainer);
 
             // Scrape Toggle Container

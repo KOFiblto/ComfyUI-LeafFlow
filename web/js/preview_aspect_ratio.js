@@ -87,8 +87,8 @@ app.registerExtension({
                     if (heightEl) heightEl.innerText = partH;
 
                     if (svgEl && pathEl) {
-                        const availW = Math.max(30, (this.size[0] || 240) - 75);
-                        const availH = Math.max(30, (this.size[1] || 260) - 150);
+                        const availW = Math.max(20, (this.size[0] || 240) - 75);
+                        const availH = Math.max(20, (this.size[1] || 260) - 150);
 
                         let w, h;
                         if (ratio >= availW / availH) {
@@ -106,24 +106,18 @@ app.registerExtension({
                         svgEl.setAttribute("height", h);
                         svgEl.setAttribute("viewBox", `0 0 ${w} ${h}`);
 
-                        const cLen = Math.max(6, Math.min(16, Math.min(w, h) * 0.22));
-                        const eLen = Math.max(6, Math.min(14, Math.min(w, h) * 0.18));
+                        // 1/5th proportional segment rule (0-20% Corner, 20-40% Gap, 40-60% Center, 60-80% Gap, 80-100% Corner)
+                        const cX = w * 0.20;
+                        const cY = h * 0.20;
 
-                        let d = `M 0,${cLen} L 0,0 L ${cLen},0 ` +
-                                `M ${w - cLen},0 L ${w},0 L ${w},${cLen} ` +
-                                `M 0,${h - cLen} L 0,${h} L ${cLen},${h} ` +
-                                `M ${w - cLen},${h} L ${w},${h} L ${w},${h - cLen} `;
-
-                        if (w > cLen * 3) {
-                            const midX = w / 2;
-                            d += `M ${midX - eLen / 2},0 L ${midX + eLen / 2},0 `;
-                            d += `M ${midX - eLen / 2},${h} L ${midX + eLen / 2},${h} `;
-                        }
-                        if (h > cLen * 3) {
-                            const midY = h / 2;
-                            d += `M 0,${midY - eLen / 2} L 0,${midY + eLen / 2} `;
-                            d += `M ${w},${midY - eLen / 2} L ${w},${midY + eLen / 2} `;
-                        }
+                        const d = `M 0,${cY} L 0,0 L ${cX},0 ` +
+                                `M ${w - cX},0 L ${w},0 L ${w},${cY} ` +
+                                `M 0,${h - cY} L 0,${h} L ${cX},${h} ` +
+                                `M ${w - cX},${h} L ${w},${h} L ${w},${h - cY} ` +
+                                `M ${w * 0.40},0 L ${w * 0.60},0 ` +
+                                `M ${w * 0.40},${h} L ${w * 0.60},${h} ` +
+                                `M 0,${h * 0.40} L 0,${h * 0.60} ` +
+                                `M ${w},${h * 0.40} L ${w},${h * 0.60}`;
 
                         pathEl.setAttribute("d", d);
                     }
@@ -135,7 +129,7 @@ app.registerExtension({
                     serialize: false
                 });
 
-                // Canvas drawing fallback for LiteGraph (Classic V1) - Crop Bracket Style
+                // Canvas drawing fallback for LiteGraph (Classic V1) - 1/5 Proportional Crop Handles
                 const origOnDrawForeground = this.onDrawForeground;
                 this.onDrawForeground = function(ctx) {
                     if (origOnDrawForeground) origOnDrawForeground.apply(this, arguments);
@@ -194,61 +188,49 @@ app.registerExtension({
                     const boxX = marginLeft + (availW - boxW) / 2;
                     const boxY = marginTop + (availH - boxH) / 2;
 
+                    const cX = boxW * 0.20;
+                    const cY = boxH * 0.20;
+
                     ctx.strokeStyle = "#ffffff";
                     ctx.lineWidth = 2.8;
                     ctx.lineCap = "square";
                     ctx.beginPath();
 
-                    const cLen = Math.max(6, Math.min(16, Math.min(boxW, boxH) * 0.22));
-                    const eLen = Math.max(6, Math.min(14, Math.min(boxW, boxH) * 0.18));
-
                     // Top-Left Corner
-                    ctx.moveTo(boxX, boxY + cLen);
+                    ctx.moveTo(boxX, boxY + cY);
                     ctx.lineTo(boxX, boxY);
-                    ctx.lineTo(boxX + cLen, boxY);
+                    ctx.lineTo(boxX + cX, boxY);
 
                     // Top-Right Corner
-                    ctx.moveTo(boxX + boxW - cLen, boxY);
+                    ctx.moveTo(boxX + boxW - cX, boxY);
                     ctx.lineTo(boxX + boxW, boxY);
-                    ctx.lineTo(boxX + boxW, boxY + cLen);
+                    ctx.lineTo(boxX + boxW, boxY + cY);
 
                     // Bottom-Left Corner
-                    ctx.moveTo(boxX, boxY + boxH - cLen);
+                    ctx.moveTo(boxX, boxY + boxH - cY);
                     ctx.lineTo(boxX, boxY + boxH);
-                    ctx.lineTo(boxX + cLen, boxY + boxH);
+                    ctx.lineTo(boxX + cX, boxY + boxH);
 
                     // Bottom-Right Corner
-                    ctx.moveTo(boxX + boxW - cLen, boxY + boxH);
+                    ctx.moveTo(boxX + boxW - cX, boxY + boxH);
                     ctx.lineTo(boxX + boxW, boxY + boxH);
-                    ctx.lineTo(boxX + boxW, boxY + boxH - cLen);
+                    ctx.lineTo(boxX + boxW, boxY + boxH - cY);
 
                     // Top Center Handle
-                    if (boxW > cLen * 3) {
-                        const midX = boxX + boxW / 2;
-                        ctx.moveTo(midX - eLen / 2, boxY);
-                        ctx.lineTo(midX + eLen / 2, boxY);
-                    }
+                    ctx.moveTo(boxX + boxW * 0.40, boxY);
+                    ctx.lineTo(boxX + boxW * 0.60, boxY);
 
                     // Bottom Center Handle
-                    if (boxW > cLen * 3) {
-                        const midX = boxX + boxW / 2;
-                        ctx.moveTo(midX - eLen / 2, boxY + boxH);
-                        ctx.lineTo(midX + eLen / 2, boxY + boxH);
-                    }
+                    ctx.moveTo(boxX + boxW * 0.40, boxY + boxH);
+                    ctx.lineTo(boxX + boxW * 0.60, boxY + boxH);
 
                     // Left Center Handle
-                    if (boxH > cLen * 3) {
-                        const midY = boxY + boxH / 2;
-                        ctx.moveTo(boxX, midY - eLen / 2);
-                        ctx.lineTo(boxX, midY + eLen / 2);
-                    }
+                    ctx.moveTo(boxX, boxY + boxH * 0.40);
+                    ctx.lineTo(boxX, boxY + boxH * 0.60);
 
                     // Right Center Handle
-                    if (boxH > cLen * 3) {
-                        const midY = boxY + boxH / 2;
-                        ctx.moveTo(boxX + boxW, midY - eLen / 2);
-                        ctx.lineTo(boxX + boxW, midY + eLen / 2);
-                    }
+                    ctx.moveTo(boxX + boxW, boxY + boxH * 0.40);
+                    ctx.lineTo(boxX + boxW, boxY + boxH * 0.60);
 
                     ctx.stroke();
 
