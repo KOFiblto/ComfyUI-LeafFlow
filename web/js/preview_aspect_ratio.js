@@ -17,8 +17,8 @@ app.registerExtension({
                 show_dimensions: true
             };
 
-            // Ensure node has a comfortable preview height
-            this.size = [220, 160];
+            // Set compact initial node size (resizes smoothly with user dragging)
+            this.size = [190, 110];
 
             const origOnDrawForeground = this.onDrawForeground;
             this.onDrawForeground = function(ctx) {
@@ -34,65 +34,56 @@ app.registerExtension({
 
                 ctx.save();
                 
-                // Calculate drawing area below inputs/widgets
-                const startY = 65;
-                const maxW = Math.max(40, this.size[0] - 30);
-                const maxH = Math.max(40, this.size[1] - startY - 30);
+                // Determine card container position below widgets
+                const widgetHeight = this.widgets ? (this.widgets.length * 24 + 30) : 40;
+                const startY = Math.max(45, widgetHeight);
+                
+                const cardX = 8;
+                const cardY = startY;
+                const cardW = Math.max(60, this.size[0] - 16);
+                const cardH = Math.max(45, this.size[1] - startY - 8);
+
+                // 1. Dark Card Container (Matching UI aesthetic)
+                ctx.fillStyle = "#222226";
+                ctx.beginPath();
+                ctx.roundRect(cardX, cardY, cardW, cardH, 10);
+                ctx.fill();
+
+                // 2. White Aspect Ratio Outline Rectangle (Square Edged, Aesthetic White Line)
+                const textSpace = (showDim && data.display_text) ? 26 : 14;
+                const availW = Math.max(20, cardW - 24);
+                const availH = Math.max(20, cardH - textSpace - 16);
 
                 let boxW, boxH;
-                if (ratio >= maxW / maxH) {
-                    boxW = maxW;
-                    boxH = maxW / ratio;
+                if (ratio >= availW / availH) {
+                    boxW = availW;
+                    boxH = availW / ratio;
                 } else {
-                    boxH = maxH;
-                    boxW = maxH * ratio;
+                    boxH = availH;
+                    boxW = availH * ratio;
                 }
 
-                const centerX = this.size[0] / 2;
-                const centerY = startY + maxH / 2;
-                const boxX = centerX - boxW / 2;
-                const boxY = centerY - boxH / 2;
+                // Align outline box in upper right / top center of card
+                const boxX = cardX + cardW - boxW - 12;
+                const boxY = cardY + 12;
 
-                // Draw Preview Box Container
-                ctx.fillStyle = "#16161a";
-                ctx.strokeStyle = "#383842";
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.roundRect(boxX, boxY, boxW, boxH, 6);
-                ctx.fill();
-                ctx.stroke();
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = 2.2;
+                ctx.lineJoin = "miter";
+                // Square edged sharp rectangle
+                ctx.strokeRect(Math.round(boxX), Math.round(boxY), Math.round(boxW), Math.round(boxH));
 
-                // Draw Aspect Ratio Fill Box
-                ctx.fillStyle = "rgba(0, 122, 204, 0.25)";
-                ctx.strokeStyle = "#007acc";
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.roundRect(boxX + 2, boxY + 2, Math.max(1, boxW - 4), Math.max(1, boxH - 4), 4);
-                ctx.fill();
-                ctx.stroke();
-
-                // Draw Dimension Summary Text if show_dimensions is enabled
+                // 3. Dimension Summary Text (Bottom Left, Crisp White Font)
                 if (showDim && data.display_text) {
                     ctx.fillStyle = "#ffffff";
-                    ctx.font = "bold 11px Inter, sans-serif";
-                    ctx.textAlign = "center";
-                    ctx.textBaseline = "middle";
+                    ctx.font = "600 13px Inter, -apple-system, sans-serif";
+                    ctx.textAlign = "left";
+                    ctx.textBaseline = "bottom";
 
-                    // Text background pill inside or below box
+                    // Truncate text if card width is very small
                     const textStr = String(data.display_text);
-                    const textMetrics = ctx.measureText(textStr);
-                    const pillW = textMetrics.width + 12;
-                    const pillH = 18;
-                    const pillX = centerX - pillW / 2;
-                    const pillY = boxY + boxH / 2 - pillH / 2;
-
-                    ctx.fillStyle = "rgba(18, 18, 22, 0.85)";
-                    ctx.beginPath();
-                    ctx.roundRect(pillX, pillY, pillW, pillH, 4);
-                    ctx.fill();
-
-                    ctx.fillStyle = "#61afef";
-                    ctx.fillText(textStr, centerX, boxY + boxH / 2);
+                    const maxTextW = cardW - 24;
+                    ctx.fillText(textStr, cardX + 12, cardY + cardH - 10, maxTextW);
                 }
 
                 ctx.restore();
