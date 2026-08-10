@@ -12,7 +12,7 @@ app.registerExtension({
             nodeType.prototype.onNodeCreated = function() {
                 if (onNodeCreated) onNodeCreated.apply(this, arguments);
 
-                // STRICTLY REMOVE ALL OUTPUT SLOTS (Issue 2 fix)
+                // STRICTLY REMOVE ALL OUTPUT SLOTS
                 this.outputs = [];
                 if (this.outputs) this.outputs.length = 0;
 
@@ -42,7 +42,9 @@ app.registerExtension({
 
                 viewContainer.innerHTML = `
                     <div class="ar-box-container" style="position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
-                        <div class="ar-box-outline" style="border: 2.2px solid #ffffff; border-radius: 3px; width: 50px; height: 50px; box-sizing: border-box; transition: all 0.1s ease-out;"></div>
+                        <svg class="ar-box-svg" style="position: absolute; overflow: visible; pointer-events: none;" width="50" height="50" viewBox="0 0 50 50">
+                            <path class="ar-crop-path" d="" stroke="#ffffff" stroke-width="2.8" stroke-linecap="square" fill="none"/>
+                        </svg>
                         <div class="ar-label-height" style="position: absolute; right: 100%; margin-right: 6px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 700; color: #ffffff; font-family: Inter, system-ui, sans-serif; white-space: nowrap;">1</div>
                         <div class="ar-label-width" style="position: absolute; top: 100%; margin-top: 6px; left: 50%; transform: translateX(-50%); font-size: 13px; font-weight: 700; color: #ffffff; font-family: Inter, system-ui, sans-serif; white-space: nowrap;">1</div>
                     </div>
@@ -78,12 +80,13 @@ app.registerExtension({
 
                     const widthEl = viewContainer.querySelector(".ar-label-width");
                     const heightEl = viewContainer.querySelector(".ar-label-height");
-                    const boxEl = viewContainer.querySelector(".ar-box-outline");
+                    const svgEl = viewContainer.querySelector(".ar-box-svg");
+                    const pathEl = viewContainer.querySelector(".ar-crop-path");
 
                     if (widthEl) widthEl.innerText = partW;
                     if (heightEl) heightEl.innerText = partH;
 
-                    if (boxEl) {
+                    if (svgEl && pathEl) {
                         const availW = Math.max(30, (this.size[0] || 240) - 75);
                         const availH = Math.max(30, (this.size[1] || 260) - 150);
 
@@ -95,8 +98,34 @@ app.registerExtension({
                             h = availH;
                             w = availH * ratio;
                         }
-                        boxEl.style.width = `${Math.round(w)}px`;
-                        boxEl.style.height = `${Math.round(h)}px`;
+
+                        w = Math.round(w);
+                        h = Math.round(h);
+
+                        svgEl.setAttribute("width", w);
+                        svgEl.setAttribute("height", h);
+                        svgEl.setAttribute("viewBox", `0 0 ${w} ${h}`);
+
+                        const cLen = Math.max(6, Math.min(16, Math.min(w, h) * 0.22));
+                        const eLen = Math.max(6, Math.min(14, Math.min(w, h) * 0.18));
+
+                        let d = `M 0,${cLen} L 0,0 L ${cLen},0 ` +
+                                `M ${w - cLen},0 L ${w},0 L ${w},${cLen} ` +
+                                `M 0,${h - cLen} L 0,${h} L ${cLen},${h} ` +
+                                `M ${w - cLen},${h} L ${w},${h} L ${w},${h - cLen} `;
+
+                        if (w > cLen * 3) {
+                            const midX = w / 2;
+                            d += `M ${midX - eLen / 2},0 L ${midX + eLen / 2},0 `;
+                            d += `M ${midX - eLen / 2},${h} L ${midX + eLen / 2},${h} `;
+                        }
+                        if (h > cLen * 3) {
+                            const midY = h / 2;
+                            d += `M 0,${midY - eLen / 2} L 0,${midY + eLen / 2} `;
+                            d += `M ${w},${midY - eLen / 2} L ${w},${midY + eLen / 2} `;
+                        }
+
+                        pathEl.setAttribute("d", d);
                     }
                 };
 
@@ -106,13 +135,12 @@ app.registerExtension({
                     serialize: false
                 });
 
-                // Canvas drawing fallback for LiteGraph (Classic V1)
+                // Canvas drawing fallback for LiteGraph (Classic V1) - Crop Bracket Style
                 const origOnDrawForeground = this.onDrawForeground;
                 this.onDrawForeground = function(ctx) {
                     if (origOnDrawForeground) origOnDrawForeground.apply(this, arguments);
                     if (this.flags?.collapsed) return;
 
-                    // Ensure outputs remain strictly empty (Issue 2 fix)
                     if (this.outputs && this.outputs.length > 0) {
                         this.outputs.length = 0;
                     }
@@ -167,9 +195,61 @@ app.registerExtension({
                     const boxY = marginTop + (availH - boxH) / 2;
 
                     ctx.strokeStyle = "#ffffff";
-                    ctx.lineWidth = 2.2;
+                    ctx.lineWidth = 2.8;
+                    ctx.lineCap = "square";
                     ctx.beginPath();
-                    ctx.roundRect(Math.round(boxX), Math.round(boxY), Math.round(boxW), Math.round(boxH), 3);
+
+                    const cLen = Math.max(6, Math.min(16, Math.min(boxW, boxH) * 0.22));
+                    const eLen = Math.max(6, Math.min(14, Math.min(boxW, boxH) * 0.18));
+
+                    // Top-Left Corner
+                    ctx.moveTo(boxX, boxY + cLen);
+                    ctx.lineTo(boxX, boxY);
+                    ctx.lineTo(boxX + cLen, boxY);
+
+                    // Top-Right Corner
+                    ctx.moveTo(boxX + boxW - cLen, boxY);
+                    ctx.lineTo(boxX + boxW, boxY);
+                    ctx.lineTo(boxX + boxW, boxY + cLen);
+
+                    // Bottom-Left Corner
+                    ctx.moveTo(boxX, boxY + boxH - cLen);
+                    ctx.lineTo(boxX, boxY + boxH);
+                    ctx.lineTo(boxX + cLen, boxY + boxH);
+
+                    // Bottom-Right Corner
+                    ctx.moveTo(boxX + boxW - cLen, boxY + boxH);
+                    ctx.lineTo(boxX + boxW, boxY + boxH);
+                    ctx.lineTo(boxX + boxW, boxY + boxH - cLen);
+
+                    // Top Center Handle
+                    if (boxW > cLen * 3) {
+                        const midX = boxX + boxW / 2;
+                        ctx.moveTo(midX - eLen / 2, boxY);
+                        ctx.lineTo(midX + eLen / 2, boxY);
+                    }
+
+                    // Bottom Center Handle
+                    if (boxW > cLen * 3) {
+                        const midX = boxX + boxW / 2;
+                        ctx.moveTo(midX - eLen / 2, boxY + boxH);
+                        ctx.lineTo(midX + eLen / 2, boxY + boxH);
+                    }
+
+                    // Left Center Handle
+                    if (boxH > cLen * 3) {
+                        const midY = boxY + boxH / 2;
+                        ctx.moveTo(boxX, midY - eLen / 2);
+                        ctx.lineTo(boxX, midY + eLen / 2);
+                    }
+
+                    // Right Center Handle
+                    if (boxH > cLen * 3) {
+                        const midY = boxY + boxH / 2;
+                        ctx.moveTo(boxX + boxW, midY - eLen / 2);
+                        ctx.lineTo(boxX + boxW, midY + eLen / 2);
+                    }
+
                     ctx.stroke();
 
                     ctx.fillStyle = "#ffffff";
