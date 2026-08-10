@@ -6,45 +6,55 @@ from .nodes.queue_control import PauseQueueNode, PersistentQueueNode, setup_queu
 from .nodes.lora_loader import (
     FolderLoraLoader,
     FolderLoraLoaderPretty,
+    VisualLoraLoader,
     FolderLoraLoaderVisualPrettyV2
 )
-from .nodes.image_loader import ImageLoaderVisualPrettyV2
+from .nodes.image_loader import VisualImageLoader, ImageLoaderVisualPrettyV2
 from .nodes.undo_placeholder import BackToPlaceholder
 from .nodes.auto_watcher import LoadImageFromFolder
 from .nodes.load_recent import LoadRecentOutputs
 from .nodes.preview_latent import PreviewLatentLiveNode
 from .nodes.decision_node import FlowControlDecision
 from .nodes.favorite_prompts import FavoritePromptLoader, SaveFavoritePreview
-from .nodes.aspect_ratio import AspectRatioFinder, PreviewImageSizeAspectRatio
-from .nodes.lora_finder import LoraTextFinder
+from .nodes.aspect_ratio import TextAspectRatioFinder, AspectRatioFinder, PreviewImageSizeAspectRatio
+from .nodes.lora_finder import TextLoraFinder, LoraTextFinder
 from .nodes.prompt_iterator import PromptQueueIterator
 from .nodes.text_replacer import MultiTextReplacer
 
 
 NODE_CLASS_MAPPINGS = {
+    # Standardized Class Names
     "FolderLoraLoader": FolderLoraLoader,
     "FolderLoraLoaderPretty": FolderLoraLoaderPretty,
-    "FolderLoraLoaderVisualPrettyV2": FolderLoraLoaderVisualPrettyV2,
-    "ImageLoaderVisualPrettyV2": ImageLoaderVisualPrettyV2,
+    "VisualLoraLoader": VisualLoraLoader,
+    "VisualImageLoader": VisualImageLoader,
     "BackToPlaceholder": BackToPlaceholder,
-    "UndoPlaceholder": BackToPlaceholder, # Backward compatibility alias
     "LoadImageFromFolder": LoadImageFromFolder,
     "LoadRecentOutputs": LoadRecentOutputs,
     "PreviewLatentLive": PreviewLatentLiveNode,
     "FlowControlDecision": FlowControlDecision,
     "FavoritePromptLoader": FavoritePromptLoader,
     "SaveFavoritePreview": SaveFavoritePreview,
-    "AspectRatioFinder": AspectRatioFinder,
+    "TextAspectRatioFinder": TextAspectRatioFinder,
     "PreviewImageSizeAspectRatio": PreviewImageSizeAspectRatio,
-    "LoraTextFinder": LoraTextFinder,
+    "TextLoraFinder": TextLoraFinder,
     "PromptQueueIterator": PromptQueueIterator,
-    "MultiTextReplacer": MultiTextReplacer
+    "MultiTextReplacer": MultiTextReplacer,
+
+    # Backward Compatibility Aliases
+    "FolderLoraLoaderVisualPrettyV2": VisualLoraLoader,
+    "ImageLoaderVisualPrettyV2": VisualImageLoader,
+    "AspectRatioFinder": TextAspectRatioFinder,
+    "LoraTextFinder": TextLoraFinder,
+    "UndoPlaceholder": BackToPlaceholder,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "FolderLoraLoader": "🍃 📁 LoRA Loader (by Folder)",
+    "FolderLoraLoader": "🍃 📁 LoRA Loader (Folder)",
     "FolderLoraLoaderPretty": "🍃 ✨ LoRA Loader (Pretty)",
+    "VisualLoraLoader": "🍃 🖼️ Visual LoRA Loader",
     "FolderLoraLoaderVisualPrettyV2": "🍃 🖼️ Visual LoRA Loader",
+    "VisualImageLoader": "🍃 📷 Visual Image Loader",
     "ImageLoaderVisualPrettyV2": "🍃 📷 Visual Image Loader",
     "BackToPlaceholder": "🍃 ↩️ Back To Placeholder",
     "UndoPlaceholder": "🍃 ↩️ Back To Placeholder",
@@ -54,9 +64,11 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "FlowControlDecision": "🍃 ⏸️ FlowControl Decision",
     "FavoritePromptLoader": "🍃 ⭐ Favorite Prompts",
     "SaveFavoritePreview": "🍃 💾 Save Favorite Preview",
-    "AspectRatioFinder": "🍃 📐 Aspect Ratio Finder",
+    "TextAspectRatioFinder": "🍃 📐 Text Aspect Ratio Finder",
+    "AspectRatioFinder": "🍃 📐 Text Aspect Ratio Finder",
     "PreviewImageSizeAspectRatio": "🍃 📐 Preview Image Size & Aspect Ratio",
-    "LoraTextFinder": "🍃 🔎 Text LoRA Finder",
+    "TextLoraFinder": "🍃 🔎 Text LoRA Finder & Loader",
+    "LoraTextFinder": "🍃 🔎 Text LoRA Finder & Loader",
     "PromptQueueIterator": "🍃 🔄 Prompt Queue Iterator",
     "MultiTextReplacer": "🍃 🔤 Multi Text Replacer"
 }
@@ -72,7 +84,7 @@ ENV_FILE = os.path.join(CURRENT_DIR, ".env")
 
 routes = server.routes
 
-print("[ComfyUI-FlowControl] 🍃 Loaded 15 nodes & visual endpoints successfully.")
+print("[ComfyUI-FlowControl] 🍃 Loaded 16 nodes & visual endpoints successfully.")
 
 @routes.get("/flow_control/settings")
 async def get_settings(request):
@@ -187,7 +199,6 @@ async def save_settings(request):
         if enable_lora_usage is not None:
             os.environ["ENABLE_LORA_USAGE"] = enable_lora_usage
 
-        # Reset failed scrapes cache when keys/settings update
         failed_file = os.path.join(CURRENT_DIR, "failed_scrapes.json")
         try:
             with open(failed_file, "w", encoding="utf-8") as f:

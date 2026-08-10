@@ -41,10 +41,9 @@ def parse_prompt_blocks(text_str, separator):
     if separator == "Newline":
         return [line.strip() for line in clean_text.split('\n') if line.strip()]
     elif separator == ">2 Empty Lines":
-        # Splits on 2 or more empty lines (3 or more newlines)
         raw_blocks = re.split(r'(?:\n\s*){3,}', clean_text)
         return [b.strip() for b in raw_blocks if b.strip()]
-    else: # ">1 Empty Line" (default: splits on 1 or more empty lines)
+    else: # ">1 Empty Line"
         raw_blocks = re.split(r'\n\s*\n+', clean_text)
         return [b.strip() for b in raw_blocks if b.strip()]
 
@@ -66,7 +65,7 @@ class PromptQueueIterator:
                     "Newline",
                     ">2 Empty Lines"
                 ], {"default": ">1 Empty Line"}),
-                "prompt_text": ("STRING", {"default": "", "multiline": True}),
+                "text": ("STRING", {"default": "", "multiline": True}),
             },
             "optional": {
                 "prompt": ("STRING", {"forceInput": True}),
@@ -84,23 +83,23 @@ class PromptQueueIterator:
 
     @classmethod
     def IS_CHANGED(cls, **kwargs):
-        # Force execution on every batch iteration
         return time.time()
 
     def process_queue(
         self,
         pop_mode="Pop Top & Delete",
         separator=">1 Empty Line",
-        prompt_text="",
+        text="",
         prompt=None,
-        unique_id="default"
+        prompt_text=None,
+        unique_id="default",
+        **kwargs
     ):
-        raw_input = prompt if prompt is not None else prompt_text
+        raw_input = text if text else (prompt if prompt is not None else prompt_text)
         text_str = str(raw_input) if raw_input is not None else ""
         if not text_str.strip():
             return ("", "", 0)
 
-        # Scope state key by node instance ID and prompt text hash
         text_hash = hashlib.sha256(text_str.encode('utf-8')).hexdigest()[:16]
         state_key = f"node_{unique_id}_{text_hash}_{separator}_{pop_mode}"
         
@@ -135,12 +134,10 @@ class PromptQueueIterator:
             idx = random.randint(0, len(prompt_blocks) - 1)
             selected_prompt = prompt_blocks[idx]
 
-        # Re-format remaining text based on mode and separator
         remaining_count = len(prompt_blocks)
         join_delim = "\n" if separator == "Newline" else ("\n\n\n" if separator == ">2 Empty Lines" else "\n\n")
         remaining_text = join_delim.join(prompt_blocks) if prompt_blocks else ""
 
-        # Send live UI update event to mutate prompt_text widget in real-time
         try:
             PromptServer.instance.send_sync("flowcontrol_update_prompt_iterator", {
                 "node_id": str(unique_id),

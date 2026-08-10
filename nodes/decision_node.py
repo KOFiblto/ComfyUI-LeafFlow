@@ -53,7 +53,7 @@ class FlowControlDecision:
     RETURN_TYPES = ("BOOLEAN",)
     RETURN_NAMES = ("cancel",)
     FUNCTION = "decide"
-    CATEGORY = "🍃 FlowControl"
+    CATEGORY = "🍃 FlowControl/Utils"
     DESCRIPTION = "Pauses execution and waits for your input via the UI buttons.\n\n- 'Continue' outputs False (0).\n- 'Cancel' outputs True (1) so you can route it into a Switch node to bypass later nodes.\n- 'Stop Workflow' instantly aborts the entire ComfyUI generation queue.\n- 'OS Notification': Sends a native desktop toast (Windows/macOS/Linux) when waiting."
 
     def send_notification(self, title, message):

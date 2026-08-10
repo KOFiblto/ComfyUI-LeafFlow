@@ -1,7 +1,7 @@
 import re
 import math
 
-class AspectRatioFinder:
+class TextAspectRatioFinder:
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -73,12 +73,10 @@ class AspectRatioFinder:
     ):
         text_str = str(text) if text is not None else ""
 
-        # Clamp target_mp between min_mp and max_mp
         min_v = float(min_mp)
         max_v = max(min_v, float(max_mp))
         effective_mp = max(min_v, min(max_v, float(target_mp)))
 
-        # 1. Parse and syntax-check user-provided aspect ratio string list
         valid_ratios = []
         raw_items = [item.strip() for item in str(aspect_ratios or "").split(",") if item.strip()]
         
@@ -97,7 +95,6 @@ class AspectRatioFinder:
         if not valid_ratios:
             valid_ratios = ["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"]
 
-        # 2. Search for occurrences of any valid aspect ratio in text
         found_ratio = None
         matches = []
         
@@ -110,18 +107,16 @@ class AspectRatioFinder:
 
         if matches:
             matches.sort(key=lambda x: x[0])
-            if search_mode == "Last match (Back)":
+            if search_mode in ["Back", "Last match (Back)"]:
                 found_ratio = matches[-1][1]
             else:
                 found_ratio = matches[0][1]
         else:
             found_ratio = default_aspect_ratio
 
-        # 3. Calculate width & height
         w_part, h_part = map(float, found_ratio.split(":"))
         r = w_part / h_part
 
-        # 1 Megapixel = 1024 * 1024 = 1,048,576 pixels (standard ComfyUI/SD/SDXL resolution math)
         total_pixels = effective_mp * 1024.0 * 1024.0
         
         raw_h = math.sqrt(total_pixels / r)
@@ -208,3 +203,6 @@ class PreviewImageSizeAspectRatio:
             pass
 
         return {}
+
+# Alias for backward compatibility
+AspectRatioFinder = TextAspectRatioFinder
