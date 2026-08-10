@@ -32,7 +32,6 @@ function getKSamplerNodes() {
 
     traverseGraph(app.graph);
 
-    // Also check DOM nodes for ComfyUI V2 subgraphs
     document.querySelectorAll('[data-node-id], [data-widgets-grid-node-id], .lg-node').forEach(el => {
         const id = el.dataset.nodeId || el.dataset.widgetsGridNodeId || el.getAttribute('data-node-id');
         const text = (el.innerText || el.textContent || "").split('\n')[0];
@@ -97,10 +96,11 @@ app.registerExtension({
                 };
                 
                 this.size = [300, 300];
+                this.aspect_ratio = false; // Disable LiteGraph aspect ratio locking (Issue 3 fix)
+                this.resizable = true;
                 this.imgs = [];
                 this.imageIndex = 0;
                 
-                // Create robust DOM container for V2 overlay
                 const viewContainer = document.createElement("div");
                 viewContainer.style.width = "100%";
                 viewContainer.style.height = "calc(100% - 55px)";
@@ -133,7 +133,6 @@ app.registerExtension({
                 this.previewImgElement = imgElement;
                 this.previewFallbackText = fallbackText;
                 
-                // Mount DOM widget
                 this.addDOMWidget("preview_display", "HTML", viewContainer, {
                     getValue() { return ""; },
                     setValue(val) {},
@@ -151,10 +150,12 @@ app.registerExtension({
             nodeType.prototype.onResize = function(size) {
                 this.size[0] = Math.max(200, size[0]);
                 this.size[1] = Math.max(200, size[1]);
+                this.aspect_ratio = false;
             };
 
             nodeType.prototype.onDrawBackground = function(ctx) {
                 if (this.flags.collapsed) return;
+                this.aspect_ratio = false; // Prevent LiteGraph auto-lock on render
                 if (this.imgs && this.imgs.length) {
                     const img = this.imgs[this.imageIndex || 0];
                     if (!img || !img.complete || (img.naturalWidth === 0 && img.width === 0)) return;
@@ -206,10 +207,10 @@ app.registerExtension({
                     }
                 }
                 
+                this.aspect_ratio = false; // Prevent aspect ratio lock on new preview
                 this.imgs = [img];
                 this.imageIndex = 0;
                 
-                // Update DOM elements natively for V2 visibility
                 const domImgs = document.querySelectorAll(`[data-node-id="${this.id}"] .flowcontrol-live-preview-img, [data-widgets-grid-node-id="${this.id}"] .flowcontrol-live-preview-img`);
                 if (domImgs.length > 0) {
                     domImgs.forEach(imgEl => {
@@ -220,7 +221,6 @@ app.registerExtension({
                     });
                 }
                 
-                // Fallback for V1 LiteGraph internal references
                 if (this.previewImgElement && this.previewFallbackText && img && img.src) {
                     this.previewFallbackText.style.display = "none";
                     this.previewImgElement.src = img.src;
