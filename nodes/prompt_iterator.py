@@ -106,7 +106,7 @@ class PromptQueueIterator:
         state = load_state()
         cached_list = state.get(state_key)
 
-        if cached_list is None:
+        if cached_list is None or len(cached_list) == 0:
             prompt_blocks = parse_prompt_blocks(text_str, separator)
         else:
             prompt_blocks = list(cached_list)
