@@ -52,6 +52,11 @@ def load_lora_cycle_state():
 def save_lora_cycle_state(state):
     ensure_user_dir()
     try:
+        # Auto-prune abandoned state keys if count exceeds 100 entries
+        if len(state) > 100:
+            excess_keys = list(state.keys())[:-100]
+            for k in excess_keys:
+                del state[k]
         with open(LORA_STATE_FILE, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=4, ensure_ascii=False)
     except Exception as e:
