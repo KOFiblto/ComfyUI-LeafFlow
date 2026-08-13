@@ -805,7 +805,7 @@ app.registerExtension({
                     widgets[0].hidden = true;
                     return widgets[0];
                 }
-                const w = node.addWidget("text", "_selection_mode", "All", () => {}, { serialize: true });
+                const w = node.addWidget("text", "_selection_mode", "Sequential", () => {}, { serialize: true });
                 w.type = "hidden";
                 w.hidden = true;
                 w.computeSize = () => [0, 0];
@@ -902,7 +902,7 @@ app.registerExtension({
                 if (curModeWidget.value && modes.some(m => m.value === curModeWidget.value)) {
                     modeSelect.value = curModeWidget.value;
                 } else {
-                    modeSelect.value = "All";
+                    modeSelect.value = "Sequential";
                 }
             };
 

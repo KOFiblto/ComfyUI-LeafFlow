@@ -522,7 +522,7 @@ class VisualLoraLoader(FolderLoraLoaderPretty):
             },
             "hidden": {
                 "_selected_lora": ("STRING", {"default": "[]"}),
-                "_selection_mode": ("STRING", {"default": "All"}),
+                "_selection_mode": ("STRING", {"default": "Sequential"}),
                 "_scrape_on_new": ("STRING", {"default": "true"}),
                 "unique_id": "UNIQUE_ID",
             }
