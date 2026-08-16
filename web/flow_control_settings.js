@@ -192,5 +192,21 @@ app.registerExtension({
                 }).catch(() => {});
             }
         });
+
+        // 12. Enable System Tray Icon Setting
+        app.ui.settings.addSetting({
+            id: "FlowControl.EnableTrayIcon",
+            name: "🍃 FlowControl: Enable System Tray Icon",
+            type: "boolean",
+            defaultValue: false,
+            tooltip: "Enables an OS system tray icon with matching status colors to pause (finish/instant) and resume the queue without having ComfyUI open in your browser.",
+            onChange(value) {
+                api.fetchApi("/flow_control/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ enable_tray_icon: value ? "true" : "false" })
+                }).catch(() => {});
+            }
+        });
     }
 });

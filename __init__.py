@@ -2,7 +2,7 @@ import os
 from aiohttp import web
 from server import PromptServer
 
-from .nodes.queue_control import setup_queue_control_routes
+from .nodes.queue_control import setup_queue_control_routes, tray_manager
 from .nodes.lora_loader import (
     FolderLoraLoader,
     FolderLoraLoaderPretty,
@@ -90,6 +90,7 @@ print("[ComfyUI-FlowControl] 🍃 Loaded 16 nodes & visual endpoints successfull
 async def get_settings(request):
     civitai_key = os.getenv("CIVITAI_API_KEY", "")
     tmdb_key = os.getenv("TMDB_API_KEY", "")
+    enable_tray = os.getenv("ENABLE_TRAY_ICON", "false").lower() in ["true", "1", "yes"]
     if os.path.exists(ENV_FILE):
         try:
             with open(ENV_FILE, "r", encoding="utf-8") as f:
@@ -99,11 +100,14 @@ async def get_settings(request):
                         civitai_key = line.split("=", 1)[1].strip()
                     elif line.startswith("TMDB_API_KEY="):
                         tmdb_key = line.split("=", 1)[1].strip()
+                    elif line.startswith("ENABLE_TRAY_ICON="):
+                        enable_tray = line.split("=", 1)[1].strip().lower() in ["true", "1", "yes"]
         except Exception:
             pass
     return web.json_response({
         "civitai_api_key": civitai_key,
-        "tmdb_api_key": tmdb_key
+        "tmdb_api_key": tmdb_key,
+        "enable_tray_icon": enable_tray
     })
 
 @routes.post("/flow_control/settings")
@@ -118,6 +122,7 @@ async def save_settings(request):
         enable_civitai = data.get("enable_civitai_scraping")
         enable_tmdb = data.get("enable_tmdb_scraping")
         enable_lora_usage = data.get("enable_lora_usage")
+        enable_tray_icon = data.get("enable_tray_icon")
         restored_state = data.get("persistent_queue_restored_state")
 
         lines = []
@@ -137,6 +142,7 @@ async def save_settings(request):
         has_civ_enable = False
         has_tmdb_enable = False
         has_lora_usage = False
+        has_tray_enable = False
         has_restored_state = False
 
         for line in lines:
@@ -164,6 +170,9 @@ async def save_settings(request):
             elif line.strip().startswith("ENABLE_LORA_USAGE=") and enable_lora_usage is not None:
                 new_lines.append(f"ENABLE_LORA_USAGE={enable_lora_usage}\n")
                 has_lora_usage = True
+            elif line.strip().startswith("ENABLE_TRAY_ICON=") and enable_tray_icon is not None:
+                new_lines.append(f"ENABLE_TRAY_ICON={enable_tray_icon}\n")
+                has_tray_enable = True
             elif line.strip().startswith("PERSISTENT_QUEUE_RESTORED_STATE=") and restored_state is not None:
                 new_lines.append(f"PERSISTENT_QUEUE_RESTORED_STATE={restored_state}\n")
                 has_restored_state = True
@@ -186,6 +195,8 @@ async def save_settings(request):
             new_lines.append(f"ENABLE_TMDB_SCRAPING={enable_tmdb}\n")
         if not has_lora_usage and enable_lora_usage is not None:
             new_lines.append(f"ENABLE_LORA_USAGE={enable_lora_usage}\n")
+        if not has_tray_enable and enable_tray_icon is not None:
+            new_lines.append(f"ENABLE_TRAY_ICON={enable_tray_icon}\n")
         if not has_restored_state and restored_state is not None:
             new_lines.append(f"PERSISTENT_QUEUE_RESTORED_STATE={restored_state}\n")
 
@@ -198,6 +209,10 @@ async def save_settings(request):
             os.environ["TMDB_API_KEY"] = tmdb_key
         if enable_lora_usage is not None:
             os.environ["ENABLE_LORA_USAGE"] = enable_lora_usage
+        if enable_tray_icon is not None:
+            os.environ["ENABLE_TRAY_ICON"] = str(enable_tray_icon)
+            tray_enabled_bool = str(enable_tray_icon).lower() in ["true", "1", "yes"]
+            tray_manager.set_enabled(tray_enabled_bool)
 
         failed_file = os.path.join(CURRENT_DIR, "failed_scrapes.json")
         try:

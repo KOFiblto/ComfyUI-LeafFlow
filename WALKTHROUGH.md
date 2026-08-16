@@ -17,6 +17,16 @@ You have two pause modes, accessible by clicking the small dropdown arrow next t
 1. **Pause (Finish)**: This will let your currently generating workflow finish completely, but it will intercept and hold any subsequent workflows in the queue until you click Continue.
 2. **Pause (Instant)**: This tells ComfyUI to freeze *immediately* before executing the next node in your active workflow. You can resume precisely from where you left off later without losing progress!
 
+### The System Tray Icon (Outside-Browser Queue Control)
+Want to check your queue status or pause/resume generations while working in other apps (Photoshop, Blender, games) without opening ComfyUI in your browser?
+1. Open ComfyUI Settings (⚙️ gear icon) and enable **🍃 FlowControl: Enable System Tray Icon** (or set `ENABLE_TRAY_ICON=true` in `.env`).
+2. FlowControl will spawn an OS system tray icon in your Windows/macOS/Linux taskbar notification area:
+   - **Green Icon (❚❚)**: Indicates ComfyUI queue is actively running.
+   - **Orange Icon (▶)**: Indicates ComfyUI queue is paused and waiting for you to continue.
+   - **Orange Icon (❚❚)**: Indicates ComfyUI is in the middle of a generation and will pause as soon as the active workflow/node finishes.
+3. Left-click the tray icon to quickly toggle between **Pause** and **Continue**.
+4. Right-click the tray icon to choose explicit actions: **Pause (Finish)**, **Pause (Instant)**, **Continue / Resume**, switch default pause modes, or quickly **Open ComfyUI in Browser**.
+
 ### The Persistent Queue (Crash Recovery)
 You don't need to interact with this—it runs silently in the background! 
 Every time you queue a prompt, FlowControl saves the entire queue state to your hard drive in real time. If your computer crashes, power goes out, or you accidentally close the terminal, ComfyUI will automatically restore your unfinished queue upon next boot (in a paused state, so it doesn't overwhelm your GPU before you're ready).

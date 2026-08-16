@@ -4,7 +4,7 @@ description = "Essential workflow controls, mid-generation pausing, real-time qu
 version = "1.0.0"
 readme = "README.md"
 license = "MIT"
-dependencies = ["torch", "pillow", "numpy", "piexif"]
+dependencies = ["torch", "pillow", "numpy", "piexif", "pystray"]
 
 [project.urls]
 Repository = "https://github.com/KOFiblto/ComfyUI-FlowControl"

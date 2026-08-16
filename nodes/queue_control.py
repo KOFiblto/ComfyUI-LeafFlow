@@ -5,6 +5,7 @@ import asyncio
 from aiohttp import web
 from server import PromptServer
 import nodes
+from .tray_icon import TrayIconManager, is_tray_icon_enabled
 
 QUEUE_CATEGORY = "🍃 FlowControl/Queue"
 
@@ -166,6 +167,12 @@ class PauseQueueManager:
                 "mode": self.mode,
                 "waiting": self.is_waiting
             })
+        except Exception:
+            pass
+
+        try:
+            if 'tray_manager' in globals() and tray_manager:
+                tray_manager.update_status()
         except Exception:
             pass
 
@@ -352,10 +359,14 @@ class PersistentQueueManager:
 
 pause_manager = PauseQueueManager()
 persistent_manager = PersistentQueueManager()
+tray_manager = TrayIconManager(pause_manager)
 
 def setup_queue_control_routes(server):
     pause_manager.patch_all()
     persistent_manager.patch_server()
+
+    if is_tray_icon_enabled():
+        tray_manager.start()
 
     routes = server.routes
 

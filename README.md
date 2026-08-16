@@ -320,6 +320,7 @@ Configure options directly under ComfyUI Settings (⚙ gear icon):
 - **🍃 FlowControl: Pause Button Paused Color**: Customizable hex color for the toolbar paused/pausing state.
 - **🍃 FlowControl: Enable Pause Queue Toolbar Button**: Toggle top action bar Pause & Continue button ON/OFF.
 - **🍃 FlowControl: Enable Persistent Queue (Auto-Recovery)**: Toggle the real-time crash recovery queue saving on or off.
+- **🍃 FlowControl: Enable System Tray Icon**: Enables an OS notification area / system tray icon to view queue status with matching colors and trigger Pause (Finish/Instant) or Continue/Resume without opening the browser.
 </details>
 
 ---
