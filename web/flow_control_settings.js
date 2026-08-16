@@ -4,11 +4,30 @@ import { api } from "/scripts/api.js";
 app.registerExtension({
     name: "ComfyUI.FlowControl.Settings",
     async setup() {
-        // Auto-sync history and assets on launch
+        // Auto-sync history and assets on launch and when server seeder completes
+        const refreshAssetsAndHistory = () => {
+            try {
+                if (api && typeof api.getHistory === "function") {
+                    api.getHistory(64).catch(() => {});
+                }
+                api.fetchApi("/flow_control/assets/restore", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({})
+                }).catch(() => {});
+            } catch(e) {}
+        };
+
+        refreshAssetsAndHistory();
+        setTimeout(refreshAssetsAndHistory, 1500);
+        setTimeout(refreshAssetsAndHistory, 8000);
+
         try {
-            if (api && typeof api.getHistory === "function") {
-                api.getHistory(64).catch(() => {});
-            }
+            api.addEventListener("assets.seed.completed", refreshAssetsAndHistory);
+            api.addEventListener("status", () => {
+                setTimeout(refreshAssetsAndHistory, 500);
+            });
+            api.addEventListener("reconnected", refreshAssetsAndHistory);
         } catch(e) {}
 
         // 1. Enable Civitai Scraping Toggle

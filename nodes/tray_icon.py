@@ -144,36 +144,16 @@ class TrayIconManager:
         def on_disable_tray(icon, item):
             self.disable_and_stop()
 
-        # Primary action text
-        if is_paused:
-            primary_label = "▶ Continue / Resume Queue" if is_waiting else "▶ Resume Queue (Cancel Pause)"
-        else:
-            primary_label = f"⏸ Pause Queue ({'Instant' if current_mode == 'instantly' else 'Finish'})"
+        # Single action: Toggle Pause / Resume
+        toggle_label = "▶ Resume Queue" if is_paused else "⏸ Pause Queue"
+
+        status_display = "Paused" if is_paused else "Running"
+        if is_waiting:
+            status_display = "Pausing (finishing current prompt)..."
 
         menu_items = [
-            pystray.MenuItem(f"● Status: {status_text}", None, enabled=False),
-            pystray.MenuItem(primary_label, on_toggle_click, default=True),
-            pystray.Menu.SEPARATOR,
-            pystray.MenuItem("⏸ Pause (Finish Active Workflow)", on_pause_finish_click),
-            pystray.MenuItem("⏸ Pause (Instant at Current Step)", on_pause_instant_click),
-            pystray.MenuItem("▶ Continue / Resume", on_continue_click),
-            pystray.Menu.SEPARATOR,
-            pystray.MenuItem(
-                "Mode: Finish Active Prompt",
-                on_set_mode_finish,
-                checked=lambda item: current_mode == "after_finish",
-                radio=True
-            ),
-            pystray.MenuItem(
-                "Mode: Instant Resume Node",
-                on_set_mode_instant,
-                checked=lambda item: current_mode == "instantly",
-                radio=True
-            ),
-            pystray.Menu.SEPARATOR,
-            pystray.MenuItem("🌐 Open ComfyUI in Browser", on_open_browser),
-            pystray.Menu.SEPARATOR,
-            pystray.MenuItem("❌ Disable System Tray Icon", on_disable_tray),
+            pystray.MenuItem(f"● Status: {status_display}", None, enabled=False),
+            pystray.MenuItem(toggle_label, on_toggle_click, default=True),
         ]
 
         return pystray.Menu(*menu_items)
