@@ -31,6 +31,13 @@ Want to check your queue status or pause/resume generations while working in oth
 You don't need to interact with this—it runs silently in the background! 
 Every time you queue a prompt, FlowControl saves the entire queue state to your hard drive in real time. If your computer crashes, power goes out, or you accidentally close the terminal, ComfyUI will automatically restore your unfinished queue upon next boot (in a paused state, so it doesn't overwhelm your GPU before you're ready).
 
+### Automatic Assets Pane & History Restore
+In standard ComfyUI, restarting your server wipes the in-memory execution history, leaving your sidebar Assets Pane / History tab completely blank on launch.
+- FlowControl automatically scans your `output` folder (read-only) on server startup and pre-populates the history with your latest **64 images** (or custom count).
+- All images are loaded in strict chronological order with embedded workflow and prompt graphs intact.
+- Features like **Copy Prompt** and **Copy Workflow** immediately work with restored images as if they were generated in your current session!
+- You can adjust the restored image count or toggle this feature in **ComfyUI Settings (⚙️)** under **`🍃 FlowControl: Restore Assets on Launch`** and **`🍃 FlowControl: Restored Assets Count`**.
+
 ---
 
 ## 2. Advanced Nodes
