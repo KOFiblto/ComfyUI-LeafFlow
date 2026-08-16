@@ -212,7 +212,22 @@ class AssetsRestoreManager:
                     # Ingest into modern ComfyUI asset database if --enable-assets is active
                     try:
                         from app.assets.services.ingest import register_file_in_place
-                        register_file_in_place(abs_path=filepath, name=filename, tags=["output"])
+                        res = register_file_in_place(abs_path=filepath, name=filename, tags=["output"])
+                        if res and hasattr(res, "ref") and res.ref and hasattr(res.ref, "id"):
+                            try:
+                                from app.database.db import create_session, init_db
+                                from app.assets.database.queries import set_reference_metadata
+                                init_db()
+                                with create_session() as session:
+                                    set_reference_metadata(session, reference_id=res.ref.id, metadata={
+                                        "jobId": prompt_id,
+                                        "nodeId": output_node_id,
+                                        "filename": filename,
+                                        "subfolder": subfolder
+                                    })
+                                    session.commit()
+                            except Exception:
+                                pass
                     except Exception:
                         pass
 
