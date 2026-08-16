@@ -2,7 +2,7 @@ import os
 from aiohttp import web
 from server import PromptServer
 
-from .nodes.queue_control import PauseQueueNode, PersistentQueueNode, setup_queue_control_routes
+from .nodes.queue_control import setup_queue_control_routes
 from .nodes.lora_loader import (
     FolderLoraLoader,
     FolderLoraLoaderPretty,

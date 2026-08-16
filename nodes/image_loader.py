@@ -11,7 +11,6 @@ from server import PromptServer
 import folder_paths
 from .utils import sanitize_folder_path
 
-IMAGE_CATEGORY = "ALL" # Will be set to "🍃 FlowControl/Loaders"
 IMAGE_CATEGORY = "🍃 FlowControl/Loaders"
 CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE_FILE = os.path.join(CURRENT_DIR, "image_prompts_cache.json")
