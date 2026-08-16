@@ -208,5 +208,38 @@ app.registerExtension({
                 }).catch(() => {});
             }
         });
+
+        // 13. Enable Assets / History Restore on Launch
+        app.ui.settings.addSetting({
+            id: "FlowControl.EnableAssetsRestore",
+            name: "🍃 FlowControl: Restore Assets on Launch",
+            type: "boolean",
+            defaultValue: true,
+            tooltip: "Automatically populates the Assets / History pane upon ComfyUI launch with your latest generated images.",
+            onChange(value) {
+                api.fetchApi("/flow_control/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ enable_assets_restore: value ? "true" : "false" })
+                }).catch(() => {});
+            }
+        });
+
+        // 14. Restored Assets Count
+        app.ui.settings.addSetting({
+            id: "FlowControl.RestoreAssetsCount",
+            name: "🍃 FlowControl: Restored Assets Count",
+            type: "number",
+            defaultValue: 64,
+            tooltip: "Number of newest images from the output folder to restore into the Assets / History pane on launch (default: 64).",
+            onChange(value) {
+                const count = parseInt(value, 10) || 64;
+                api.fetchApi("/flow_control/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ restore_assets_count: count })
+                }).catch(() => {});
+            }
+        });
     }
 });

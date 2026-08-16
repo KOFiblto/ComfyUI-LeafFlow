@@ -317,10 +317,11 @@ Configure options directly under ComfyUI Settings (⚙ gear icon):
 - **🍃 FlowControl: Default Pause Queue Mode on Launch**: Sets the default pause behavior (`Finish Active Prompt` vs `Instant Resume Node`).
 - **🍃 FlowControl: Persistent Queue Restored Launch State**: Controls what happens to crash-recovered queue items (`Start Paused` or `Start Unpaused`).
 - **🍃 FlowControl: Pause Button Unpaused Color**: Customizable hex color for the toolbar unpaused state.
-- **🍃 FlowControl: Pause Button Paused Color**: Customizable hex color for the toolbar paused/pausing state.
 - **🍃 FlowControl: Enable Pause Queue Toolbar Button**: Toggle top action bar Pause & Continue button ON/OFF.
 - **🍃 FlowControl: Enable Persistent Queue (Auto-Recovery)**: Toggle the real-time crash recovery queue saving on or off.
 - **🍃 FlowControl: Enable System Tray Icon**: Enables an OS notification area / system tray icon to view queue status with matching colors and trigger Pause (Finish/Instant) or Continue/Resume without opening the browser.
+- **🍃 FlowControl: Restore Assets on Launch**: Automatically restores your latest generated images into the Assets / History pane when ComfyUI starts up.
+- **🍃 FlowControl: Restored Assets Count**: The number of newest images from the output folder to populate into the Assets / History pane on launch (default `64`).
 </details>
 
 ---

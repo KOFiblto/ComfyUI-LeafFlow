@@ -6,6 +6,7 @@ from aiohttp import web
 from server import PromptServer
 import nodes
 from .tray_icon import TrayIconManager, is_tray_icon_enabled
+from .assets_restore import assets_restore_manager, is_assets_restore_enabled, get_assets_restore_count
 
 QUEUE_CATEGORY = "🍃 FlowControl/Queue"
 
@@ -368,7 +369,25 @@ def setup_queue_control_routes(server):
     if is_tray_icon_enabled():
         tray_manager.start()
 
+    if is_assets_restore_enabled():
+        assets_restore_manager.restore_on_launch(server)
+
     routes = server.routes
+
+    @routes.post("/flow_control/assets/restore")
+    async def restore_assets_endpoint(request):
+        try:
+            data = await request.json()
+        except Exception:
+            data = {}
+        limit = data.get("limit")
+        force = bool(data.get("force", False))
+        count = assets_restore_manager.restore_on_launch(server, limit=limit, force=force)
+        return web.json_response({"success": True, "restored": count, "debug": assets_restore_manager.last_debug_report})
+
+    @routes.get("/flow_control/assets/debug")
+    async def get_assets_debug(request):
+        return web.json_response(assets_restore_manager.last_debug_report)
 
     @routes.get("/pause_queue/status")
     async def get_status(request):
