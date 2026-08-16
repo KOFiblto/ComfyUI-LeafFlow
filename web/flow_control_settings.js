@@ -4,6 +4,13 @@ import { api } from "/scripts/api.js";
 app.registerExtension({
     name: "ComfyUI.FlowControl.Settings",
     async setup() {
+        // Auto-sync history and assets on launch
+        try {
+            if (api && typeof api.getHistory === "function") {
+                api.getHistory(64).catch(() => {});
+            }
+        } catch(e) {}
+
         // 1. Enable Civitai Scraping Toggle
         app.ui.settings.addSetting({
             id: "FlowControl.EnableCivitaiScraping",

@@ -1,6 +1,21 @@
 import os
+import sys
+import subprocess
 from aiohttp import web
 from server import PromptServer
+
+def ensure_dependencies():
+    for dep in ["pystray", "piexif", "Pillow", "numpy"]:
+        try:
+            __import__(dep.lower())
+        except ImportError:
+            try:
+                print(f"[ComfyUI-FlowControl] Auto-installing missing dependency: {dep}")
+                subprocess.check_call([sys.executable, "-m", "pip", "install", dep])
+            except Exception as e:
+                print(f"[ComfyUI-FlowControl] Warning: Failed to install {dep}: {e}")
+
+ensure_dependencies()
 
 from .nodes.queue_control import setup_queue_control_routes, tray_manager
 from .nodes.lora_loader import (

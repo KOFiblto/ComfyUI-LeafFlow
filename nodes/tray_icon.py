@@ -186,8 +186,15 @@ class TrayIconManager:
             try:
                 import pystray
             except ImportError:
-                print("[FlowControl] pystray is not installed. System tray icon cannot start.")
-                return
+                try:
+                    import subprocess
+                    print("[FlowControl] pystray is not installed. Auto-installing pystray...")
+                    subprocess.check_call([sys.executable, "-m", "pip", "install", "pystray"])
+                    import pystray
+                    print("[FlowControl] Successfully auto-installed pystray.")
+                except Exception as e:
+                    print(f"[FlowControl] Failed to auto-install pystray: {e}. System tray icon cannot start.")
+                    return
 
             _, color, symbol, title = self.get_status_info()
             icon_img = self.create_icon_image(color, symbol)

@@ -382,7 +382,11 @@ def setup_queue_control_routes(server):
             data = {}
         limit = data.get("limit")
         count = assets_restore_manager.restore_on_launch(server, limit=limit, force=True)
-        return web.json_response({"success": True, "restored": count})
+        return web.json_response({"success": True, "restored": count, "debug": assets_restore_manager.last_debug_report})
+
+    @routes.get("/flow_control/assets/debug")
+    async def get_assets_debug(request):
+        return web.json_response(assets_restore_manager.last_debug_report)
 
     @routes.get("/pause_queue/status")
     async def get_status(request):
