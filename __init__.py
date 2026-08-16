@@ -5,15 +5,21 @@ from aiohttp import web
 from server import PromptServer
 
 def ensure_dependencies():
-    for dep in ["pystray", "piexif", "Pillow", "numpy"]:
+    dep_map = {
+        "pystray": "pystray",
+        "piexif": "piexif",
+        "PIL": "Pillow",
+        "numpy": "numpy"
+    }
+    for mod_name, pip_name in dep_map.items():
         try:
-            __import__(dep.lower())
+            __import__(mod_name)
         except ImportError:
             try:
-                print(f"[ComfyUI-FlowControl] Auto-installing missing dependency: {dep}")
-                subprocess.check_call([sys.executable, "-m", "pip", "install", dep])
+                print(f"[ComfyUI-FlowControl] Auto-installing missing dependency: {pip_name}")
+                subprocess.check_call([sys.executable, "-m", "pip", "install", pip_name])
             except Exception as e:
-                print(f"[ComfyUI-FlowControl] Warning: Failed to install {dep}: {e}")
+                print(f"[ComfyUI-FlowControl] Warning: Failed to install {pip_name}: {e}")
 
 ensure_dependencies()
 
