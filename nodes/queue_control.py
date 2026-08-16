@@ -381,7 +381,8 @@ def setup_queue_control_routes(server):
         except Exception:
             data = {}
         limit = data.get("limit")
-        count = assets_restore_manager.restore_on_launch(server, limit=limit, force=True)
+        force = bool(data.get("force", False))
+        count = assets_restore_manager.restore_on_launch(server, limit=limit, force=force)
         return web.json_response({"success": True, "restored": count, "debug": assets_restore_manager.last_debug_report})
 
     @routes.get("/flow_control/assets/debug")

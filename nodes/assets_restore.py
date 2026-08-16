@@ -261,13 +261,13 @@ class AssetsRestoreManager:
         }
 
         self.write_debug_report(report)
-        print(f"[FlowControl] Restored {restored_count} recent image(s) into Assets / History pane. Debug log saved to {DEBUG_JSON_FILE}")
-
-        if server:
-            try:
-                server.queue_updated()
-            except Exception:
-                pass
+        if restored_count > 0:
+            print(f"[FlowControl] Restored {restored_count} recent image(s) into Assets / History pane. Debug log saved to {DEBUG_JSON_FILE}")
+            if server:
+                try:
+                    server.queue_updated()
+                except Exception:
+                    pass
 
         return restored_count
 
