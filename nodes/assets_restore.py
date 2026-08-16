@@ -152,12 +152,14 @@ class AssetsRestoreManager:
                     if positive_prompt:
                         extra_pnginfo["positive_prompt"] = positive_prompt
 
+                    mtime_ms = int(item["mtime"] * 1000)
                     history_entry = {
                         "prompt": [
                             idx,
                             prompt_id,
                             prompt_dict,
                             {
+                                "create_time": mtime_ms,
                                 "extra_pnginfo": extra_pnginfo,
                                 "client_id": "flowcontrol_restored"
                             },
@@ -177,7 +179,10 @@ class AssetsRestoreManager:
                         "status": {
                             "status_str": "success",
                             "completed": True,
-                            "messages": []
+                            "messages": [
+                                ["execution_start", {"timestamp": mtime_ms}],
+                                ["execution_success", {"timestamp": mtime_ms}]
+                            ]
                         }
                     }
 
