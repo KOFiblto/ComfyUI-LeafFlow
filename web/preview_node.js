@@ -2,46 +2,137 @@ import { app } from "/scripts/app.js";
 import { api } from "/scripts/api.js";
 import { PreviewManager } from "./js/preview_manager.js";
 
+// Global CSS injection to guarantee zero-expansion in Vue Node 2.0 and LiteGraph
+if (typeof document !== "undefined") {
+    const styleId = "flowcontrol-live-preview-styles";
+    if (!document.getElementById(styleId)) {
+        const style = document.createElement("style");
+        style.id = styleId;
+        style.textContent = `
+            .flowcontrol-live-preview-container {
+                position: absolute !important;
+                inset: 0 !important;
+                top: 48px !important;
+                bottom: 8px !important;
+                left: 8px !important;
+                right: 8px !important;
+                width: auto !important;
+                height: auto !important;
+                min-width: 0 !important;
+                min-height: 0 !important;
+                max-width: none !important;
+                max-height: none !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                overflow: hidden !important;
+                box-sizing: border-box !important;
+                pointer-events: none !important;
+            }
+            .flowcontrol-live-preview-img {
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                max-width: 100% !important;
+                max-height: 100% !important;
+                min-width: 0 !important;
+                min-height: 0 !important;
+                object-fit: contain !important;
+                object-position: center !important;
+                display: none;
+                pointer-events: none !important;
+            }
+            [node-type="PreviewLatentLive"] {
+                min-height: 0 !important;
+                min-width: 0 !important;
+            }
+            [node-type="PreviewLatentLive"] .flowcontrol-live-preview-container {
+                position: absolute !important;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
+function isSamplerNode(type = "", title = "") {
+    const lowerType = String(type).toLowerCase();
+    const lowerTitle = String(title).toLowerCase();
+    return lowerType.includes("sampler") || lowerType.includes("ksampler") || lowerType.includes("sample") || lowerType.includes("denoise") ||
+           lowerTitle.includes("sampler") || lowerTitle.includes("ksampler") || lowerTitle.includes("sample") || lowerTitle.includes("denoise");
+}
+
 function getKSamplerNodes() {
-    if (!app || !app.graph) return [];
-    
     const samplers = [];
     const visitedNodes = new Set();
 
-    const traverseGraph = (graph) => {
-        if (!graph || !graph._nodes) return;
-        for (const node of graph._nodes) {
-            if (!node || visitedNodes.has(node.id)) continue;
-            visitedNodes.add(node.id);
+    const checkNode = (node, prefix = "") => {
+        if (!node) return;
+        const idStr = String(node.id ?? "");
+        if (!idStr || visitedNodes.has(idStr)) return;
 
-            const type = (node.type || node.comfyClass || "").toLowerCase();
-            const title = (node.title || node.type || "").toLowerCase();
+        const type = node.type || node.comfyClass || "";
+        const title = node.title || node.type || `Node ${idStr}`;
 
-            if (type.includes("sampler") || type.includes("ksampler") || title.includes("sampler")) {
-                samplers.push({
-                    id: node.id,
-                    title: node.title || node.type || `Node ${node.id}`
-                });
-            }
+        if (isSamplerNode(type, title)) {
+            visitedNodes.add(idStr);
+            const displayTitle = prefix ? `${prefix} > ${title}` : title;
+            samplers.push({
+                id: idStr,
+                title: displayTitle
+            });
+        }
 
-            if (node.subgraph) {
-                traverseGraph(node.subgraph);
-            }
+        // Deep subgraph / group exploration
+        const sub = node.subgraph || node.inner_graph || (typeof node.getInnerGraph === "function" ? node.getInnerGraph() : null) || node.sub_nodes || node.nodes;
+        if (sub) {
+            traverseGraph(sub, title);
         }
     };
 
-    traverseGraph(app.graph);
-
-    document.querySelectorAll('[data-node-id], [data-widgets-grid-node-id], .lg-node').forEach(el => {
-        const id = el.dataset.nodeId || el.dataset.widgetsGridNodeId || el.getAttribute('data-node-id');
-        const text = (el.innerText || el.textContent || "").split('\n')[0];
-        if (id && text.toLowerCase().includes("sampler") && !samplers.some(s => String(s.id) === String(id))) {
-            const titleMatch = text.match(/KSampler[^\n]*/i) || text.match(/Sampler[^\n]*/i);
-            let title = titleMatch ? titleMatch[0].trim() : `Sampler (${id})`;
-            if (title.length > 45) title = title.substring(0, 42) + "...";
-            samplers.push({ id, title });
+    const traverseGraph = (graph, prefix = "") => {
+        if (!graph) return;
+        let nodesList = [];
+        if (Array.isArray(graph._nodes)) {
+            nodesList = graph._nodes;
+        } else if (Array.isArray(graph.nodes)) {
+            nodesList = graph.nodes;
+        } else if (graph._nodes_by_id) {
+            nodesList = Object.values(graph._nodes_by_id);
+        } else if (typeof graph.values === "function") {
+            nodesList = Array.from(graph.values());
         }
-    });
+
+        for (const node of nodesList) {
+            checkNode(node, prefix);
+        }
+    };
+
+    if (app) {
+        if (app.graph) traverseGraph(app.graph);
+        if (app.rootGraph && app.rootGraph !== app.graph) traverseGraph(app.rootGraph);
+        if (app.canvas?.graph && app.canvas.graph !== app.graph) traverseGraph(app.canvas.graph);
+    }
+
+    // Comprehensive DOM search for any rendered nodes in canvas (Vue Node 2.0 and LiteGraph)
+    if (typeof document !== "undefined") {
+        document.querySelectorAll('[data-node-id], [data-widgets-grid-node-id], .lg-node, [node-id]').forEach(el => {
+            const id = el.dataset.nodeId || el.dataset.widgetsGridNodeId || el.getAttribute('data-node-id') || el.getAttribute('node-id');
+            if (!id || visitedNodes.has(String(id))) return;
+
+            const headerEl = el.querySelector('[data-testid^="node-header-"], [data-testid="node-title"], .lg-node-header, .node-title');
+            const text = (headerEl ? headerEl.innerText : el.innerText) || "";
+
+            if (isSamplerNode("", text)) {
+                visitedNodes.add(String(id));
+                const titleMatch = text.match(/KSampler[^\n]*/i) || text.match(/Sampler[^\n]*/i) || text.match(/[^\n]+/);
+                let title = titleMatch ? titleMatch[0].trim() : `Sampler (${id})`;
+                if (title.length > 45) title = title.substring(0, 42) + "...";
+                samplers.push({ id: String(id), title });
+            }
+        });
+    }
 
     return samplers;
 }
@@ -49,7 +140,21 @@ function getKSamplerNodes() {
 function updateAllPreviewNodeDropdowns() {
     if (!app || !app.graph) return;
     
-    const previewNodes = app.graph._nodes ? app.graph._nodes.filter(n => n && n.type === "PreviewLatentLive") : [];
+    const previewNodes = [];
+    const collectPreviewNodes = (g) => {
+        if (!g) return;
+        const list = g._nodes || g.nodes || (g._nodes_by_id ? Object.values(g._nodes_by_id) : []);
+        if (Array.isArray(list)) {
+            for (const n of list) {
+                if (n && n.type === "PreviewLatentLive") previewNodes.push(n);
+                if (n && n.subgraph) collectPreviewNodes(n.subgraph);
+            }
+        }
+    };
+
+    collectPreviewNodes(app.graph);
+    if (app.rootGraph && app.rootGraph !== app.graph) collectPreviewNodes(app.rootGraph);
+
     const currentNodes = getKSamplerNodes();
     const currentValues = ["Auto", ...currentNodes.map(n => `${n.title} (${n.id})`)];
     
@@ -57,10 +162,14 @@ function updateAllPreviewNodeDropdowns() {
         const widget = node.widgets?.find(w => w.name === "Source");
         if (widget) {
             const currentVal = widget.value;
+            widget.options = widget.options || {};
             widget.options.values = [...currentValues];
             
             if (currentVal && currentVal !== "Auto" && !currentValues.includes(currentVal)) {
                 widget.options.values.push(currentVal);
+            }
+            if (typeof node.setDirtyCanvas === "function") {
+                node.setDirtyCanvas(true, true);
             }
         }
     }
@@ -74,9 +183,23 @@ app.registerExtension({
         api.addEventListener("status", () => {
             updateAllPreviewNodeDropdowns();
         });
+
+        if (typeof document !== "undefined") {
+            document.addEventListener("pointerdown", (e) => {
+                if (e.target && (e.target.closest?.('[data-testid="widget-select-default-trigger"]') || e.target.closest?.('.lg-node') || e.target.closest?.('[data-node-id]'))) {
+                    updateAllPreviewNodeDropdowns();
+                }
+            }, { passive: true });
+        }
     },
     async loadedGraph() {
-        updateAllPreviewNodeDropdowns();
+        setTimeout(updateAllPreviewNodeDropdowns, 200);
+        setTimeout(updateAllPreviewNodeDropdowns, 1000);
+    },
+    async nodeCreated(node) {
+        if (node && node.type === "PreviewLatentLive") {
+            setTimeout(updateAllPreviewNodeDropdowns, 100);
+        }
     },
     async beforeRegisterNodeDef(nodeType, nodeData) {
         if (nodeData.name === "PreviewLatentLive") {
@@ -96,11 +219,11 @@ app.registerExtension({
                 };
                 
                 this.size = [200, 200];
-                // Reduced minimum size so user can shrink node smaller (e.g. [100, 100])
-                this.min_size = [100, 100];
+                this.min_size = [80, 80];
                 this.resizable = true;
                 
-                // PERMANENTLY UNLOCK ASPECT RATIO RESIZING
+                // Disallow automatic image aspect ratio resizing
+                this.setSizeForImage = function() {};
                 Object.defineProperty(this, "aspect_ratio", {
                     get() { return false; },
                     set(v) {},
@@ -111,18 +234,23 @@ app.registerExtension({
                 this.imageIndex = 0;
                 
                 const viewContainer = document.createElement("div");
-                viewContainer.style.width = "100%";
-                viewContainer.style.height = "calc(100% - 55px)";
-                viewContainer.style.maxHeight = "calc(100% - 55px)";
+                viewContainer.className = "flowcontrol-live-preview-container";
+                viewContainer.style.position = "absolute";
+                viewContainer.style.inset = "0";
+                viewContainer.style.top = "48px";
+                viewContainer.style.bottom = "8px";
+                viewContainer.style.left = "8px";
+                viewContainer.style.right = "8px";
                 viewContainer.style.display = "flex";
                 viewContainer.style.alignItems = "center";
                 viewContainer.style.justifyContent = "center";
                 viewContainer.style.backgroundColor = "transparent";
                 viewContainer.style.color = "#888";
                 viewContainer.style.fontFamily = "Inter, sans-serif";
-                viewContainer.style.fontSize = "14px";
+                viewContainer.style.fontSize = "13px";
                 viewContainer.style.overflow = "hidden";
                 viewContainer.style.boxSizing = "border-box";
+                viewContainer.style.pointerEvents = "none";
                 
                 const fallbackText = document.createElement("div");
                 fallbackText.className = "flowcontrol-live-preview-fallback";
@@ -131,12 +259,19 @@ app.registerExtension({
                 
                 const imgElement = document.createElement("img");
                 imgElement.className = "flowcontrol-live-preview-img";
+                imgElement.style.position = "absolute";
+                imgElement.style.top = "0";
+                imgElement.style.left = "0";
+                imgElement.style.width = "100%";
+                imgElement.style.height = "100%";
                 imgElement.style.maxWidth = "100%";
                 imgElement.style.maxHeight = "100%";
-                imgElement.style.width = "auto";
-                imgElement.style.height = "auto";
+                imgElement.style.minWidth = "0";
+                imgElement.style.minHeight = "0";
                 imgElement.style.objectFit = "contain";
+                imgElement.style.objectPosition = "center";
                 imgElement.style.display = "none";
+                imgElement.style.pointerEvents = "none";
                 viewContainer.appendChild(imgElement);
                 
                 this.previewImgElement = imgElement;
@@ -146,7 +281,7 @@ app.registerExtension({
                     getValue() { return ""; },
                     setValue(val) {},
                     serialize: false,
-                    computeSize() { return [60, 60]; }
+                    computeSize() { return [0, 0]; }
                 });
                 
                 PreviewManager.registerNode(this);
@@ -154,12 +289,16 @@ app.registerExtension({
             };
 
             nodeType.prototype.computeSize = function() {
-                return [100, 100];
+                return [80, 80];
             };
 
+            nodeType.prototype.setSizeForImage = function() {};
+
             nodeType.prototype.onResize = function(size) {
-                this.size[0] = Math.max(100, size[0]);
-                this.size[1] = Math.max(100, size[1]);
+                if (size) {
+                    this.size[0] = Math.max(80, size[0]);
+                    this.size[1] = Math.max(80, size[1]);
+                }
             };
 
             nodeType.prototype.onDrawBackground = function(ctx) {
@@ -169,7 +308,7 @@ app.registerExtension({
                     if (!img || !img.complete || (img.naturalWidth === 0 && img.width === 0)) return;
                     
                     const margin = 8;
-                    const topY = 55;
+                    const topY = 50;
                     const maxW = Math.max(10, this.size[0] - margin * 2);
                     const maxH = Math.max(10, this.size[1] - topY - margin);
                     if (maxW <= 0 || maxH <= 0) return;
@@ -206,10 +345,10 @@ app.registerExtension({
                 const selectedSource = sourceWidget ? sourceWidget.value : "Auto";
                 
                 if (selectedSource !== "Auto") {
-                    const match = selectedSource.match(/\((\d+)\)$/);
+                    const match = selectedSource.match(/\(([^)]+)\)$/);
                     if (match) {
                         const targetId = match[1];
-                        if (samplerId && String(samplerId) !== targetId) {
+                        if (samplerId && String(samplerId) !== String(targetId)) {
                             return;
                         }
                     }
@@ -218,14 +357,16 @@ app.registerExtension({
                 this.imgs = [img];
                 this.imageIndex = 0;
                 
-                const domImgs = document.querySelectorAll(`[data-node-id="${this.id}"] .flowcontrol-live-preview-img, [data-widgets-grid-node-id="${this.id}"] .flowcontrol-live-preview-img`);
-                if (domImgs.length > 0) {
-                    domImgs.forEach(imgEl => {
-                        imgEl.src = img.src;
-                        imgEl.style.display = "block";
-                        const fallback = imgEl.parentElement.querySelector(".flowcontrol-live-preview-fallback");
-                        if (fallback) fallback.style.display = "none";
-                    });
+                if (typeof document !== "undefined") {
+                    const domImgs = document.querySelectorAll(`[data-node-id="${this.id}"] .flowcontrol-live-preview-img, [data-widgets-grid-node-id="${this.id}"] .flowcontrol-live-preview-img`);
+                    if (domImgs.length > 0) {
+                        domImgs.forEach(imgEl => {
+                            imgEl.src = img.src;
+                            imgEl.style.display = "block";
+                            const fallback = imgEl.parentElement?.querySelector(".flowcontrol-live-preview-fallback");
+                            if (fallback) fallback.style.display = "none";
+                        });
+                    }
                 }
                 
                 if (this.previewImgElement && this.previewFallbackText && img && img.src) {
@@ -234,7 +375,9 @@ app.registerExtension({
                     this.previewImgElement.style.display = "block";
                 }
                 
-                app.graph.setDirtyCanvas(true, true);
+                if (app.graph && typeof app.graph.setDirtyCanvas === "function") {
+                    app.graph.setDirtyCanvas(true, true);
+                }
             };
         }
     }
