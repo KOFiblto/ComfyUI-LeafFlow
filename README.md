@@ -11,10 +11,10 @@ A unified custom node suite for **ComfyUI** featuring real-time queue controls, 
 Expand any node below to view its description, inputs, outputs, and usage documentation.
 
 <details>
-<summary><b>🍃 📁 LoRA Loader (by Folder)</b> (<code>FolderLoraLoader</code>)</summary>
+<summary><b>🍃 📁 LoRA Loader (Folder)</b> (<code>FolderLoraLoader</code>)</summary>
 
 #### Overview
-Loads a LoRA by folder path using raw filename matching (standard ComfyUI filename contract without pretty name transformations).
+Loads a LoRA by folder path using raw filename matching or formatted names with customizable output formatting options.
 
 #### Inputs & Widgets
 - **`model`** (`MODEL`): Input model.
@@ -23,11 +23,13 @@ Loads a LoRA by folder path using raw filename matching (standard ComfyUI filena
 - **`lora_name`** (`COMBO`): Dropdown listing available LoRA files in the target folder.
 - **`strength_model`** (`FLOAT`): Model weight strength (default `1.0`).
 - **`strength_clip`** (`FLOAT`): CLIP weight strength (default `1.0`).
+- **`output_format`** (`COMBO`, *Advanced*): Choose output format (`Parsed Name`, `Filename`, `Filename without extension`, `Relative Path`, `Full Path`, `Custom Regex`).
+- **`custom_regex`** (`STRING`, *Advanced*): Pattern used when `output_format` is `Custom Regex`.
 
 #### Outputs
 - **`MODEL`**: Patched model.
 - **`CLIP`**: Patched CLIP.
-- **`lora_name`** (`STRING`): Raw filename of the loaded LoRA.
+- **`lora_name`** (`STRING`): Formatted name or filename of the loaded LoRA.
 </details>
 
 <details>
@@ -43,16 +45,17 @@ Loads a LoRA using formatted pretty names (e.g. `Ana De Armas V1` instead of `kr
 - **`lora_name`** (`COMBO`): Dropdown listing formatted pretty names.
 - **`strength_model`** (`FLOAT`): Model weight strength.
 - **`strength_clip`** (`FLOAT`): CLIP weight strength.
-- **`output_name`** (`COMBO`, *Advanced*): Choose between `Parsed Name` or `Filename` for string output.
+- **`output_format`** (`COMBO`, *Advanced*): Choose output format (`Parsed Name`, `Filename`, `Filename without extension`, `Relative Path`, `Full Path`, `Custom Regex`).
+- **`custom_regex`** (`STRING`, *Advanced*): Pattern used when `output_format` is `Custom Regex`.
 
 #### Outputs
 - **`MODEL`**: Patched model.
 - **`CLIP`**: Patched CLIP.
-- **`lora_name`** (`STRING`): Formatted pretty name or filename.
+- **`lora_name`** (`STRING`): Formatted name or filename of the loaded LoRA.
 </details>
 
 <details>
-<summary><b>🍃 🖼️ Visual LoRA Loader</b> (<code>FolderLoraLoaderVisualPrettyV2</code>)</summary>
+<summary><b>🍃 🖼️ Visual LoRA Loader</b> (<code>VisualLoraLoader</code> / alias <code>FolderLoraLoaderVisualPrettyV2</code>)</summary>
 
 #### Overview
 Visual thumbnail LoRA browser with search, multi-selection, ranking badges (🔥, 🥇 Gold, 🥈 Silver, 🥉 Bronze), and automated Civitai SHA256 & TMDB preview image fetching.
@@ -68,7 +71,8 @@ Visual thumbnail LoRA browser with search, multi-selection, ranking badges (🔥
 - **`sort_folders_by`** (`COMBO`, *Advanced*): Sort folder sections order (`Name (A-Z)`, `Name (Z-A)`, `Total Usage (High to Low)`, `Average Usage (High to Low)`, `Total LoRAs (Most First)`).
 - **`folder_position`** (`COMBO`, *Advanced*): Layout position of root LoRAs vs folders (`Folders First` vs `Root LoRAs First`).
 - **`content_alignment`** (`COMBO`, *Advanced*): Align tiles and folder headers to the left or right (`Left Aligned` vs `Right Aligned`).
-- **`output_name`** (`COMBO`, *Advanced*): Choose between `Parsed Name` or `Filename` output string format.
+- **`output_format`** (`COMBO`, *Advanced*): Choose output format (`Parsed Name`, `Filename`, `Filename without extension`, `Relative Path`, `Full Path`, `Custom Regex`).
+- **`custom_regex`** (`STRING`, *Advanced*): Pattern used when `output_format` is `Custom Regex`.
 
 #### Outputs
 - **`MODEL`**: Sequentially patched model with all active LoRAs loaded.
@@ -77,18 +81,19 @@ Visual thumbnail LoRA browser with search, multi-selection, ranking badges (🔥
 </details>
 
 <details>
-<summary><b>🍃 📷 Visual Image Loader</b> (<code>ImageLoaderVisualPrettyV2</code>)</summary>
+<summary><b>🍃 📷 Visual Image Loader</b> (<code>VisualImageLoader</code> / alias <code>ImageLoaderVisualPrettyV2</code>)</summary>
 
 #### Overview
 Visual thumbnail browser for image folders with instant preview selection and EXIF positive prompt metadata extraction.
 
 #### Inputs & Widgets
+- **`folder`** (`STRING`): Folder path to load images from.
 - **`display_mode`** (`COMBO`, *Advanced*): `Scrollable` vs `Show All`.
+- **`sort_images_by`** (`COMBO`, *Advanced*): `Name (A-Z)`, `Name (Z-A)`, `Date Modified (Newest First)`, `Date Modified (Oldest First)`.
 
 #### Outputs
 - **`IMAGE`**: Selected image tensor.
 - **`positive_prompt`** (`STRING`): Extracted prompt metadata.
-- **`MASK`**: Alpha mask (or empty mask if RGB).
 - **`width`** (`INT`): Image width.
 - **`height`** (`INT`): Image height.
 </details>
@@ -100,12 +105,12 @@ Visual thumbnail browser for image folders with instant preview selection and EX
 Execution anchor node that undoes placing content into a placeholder slot by scanning text for LoRA pretty names matching a folder and restoring placeholder tokens (e.g. `%celeb%`).
 
 #### Inputs & Widgets
-- **`prompt`** (`STRING`, *Forced Input*): Input prompt text.
+- **`text`** (`STRING`, *Forced Input*): Input prompt text.
 - **`lora_folder`** (`STRING`): Target LoRA folder filter.
 - **`placeholder`** (`STRING`): Token to restore (default `%celeb%`).
 
 #### Outputs
-- **`prompt`** (`STRING`): Processed prompt with restored placeholder tokens.
+- **`text`** (`STRING`): Processed prompt text with restored placeholder tokens.
 </details>
 
 <details>
@@ -175,6 +180,7 @@ Visually browse saved favorite images and prompts from your favorites folder.
 
 #### Inputs & Widgets
 - **`display_mode`** (`COMBO`, *Advanced*): `Scrollable` vs `Show All`.
+- **`sort_images_by`** (`COMBO`, *Advanced*): `Name (A-Z)`, `Name (Z-A)`, `Date Modified (Newest First)`, `Date Modified (Oldest First)`.
 
 #### Outputs
 - **`IMAGE`**: Favorite image tensor.
@@ -195,7 +201,7 @@ Preview image node equipped with a native "Save Active to Favorites" button widg
 </details>
 
 <details>
-<summary><b>🍃 📐 Aspect Ratio Finder</b> (<code>AspectRatioFinder</code>)</summary>
+<summary><b>🍃 📐 Text Aspect Ratio Finder</b> (<code>TextAspectRatioFinder</code> / alias <code>AspectRatioFinder</code>)</summary>
 
 #### Overview
 Parses input text for aspect ratios (e.g. `16:9`, `2.35:1`), syntax-checks them, and calculates pixel resolution for a target megapixel target.
@@ -233,7 +239,7 @@ Visual display node that draws a scaled outline box preview of the image aspect 
 </details>
 
 <details>
-<summary><b>🍃 🔎 Text LoRA Finder</b> (<code>LoraTextFinder</code>)</summary>
+<summary><b>🍃 🔎 Text LoRA Finder & Loader</b> (<code>TextLoraFinder</code> / alias <code>LoraTextFinder</code>)</summary>
 
 #### Overview
 Scans text prompts for LoRA names or custom patterns, automatically loads matched LoRAs into MODEL and CLIP, and outputs the formatted LoRA list.
@@ -242,14 +248,14 @@ Scans text prompts for LoRA names or custom patterns, automatically loads matche
 - **`model`** (`MODEL`): Input model.
 - **`clip`** (`CLIP`): Input CLIP.
 - **`folder`** (`STRING`): LoRA folder filter.
-- **`search_for`** (`COMBO`): Search by `Pretty Name`, `Filename`, `Filename without extension`, or `Custom Regex`.
-- **`custom_regex`** (`STRING`): Pattern for custom regex search mode.
-- **`start_from`** (`COMBO`): `Front` vs `Back` match priority.
+- **`search_for`** (`COMBO`): Search by `Parsed Name`, `Filename`, `Filename without extension`, or `Custom Regex`.
+- **`custom_regex`** (`STRING`, *Advanced*): Pattern for custom regex search mode or output formatting.
+- **`search_mode`** (`COMBO`): `First match (Front)` vs `Last match (Back)` match priority.
 - **`find_amount`** (`INT`): Maximum number of LoRAs to find and load.
 - **`strength_model`** (`FLOAT`): Model strength.
 - **`strength_clip`** (`FLOAT`): CLIP strength.
-- **`output_format`** (`COMBO`, *Advanced*): Output string format.
-- **`text`** (`STRING`, *Optional Input*): Text to scan.
+- **`output_format`** (`COMBO`, *Advanced*): Output format (`Parsed Name`, `Filename`, `Filename without extension`, `Relative Path`, `Full Path`, `Custom Regex`).
+- **`text`** (`STRING`, *Optional Input*): Text string to scan.
 
 #### Outputs
 - **`MODEL`**: Model patched with matched LoRAs.
@@ -266,7 +272,7 @@ Parses multiline prompt text blocks, popping/selecting prompts per batch queue i
 #### Inputs & Widgets
 - **`pop_mode`** (`COMBO`): `Pop Top & Delete`, `Cycle / Loop`, `Random (Delete)`, `Random (Keep)`.
 - **`separator`** (`COMBO`): `>1 Empty Line`, `Newline`, `>2 Empty Lines`.
-- **`prompt`** (`STRING`, *Optional Input*): Multiline text input.
+- **`text`** (`STRING`, *Multiline Input*): Multiline text input.
 
 #### Outputs
 - **`prompt`** (`STRING`): Current popped prompt for the batch step.
@@ -314,6 +320,7 @@ Configure options directly under ComfyUI Settings (⚙ gear icon):
 - **🍃 FlowControl: Pause Button Paused Color**: Customizable hex color for the toolbar paused/pausing state.
 - **🍃 FlowControl: Enable Pause Queue Toolbar Button**: Toggle top action bar Pause & Continue button ON/OFF.
 - **🍃 FlowControl: Enable Persistent Queue (Auto-Recovery)**: Toggle the real-time crash recovery queue saving on or off.
+- **🍃 FlowControl: Enable System Tray Icon**: Enables an OS notification area / system tray icon to view queue status with matching colors and trigger Pause (Finish/Instant) or Continue/Resume without opening the browser.
 </details>
 
 ---

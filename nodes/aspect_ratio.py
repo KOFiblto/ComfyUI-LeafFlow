@@ -1,7 +1,7 @@
 import re
 import math
 
-class AspectRatioFinder:
+class TextAspectRatioFinder:
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -73,12 +73,10 @@ class AspectRatioFinder:
     ):
         text_str = str(text) if text is not None else ""
 
-        # Clamp target_mp between min_mp and max_mp
         min_v = float(min_mp)
         max_v = max(min_v, float(max_mp))
         effective_mp = max(min_v, min(max_v, float(target_mp)))
 
-        # 1. Parse and syntax-check user-provided aspect ratio string list
         valid_ratios = []
         raw_items = [item.strip() for item in str(aspect_ratios or "").split(",") if item.strip()]
         
@@ -97,31 +95,44 @@ class AspectRatioFinder:
         if not valid_ratios:
             valid_ratios = ["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"]
 
-        # 2. Search for occurrences of any valid aspect ratio in text
         found_ratio = None
         matches = []
         
         if text_str:
+            # 1. Match configured target aspect ratios
             for ratio in valid_ratios:
                 w_p, h_p = ratio.split(":")
                 pattern = r'(?<![\d.])' + re.escape(w_p) + r'\s*[:xX/]\s*' + re.escape(h_p) + r'(?!\d|\.\d)'
                 for m in re.finditer(pattern, text_str):
                     matches.append((m.start(), ratio))
 
+            # 2. General ratio pattern fallback to catch any valid ratio format (e.g. 16:9., 21:9, 1.77:1) regardless of trailing punctuation
+            gen_pattern = r'(?<![\d.])(\d+(?:\.\d+)?)\s*[:xX/]\s*(\d+(?:\.\d+)?)(?!\d|\.\d)'
+            for m in re.finditer(gen_pattern, text_str):
+                try:
+                    w_val = float(m.group(1))
+                    h_val = float(m.group(2))
+                    if w_val > 0 and h_val > 0:
+                        w_str = str(int(w_val)) if w_val.is_integer() else str(w_val)
+                        h_str = str(int(h_val)) if h_val.is_integer() else str(h_val)
+                        ratio_fmt = f"{w_str}:{h_str}"
+                        if not any(m_pos == m.start() for m_pos, _ in matches):
+                            matches.append((m.start(), ratio_fmt))
+                except Exception:
+                    pass
+
         if matches:
             matches.sort(key=lambda x: x[0])
-            if search_mode == "Last match (Back)":
+            if search_mode in ["Back", "Last match (Back)"]:
                 found_ratio = matches[-1][1]
             else:
                 found_ratio = matches[0][1]
         else:
             found_ratio = default_aspect_ratio
 
-        # 3. Calculate width & height
         w_part, h_part = map(float, found_ratio.split(":"))
         r = w_part / h_part
 
-        # 1 Megapixel = 1024 * 1024 = 1,048,576 pixels (standard ComfyUI/SD/SDXL resolution math)
         total_pixels = effective_mp * 1024.0 * 1024.0
         
         raw_h = math.sqrt(total_pixels / r)
@@ -208,3 +219,6 @@ class PreviewImageSizeAspectRatio:
             pass
 
         return {}
+
+# Alias for backward compatibility
+AspectRatioFinder = TextAspectRatioFinder

@@ -9,6 +9,7 @@ import piexif.helper
 from aiohttp import web
 from server import PromptServer
 import folder_paths
+from .utils import sanitize_folder_path
 
 IMAGE_CATEGORY = "🍃 FlowControl/Loaders"
 CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -74,17 +75,12 @@ routes = server.routes
 @routes.get("/image_loader/get_images")
 async def get_images_endpoint(request):
     folder = request.query.get("folder", "")
-    clean_folder = folder.strip()
-    if clean_folder.endswith("*"):
-        clean_folder = clean_folder[:-1].rstrip("\\/")
+    if not folder:
+        folder = request.query.get("folder_path", "")
         
-    folder = clean_folder
+    resolved_folder = sanitize_folder_path(folder)
     
-    # Resolve relative paths
-    if not os.path.isabs(folder):
-        folder = os.path.join(folder_paths.base_path, folder)
-    
-    if not folder or not os.path.exists(folder):
+    if not resolved_folder or not os.path.exists(resolved_folder):
         return web.json_response({"names": [], "mapping": {}, "prompts": {}})
         
     image_extensions = {".png", ".jpg", ".jpeg", ".webp", ".PNG", ".JPG", ".JPEG", ".WEBP"}
@@ -95,12 +91,12 @@ async def get_images_endpoint(request):
     cache = load_prompts_cache()
     cache_modified = False
     
-    for root, dirs, files in os.walk(folder):
+    for root, dirs, files in os.walk(resolved_folder):
         for file in files:
             ext = os.path.splitext(file)[1]
             if ext in image_extensions:
                 full_path = os.path.normpath(os.path.join(root, file))
-                rel_path = os.path.relpath(full_path, folder).replace("\\", "/")
+                rel_path = os.path.relpath(full_path, resolved_folder).replace("\\", "/")
                 names.append(rel_path)
                 mapping[rel_path] = rel_path
                 
@@ -135,18 +131,13 @@ async def get_images_endpoint(request):
 @routes.get("/image_loader/get_thumbnail")
 async def get_thumbnail_endpoint(request):
     folder = request.query.get("folder", "")
-    clean_folder = folder.strip()
-    if clean_folder.endswith("*"):
-        clean_folder = clean_folder[:-1].rstrip("\\/")
-        
-    folder = clean_folder
-    
-    if not os.path.isabs(folder):
-        folder = os.path.join(folder_paths.base_path, folder)
+    if not folder:
+        folder = request.query.get("folder_path", "")
+    resolved_folder = sanitize_folder_path(folder)
     
     image_rel = request.query.get("image", "")
     
-    full_path = os.path.normpath(os.path.join(folder, image_rel))
+    full_path = os.path.normpath(os.path.join(resolved_folder, image_rel))
     if not os.path.exists(full_path):
         return web.Response(status=404)
         
@@ -162,29 +153,25 @@ async def get_thumbnail_endpoint(request):
 @routes.get("/image_loader/get_full_image")
 async def get_full_image_endpoint(request):
     folder = request.query.get("folder", "")
-    clean_folder = folder.strip()
-    if clean_folder.endswith("*"):
-        clean_folder = clean_folder[:-1].rstrip("\\/")
-        
-    folder = clean_folder
-    
-    if not os.path.isabs(folder):
-        folder = os.path.join(folder_paths.base_path, folder)
+    if not folder:
+        folder = request.query.get("folder_path", "")
+    resolved_folder = sanitize_folder_path(folder)
     
     image_rel = request.query.get("image", "")
     
-    full_path = os.path.normpath(os.path.join(folder, image_rel))
+    full_path = os.path.normpath(os.path.join(resolved_folder, image_rel))
     if not os.path.exists(full_path):
         return web.Response(status=404)
     return web.FileResponse(full_path)
 
-class ImageLoaderVisualPrettyV2:
+class VisualImageLoader:
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
-                "folder_path": ("STRING", {"default": ""}),
-                "display_mode": (["Scrollable", "Show All"], {"default": "Scrollable"}),
+                "folder": ("STRING", {"default": ""}),
+                "display_mode": (["Scrollable", "Show All"], {"default": "Scrollable", "advanced": True}),
+                "sort_images_by": (["Name (A-Z)", "Name (Z-A)", "Date Modified (Newest First)", "Date Modified (Oldest First)"], {"default": "Date Modified (Newest First)", "advanced": True}),
             },
             "hidden": {
                 "_selected_image": ("STRING", {"default": ""}),
@@ -201,17 +188,15 @@ class ImageLoaderVisualPrettyV2:
     def IS_CHANGED(cls, **kwargs):
         return kwargs.get("_selected_image", "")
 
-    def load_image(self, folder_path, display_mode="Scrollable", _selected_image=""):
-        clean_folder = folder_path.strip()
-        if clean_folder.endswith("*"):
-            clean_folder = clean_folder[:-1].rstrip("\\/")
-        folder_path = clean_folder
+    def load_image(self, folder="", display_mode="Scrollable", sort_images_by="Date Modified (Newest First)", folder_path=None, _selected_image="", **kwargs):
+        input_dir = folder if folder else (folder_path or "")
+        resolved_folder = sanitize_folder_path(input_dir)
         
-        if not folder_path or not _selected_image:
+        if not resolved_folder or not _selected_image:
             empty_image = torch.zeros((1, 64, 64, 3), dtype=torch.float32)
             return (empty_image, "", 0, 0)
 
-        full_path = os.path.normpath(os.path.join(folder_path, _selected_image))
+        full_path = os.path.normpath(os.path.join(resolved_folder, _selected_image))
         if not os.path.exists(full_path):
             empty_image = torch.zeros((1, 64, 64, 3), dtype=torch.float32)
             return (empty_image, "", 0, 0)
@@ -228,3 +213,6 @@ class ImageLoaderVisualPrettyV2:
         image = torch.from_numpy(image)[None,]
 
         return (image, positive_prompt, width, height)
+
+# Alias for backward compatibility
+ImageLoaderVisualPrettyV2 = VisualImageLoader

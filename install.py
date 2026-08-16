@@ -4,7 +4,7 @@ import subprocess
 
 def main():
     print("[ComfyUI-FlowControl] Checking dependencies...")
-    dependencies = ["pillow", "piexif", "numpy"]
+    dependencies = ["pillow", "piexif", "numpy", "pystray"]
     for dep in dependencies:
         try:
             __import__(dep)

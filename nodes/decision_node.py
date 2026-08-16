@@ -1,4 +1,5 @@
 import os
+import sys
 import threading
 import subprocess
 from server import PromptServer
@@ -53,12 +54,12 @@ class FlowControlDecision:
     RETURN_TYPES = ("BOOLEAN",)
     RETURN_NAMES = ("cancel",)
     FUNCTION = "decide"
-    CATEGORY = "🍃 FlowControl"
+    CATEGORY = "🍃 FlowControl/Utils"
     DESCRIPTION = "Pauses execution and waits for your input via the UI buttons.\n\n- 'Continue' outputs False (0).\n- 'Cancel' outputs True (1) so you can route it into a Switch node to bypass later nodes.\n- 'Stop Workflow' instantly aborts the entire ComfyUI generation queue.\n- 'OS Notification': Sends a native desktop toast (Windows/macOS/Linux) when waiting."
 
     def send_notification(self, title, message):
         try:
-            if os.name == 'nt':
+            if sys.platform == 'win32' or os.name == 'nt':
                 # Windows native PowerShell Toast Notification
                 ps_script = f"""
 $ErrorActionPreference = 'Stop'
@@ -82,7 +83,7 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
 [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("ComfyUI").Show($toast)
 """
                 subprocess.Popen(["powershell", "-NoProfile", "-Command", ps_script], creationflags=subprocess.CREATE_NO_WINDOW)
-            elif os.uname().sysname == 'Darwin':
+            elif sys.platform == 'darwin':
                 # macOS native AppleScript Notification
                 escape_title = title.replace('"', '\\"')
                 escape_message = message.replace('"', '\\"')
@@ -138,7 +139,11 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
             try:
                 # Attempt to cancel current execution queue
                 PromptServer.instance.prompt_queue.cancel_current_execution()
-            except:
+            except Exception:
+                pass
+            try:
+                comfy.model_management.interrupt_current_processing()
+            except Exception:
                 pass
             # Raise exception to halt this thread instantly
             try:

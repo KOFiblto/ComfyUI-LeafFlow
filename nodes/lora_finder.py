@@ -5,12 +5,13 @@ import comfy.sd
 from comfy.utils import load_torch_file
 from .lora_loader import (
     get_filtered_loras_mapping,
-    parse_pretty_name,
     increment_lora_usage,
-    LORA_CATEGORY
+    LORA_CATEGORY,
+    LORA_OUTPUT_FORMAT_CHOICES
 )
+from .utils import parse_pretty_name, format_lora_output_name
 
-class LoraTextFinder:
+class TextLoraFinder:
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -19,21 +20,17 @@ class LoraTextFinder:
                 "clip": ("CLIP",),
                 "folder": ("STRING", {"default": ""}),
                 "search_for": ([
-                    "Pretty Name",
+                    "Parsed Name",
                     "Filename",
                     "Filename without extension",
                     "Custom Regex"
-                ], {"default": "Pretty Name"}),
-                "custom_regex": ("STRING", {"default": ""}),
-                "start_from": (["Front", "Back"], {"default": "Front"}),
+                ], {"default": "Parsed Name"}),
+                "custom_regex": ("STRING", {"default": "", "advanced": True}),
+                "search_mode": (["First match (Front)", "Last match (Back)"], {"default": "First match (Front)"}),
                 "find_amount": ("INT", {"default": 1, "min": 1, "max": 20, "step": 1}),
                 "strength_model": ("FLOAT", {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01}),
                 "strength_clip": ("FLOAT", {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01}),
-                "output_format": ([
-                    "Pretty Name",
-                    "Filename",
-                    "Filename without extension"
-                ], {"default": "Pretty Name", "advanced": True}),
+                "output_format": (LORA_OUTPUT_FORMAT_CHOICES, {"default": "Parsed Name", "advanced": True}),
             },
             "optional": {
                 "text": ("STRING", {"forceInput": True}),
@@ -51,16 +48,27 @@ class LoraTextFinder:
         model,
         clip,
         folder="",
-        search_for="Pretty Name",
+        search_for="Parsed Name",
         custom_regex="",
-        start_from="Front",
+        search_mode="First match (Front)",
         find_amount=1,
         strength_model=1.0,
         strength_clip=1.0,
-        output_format="Pretty Name",
-        text=None
+        output_format="Parsed Name",
+        text=None,
+        start_from=None,
+        prompt=None,
+        **kwargs
     ):
-        text_str = str(text) if text is not None else ""
+        active_mode = search_mode
+        if start_from is not None and search_mode == "First match (Front)":
+            if start_from == "Back":
+                active_mode = "Last match (Back)"
+            elif start_from == "Front":
+                active_mode = "First match (Front)"
+
+        input_text = text if text is not None else prompt
+        text_str = str(input_text) if input_text is not None else ""
         if not text_str:
             return (model, clip, "")
 
@@ -77,7 +85,6 @@ class LoraTextFinder:
                     pattern = re.compile(custom_regex, re.IGNORECASE)
                     for m in pattern.finditer(text_str):
                         matched_text = m.group(0).strip()
-                        # Match against mapping
                         for display_name, sys_path in mapping.items():
                             if display_name in ["[ NONE ]", "[ RANDOM ]"] or not sys_path or sys_path == "[ NONE ]":
                                 continue
@@ -100,7 +107,7 @@ class LoraTextFinder:
                 if sys_path in seen_paths:
                     continue
 
-                if search_for == "Pretty Name":
+                if search_for in ["Pretty Name", "Parsed Name"]:
                     target_name = re.sub(r'\s+V\d+(\.\d+)?$', '', parse_pretty_name(sys_path), flags=re.IGNORECASE).strip()
                 elif search_for == "Filename":
                     target_name = os.path.basename(sys_path)
@@ -118,12 +125,10 @@ class LoraTextFinder:
         if not matches:
             return (model, clip, "")
 
-        # Sort matches by start position in text
         matches.sort(key=lambda x: x[0])
 
-        # Pick matches based on start_from and find_amount
         num_to_take = max(1, int(find_amount))
-        if start_from == "Back":
+        if active_mode in ["Back", "Last match (Back)"]:
             selected_matches = matches[-num_to_take:]
         else:
             selected_matches = matches[:num_to_take]
@@ -137,7 +142,6 @@ class LoraTextFinder:
             if not lora_path or not os.path.exists(lora_path):
                 continue
 
-            # Load LoRA into Model & CLIP if strength is non-zero
             if strength_model != 0 or strength_clip != 0:
                 try:
                     lora_weights = load_torch_file(lora_path, safe_load=True)
@@ -151,14 +155,11 @@ class LoraTextFinder:
             else:
                 increment_lora_usage(sys_path)
 
-            # Format output name string
-            if output_format == "Filename":
-                out_name = os.path.basename(sys_path)
-            elif output_format == "Filename without extension":
-                out_name = os.path.splitext(os.path.basename(sys_path))[0]
-            else: # Pretty Name
-                out_name = re.sub(r'\s+V\d+(\.\d+)?$', '', parse_pretty_name(sys_path), flags=re.IGNORECASE).strip()
-
-            formatted_names.append(out_name)
+            out_name = format_lora_output_name(sys_path, disp_name, output_format=output_format, custom_regex=custom_regex)
+            if out_name:
+                formatted_names.append(out_name)
 
         return (current_model, current_clip, ", ".join(formatted_names))
+
+# Alias for backward compatibility
+LoraTextFinder = TextLoraFinder

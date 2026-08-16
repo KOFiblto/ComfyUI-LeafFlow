@@ -210,7 +210,19 @@ document.head.appendChild(visualStyles);
 app.registerExtension({
     name: "Comfy.ImageLoaderCustom",
     async nodeCreated(node) {
-        if (node.comfyClass === "ImageLoaderVisualPrettyV2" || node.comfyClass === "ImageLoaderCustom" || node.comfyClass === "FavoritePromptLoader") {
+        const isVisualImageLoader = [
+            "VisualImageLoader",
+            "ImageLoaderVisualPrettyV2",
+            "ImageLoaderCustom",
+            "FavoritePromptLoader"
+        ].includes(node.comfyClass) || [
+            "VisualImageLoader",
+            "ImageLoaderVisualPrettyV2",
+            "ImageLoaderCustom",
+            "FavoritePromptLoader"
+        ].includes(node.type);
+
+        if (isVisualImageLoader) {
             node.size = [380, 480];
 
             node.computeSize = function() {

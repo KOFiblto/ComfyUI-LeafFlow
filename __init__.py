@@ -2,49 +2,59 @@ import os
 from aiohttp import web
 from server import PromptServer
 
-from .nodes.queue_control import PauseQueueNode, PersistentQueueNode, setup_queue_control_routes
+from .nodes.queue_control import setup_queue_control_routes, tray_manager
 from .nodes.lora_loader import (
     FolderLoraLoader,
     FolderLoraLoaderPretty,
+    VisualLoraLoader,
     FolderLoraLoaderVisualPrettyV2
 )
-from .nodes.image_loader import ImageLoaderVisualPrettyV2
+from .nodes.image_loader import VisualImageLoader, ImageLoaderVisualPrettyV2
 from .nodes.undo_placeholder import BackToPlaceholder
 from .nodes.auto_watcher import LoadImageFromFolder
 from .nodes.load_recent import LoadRecentOutputs
 from .nodes.preview_latent import PreviewLatentLiveNode
 from .nodes.decision_node import FlowControlDecision
 from .nodes.favorite_prompts import FavoritePromptLoader, SaveFavoritePreview
-from .nodes.aspect_ratio import AspectRatioFinder, PreviewImageSizeAspectRatio
-from .nodes.lora_finder import LoraTextFinder
+from .nodes.aspect_ratio import TextAspectRatioFinder, AspectRatioFinder, PreviewImageSizeAspectRatio
+from .nodes.lora_finder import TextLoraFinder, LoraTextFinder
 from .nodes.prompt_iterator import PromptQueueIterator
 from .nodes.text_replacer import MultiTextReplacer
 
 
 NODE_CLASS_MAPPINGS = {
+    # Standardized Class Names
     "FolderLoraLoader": FolderLoraLoader,
     "FolderLoraLoaderPretty": FolderLoraLoaderPretty,
-    "FolderLoraLoaderVisualPrettyV2": FolderLoraLoaderVisualPrettyV2,
-    "ImageLoaderVisualPrettyV2": ImageLoaderVisualPrettyV2,
+    "VisualLoraLoader": VisualLoraLoader,
+    "VisualImageLoader": VisualImageLoader,
     "BackToPlaceholder": BackToPlaceholder,
-    "UndoPlaceholder": BackToPlaceholder, # Backward compatibility alias
     "LoadImageFromFolder": LoadImageFromFolder,
     "LoadRecentOutputs": LoadRecentOutputs,
     "PreviewLatentLive": PreviewLatentLiveNode,
     "FlowControlDecision": FlowControlDecision,
     "FavoritePromptLoader": FavoritePromptLoader,
     "SaveFavoritePreview": SaveFavoritePreview,
-    "AspectRatioFinder": AspectRatioFinder,
+    "TextAspectRatioFinder": TextAspectRatioFinder,
     "PreviewImageSizeAspectRatio": PreviewImageSizeAspectRatio,
-    "LoraTextFinder": LoraTextFinder,
+    "TextLoraFinder": TextLoraFinder,
     "PromptQueueIterator": PromptQueueIterator,
-    "MultiTextReplacer": MultiTextReplacer
+    "MultiTextReplacer": MultiTextReplacer,
+
+    # Backward Compatibility Aliases
+    "FolderLoraLoaderVisualPrettyV2": VisualLoraLoader,
+    "ImageLoaderVisualPrettyV2": VisualImageLoader,
+    "AspectRatioFinder": TextAspectRatioFinder,
+    "LoraTextFinder": TextLoraFinder,
+    "UndoPlaceholder": BackToPlaceholder,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "FolderLoraLoader": "🍃 📁 LoRA Loader (by Folder)",
+    "FolderLoraLoader": "🍃 📁 LoRA Loader (Folder)",
     "FolderLoraLoaderPretty": "🍃 ✨ LoRA Loader (Pretty)",
+    "VisualLoraLoader": "🍃 🖼️ Visual LoRA Loader",
     "FolderLoraLoaderVisualPrettyV2": "🍃 🖼️ Visual LoRA Loader",
+    "VisualImageLoader": "🍃 📷 Visual Image Loader",
     "ImageLoaderVisualPrettyV2": "🍃 📷 Visual Image Loader",
     "BackToPlaceholder": "🍃 ↩️ Back To Placeholder",
     "UndoPlaceholder": "🍃 ↩️ Back To Placeholder",
@@ -54,9 +64,11 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "FlowControlDecision": "🍃 ⏸️ FlowControl Decision",
     "FavoritePromptLoader": "🍃 ⭐ Favorite Prompts",
     "SaveFavoritePreview": "🍃 💾 Save Favorite Preview",
-    "AspectRatioFinder": "🍃 📐 Aspect Ratio Finder",
+    "TextAspectRatioFinder": "🍃 📐 Text Aspect Ratio Finder",
+    "AspectRatioFinder": "🍃 📐 Text Aspect Ratio Finder",
     "PreviewImageSizeAspectRatio": "🍃 📐 Preview Image Size & Aspect Ratio",
-    "LoraTextFinder": "🍃 🔎 Text LoRA Finder",
+    "TextLoraFinder": "🍃 🔎 Text LoRA Finder & Loader",
+    "LoraTextFinder": "🍃 🔎 Text LoRA Finder & Loader",
     "PromptQueueIterator": "🍃 🔄 Prompt Queue Iterator",
     "MultiTextReplacer": "🍃 🔤 Multi Text Replacer"
 }
@@ -72,12 +84,13 @@ ENV_FILE = os.path.join(CURRENT_DIR, ".env")
 
 routes = server.routes
 
-print("[ComfyUI-FlowControl] 🍃 Loaded 15 nodes & visual endpoints successfully.")
+print("[ComfyUI-FlowControl] 🍃 Loaded 16 nodes & visual endpoints successfully.")
 
 @routes.get("/flow_control/settings")
 async def get_settings(request):
     civitai_key = os.getenv("CIVITAI_API_KEY", "")
     tmdb_key = os.getenv("TMDB_API_KEY", "")
+    enable_tray = os.getenv("ENABLE_TRAY_ICON", "false").lower() in ["true", "1", "yes"]
     if os.path.exists(ENV_FILE):
         try:
             with open(ENV_FILE, "r", encoding="utf-8") as f:
@@ -87,11 +100,14 @@ async def get_settings(request):
                         civitai_key = line.split("=", 1)[1].strip()
                     elif line.startswith("TMDB_API_KEY="):
                         tmdb_key = line.split("=", 1)[1].strip()
+                    elif line.startswith("ENABLE_TRAY_ICON="):
+                        enable_tray = line.split("=", 1)[1].strip().lower() in ["true", "1", "yes"]
         except Exception:
             pass
     return web.json_response({
         "civitai_api_key": civitai_key,
-        "tmdb_api_key": tmdb_key
+        "tmdb_api_key": tmdb_key,
+        "enable_tray_icon": enable_tray
     })
 
 @routes.post("/flow_control/settings")
@@ -106,6 +122,7 @@ async def save_settings(request):
         enable_civitai = data.get("enable_civitai_scraping")
         enable_tmdb = data.get("enable_tmdb_scraping")
         enable_lora_usage = data.get("enable_lora_usage")
+        enable_tray_icon = data.get("enable_tray_icon")
         restored_state = data.get("persistent_queue_restored_state")
 
         lines = []
@@ -125,6 +142,7 @@ async def save_settings(request):
         has_civ_enable = False
         has_tmdb_enable = False
         has_lora_usage = False
+        has_tray_enable = False
         has_restored_state = False
 
         for line in lines:
@@ -152,6 +170,9 @@ async def save_settings(request):
             elif line.strip().startswith("ENABLE_LORA_USAGE=") and enable_lora_usage is not None:
                 new_lines.append(f"ENABLE_LORA_USAGE={enable_lora_usage}\n")
                 has_lora_usage = True
+            elif line.strip().startswith("ENABLE_TRAY_ICON=") and enable_tray_icon is not None:
+                new_lines.append(f"ENABLE_TRAY_ICON={enable_tray_icon}\n")
+                has_tray_enable = True
             elif line.strip().startswith("PERSISTENT_QUEUE_RESTORED_STATE=") and restored_state is not None:
                 new_lines.append(f"PERSISTENT_QUEUE_RESTORED_STATE={restored_state}\n")
                 has_restored_state = True
@@ -174,6 +195,8 @@ async def save_settings(request):
             new_lines.append(f"ENABLE_TMDB_SCRAPING={enable_tmdb}\n")
         if not has_lora_usage and enable_lora_usage is not None:
             new_lines.append(f"ENABLE_LORA_USAGE={enable_lora_usage}\n")
+        if not has_tray_enable and enable_tray_icon is not None:
+            new_lines.append(f"ENABLE_TRAY_ICON={enable_tray_icon}\n")
         if not has_restored_state and restored_state is not None:
             new_lines.append(f"PERSISTENT_QUEUE_RESTORED_STATE={restored_state}\n")
 
@@ -186,8 +209,11 @@ async def save_settings(request):
             os.environ["TMDB_API_KEY"] = tmdb_key
         if enable_lora_usage is not None:
             os.environ["ENABLE_LORA_USAGE"] = enable_lora_usage
+        if enable_tray_icon is not None:
+            os.environ["ENABLE_TRAY_ICON"] = str(enable_tray_icon)
+            tray_enabled_bool = str(enable_tray_icon).lower() in ["true", "1", "yes"]
+            tray_manager.set_enabled(tray_enabled_bool)
 
-        # Reset failed scrapes cache when keys/settings update
         failed_file = os.path.join(CURRENT_DIR, "failed_scrapes.json")
         try:
             with open(failed_file, "w", encoding="utf-8") as f:

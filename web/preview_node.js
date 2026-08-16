@@ -32,7 +32,6 @@ function getKSamplerNodes() {
 
     traverseGraph(app.graph);
 
-    // Also check DOM nodes for ComfyUI V2 subgraphs
     document.querySelectorAll('[data-node-id], [data-widgets-grid-node-id], .lg-node').forEach(el => {
         const id = el.dataset.nodeId || el.dataset.widgetsGridNodeId || el.getAttribute('data-node-id');
         const text = (el.innerText || el.textContent || "").split('\n')[0];
@@ -96,11 +95,21 @@ app.registerExtension({
                     updateAllPreviewNodeDropdowns();
                 };
                 
-                this.size = [300, 300];
+                this.size = [200, 200];
+                // Reduced minimum size so user can shrink node smaller (e.g. [100, 100])
+                this.min_size = [100, 100];
+                this.resizable = true;
+                
+                // PERMANENTLY UNLOCK ASPECT RATIO RESIZING
+                Object.defineProperty(this, "aspect_ratio", {
+                    get() { return false; },
+                    set(v) {},
+                    configurable: true
+                });
+
                 this.imgs = [];
                 this.imageIndex = 0;
                 
-                // Create robust DOM container for V2 overlay
                 const viewContainer = document.createElement("div");
                 viewContainer.style.width = "100%";
                 viewContainer.style.height = "calc(100% - 55px)";
@@ -133,11 +142,11 @@ app.registerExtension({
                 this.previewImgElement = imgElement;
                 this.previewFallbackText = fallbackText;
                 
-                // Mount DOM widget
                 this.addDOMWidget("preview_display", "HTML", viewContainer, {
                     getValue() { return ""; },
                     setValue(val) {},
-                    serialize: false
+                    serialize: false,
+                    computeSize() { return [60, 60]; }
                 });
                 
                 PreviewManager.registerNode(this);
@@ -145,12 +154,12 @@ app.registerExtension({
             };
 
             nodeType.prototype.computeSize = function() {
-                return [Math.max(200, this.size[0]), Math.max(200, this.size[1])];
+                return [100, 100];
             };
 
             nodeType.prototype.onResize = function(size) {
-                this.size[0] = Math.max(200, size[0]);
-                this.size[1] = Math.max(200, size[1]);
+                this.size[0] = Math.max(100, size[0]);
+                this.size[1] = Math.max(100, size[1]);
             };
 
             nodeType.prototype.onDrawBackground = function(ctx) {
@@ -209,7 +218,6 @@ app.registerExtension({
                 this.imgs = [img];
                 this.imageIndex = 0;
                 
-                // Update DOM elements natively for V2 visibility
                 const domImgs = document.querySelectorAll(`[data-node-id="${this.id}"] .flowcontrol-live-preview-img, [data-widgets-grid-node-id="${this.id}"] .flowcontrol-live-preview-img`);
                 if (domImgs.length > 0) {
                     domImgs.forEach(imgEl => {
@@ -220,7 +228,6 @@ app.registerExtension({
                     });
                 }
                 
-                // Fallback for V1 LiteGraph internal references
                 if (this.previewImgElement && this.previewFallbackText && img && img.src) {
                     this.previewFallbackText.style.display = "none";
                     this.previewImgElement.src = img.src;

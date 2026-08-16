@@ -1,26 +1,9 @@
 import os
 import re
 import folder_paths
+from .utils import parse_pretty_name
 
 UTILS_CATEGORY = "🍃 FlowControl/Utils"
-
-def parse_pretty_name(filepath):
-    base = os.path.splitext(os.path.basename(filepath))[0]
-    parts = base.split('_')
-    if len(parts) >= 2:
-        name_part = parts[1]
-        name_part = re.sub(r'(?<!^)(?=[A-Z])', ' ', name_part)
-        name_part = name_part.replace('-', ' ')
-        
-        words = name_part.split()
-        formatted_words = []
-        for word in words:
-            if word.upper() in ["NSFW", "LORA", "V1", "V2", "V3", "V4", "FP16", "HM"]:
-                formatted_words.append(word.upper())
-            else:
-                formatted_words.append(word.capitalize())
-        return " ".join(formatted_words)
-    return base.replace('-', ' ')
 
 def get_pretty_names_for_folder(folder):
     all_loras = folder_paths.get_filename_list("loras")
@@ -51,27 +34,28 @@ class BackToPlaceholder:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "prompt": ("STRING", {"forceInput": True}),
+                "text": ("STRING", {"forceInput": True}),
                 "lora_folder": ("STRING", {"default": ""}),
                 "placeholder": ("STRING", {"default": "%celeb%"}),
             }
         }
 
     RETURN_TYPES = ("STRING",)
-    RETURN_NAMES = ("prompt",)
+    RETURN_NAMES = ("text",)
     FUNCTION = "undo_placeholder"
     CATEGORY = UTILS_CATEGORY
     DESCRIPTION = "Execution anchor node that undoes placing content into a placeholder slot by restoring placeholder tokens (e.g. %celeb%)."
 
-    def undo_placeholder(self, prompt, lora_folder, placeholder):
-        if not prompt or not lora_folder:
-            return (prompt,)
+    def undo_placeholder(self, text=None, lora_folder="", placeholder="%celeb%", prompt=None, **kwargs):
+        active_text = text if text is not None else prompt
+        if not active_text or not lora_folder:
+            return (active_text or "",)
             
         pretty_names = get_pretty_names_for_folder(lora_folder)
         if not pretty_names:
-            return (prompt,)
+            return (active_text,)
             
-        modified_prompt = prompt
+        modified_prompt = active_text
         for name in pretty_names:
             escaped_name = re.escape(name)
             pattern = re.compile(rf'\b{escaped_name}\b', re.IGNORECASE)

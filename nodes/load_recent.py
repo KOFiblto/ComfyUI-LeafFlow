@@ -3,6 +3,7 @@ import torch
 import numpy as np
 from PIL import Image, ImageOps
 import folder_paths
+from .utils import sanitize_folder_path
 
 LOADER_CATEGORY = "🍃 FlowControl/Loaders"
 
@@ -29,14 +30,11 @@ class LoadRecentOutputs:
     DESCRIPTION = "Cycles through recently generated output images.\n\nExplanation of Index:\n- 'amount' grabs the X newest images from the folder.\n- 'index' selects which of those X images to output.\n- For example, if amount=64, setting index=0 to 63 in a batch will load each of the 64 newest images one by one.\n- If index exceeds amount, it loops back around (e.g. index 64 = index 0)."
 
     def load_single_image(self, output_folder, amount, index):
-        clean_folder = output_folder.strip()
-        if clean_folder.endswith("*"):
-            clean_folder = clean_folder[:-1].rstrip("\\/")
-            
-        if clean_folder == "output" or not clean_folder:
+        clean_input = (output_folder or "").strip()
+        if clean_input == "output" or not clean_input:
             output_dir = folder_paths.get_output_directory()
         else:
-            output_dir = clean_folder
+            output_dir = sanitize_folder_path(clean_input, default_dir=folder_paths.get_output_directory())
 
         if not os.path.exists(output_dir):
             dummy = torch.zeros((1, 64, 64, 3), dtype=torch.float32)

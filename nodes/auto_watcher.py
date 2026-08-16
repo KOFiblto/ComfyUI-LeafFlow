@@ -5,6 +5,7 @@ import numpy as np
 import re
 from PIL import Image, ImageOps
 import comfy.model_management
+from .utils import sanitize_folder_path
 
 class LoadImageFromFolder:
     @classmethod
@@ -14,7 +15,7 @@ class LoadImageFromFolder:
                 "folder": ("STRING", {"default": "input/watch"}),
                 "wait_if_folder_is_empty": ("BOOLEAN", {"default": True}),
                 "rescan_interval": ("INT", {"default": 2, "min": 1, "max": 60}),
-                "sort_by": (["date_modified", "date_created", "name"],),
+                "sort_by": (["date_modified", "date_created", "name"], {"default": "date_modified"}),
                 "regex_filter": ("STRING", {"default": ".*"}),
             }
         }
@@ -86,10 +87,7 @@ class LoadImageFromFolder:
         return [x[0] for x in valid_files]
 
     def watch(self, folder, wait_if_folder_is_empty, rescan_interval, sort_by, regex_filter):
-        clean_folder = folder.strip()
-        if clean_folder.endswith("*"):
-            clean_folder = clean_folder[:-1].rstrip("\\/")
-        folder = clean_folder
+        folder = sanitize_folder_path(folder, default_dir="input/watch")
         
         if wait_if_folder_is_empty:
             while True:

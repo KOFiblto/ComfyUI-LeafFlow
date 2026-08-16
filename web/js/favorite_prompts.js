@@ -251,7 +251,7 @@ async function promptForFavoriteDetails(defaultCategory = "", defaultName = "") 
 // Register settings
 app.ui.settings.addSetting({
     id: "FlowControl.FavoritesFolder",
-    name: "🍃 FlowControl Favorites Folder",
+    name: "🍃 FlowControl: Favorites Folder",
     type: "text",
     defaultValue: "output/favorites",
     tooltip: "Path to store and load favorite prompts. Relative to ComfyUI directory, or absolute.",
