@@ -11,7 +11,7 @@ app.registerExtension({
             const nodeId = String(data.node_id);
             const node = app.graph._nodes?.find(n => n && String(n.id) === nodeId);
             if (node) {
-                const widget = node.widgets?.find(w => w.name === "prompt_text");
+                const widget = node.widgets?.find(w => w.name === "text" || w.name === "prompt_text");
                 if (widget) {
                     widget.value = data.remaining_text;
                     app.graph.setDirtyCanvas(true, true);

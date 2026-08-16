@@ -375,7 +375,7 @@ app.registerExtension({
     name: "Comfy.FolderLoraLoader",
     async nodeCreated(node) {
         // --- 1. ORIGINAL DROPDOWN NODES ---
-        if (node.comfyClass === "FolderLoraLoader" || node.comfyClass === "FolderLoraLoaderPretty") {
+        if (node.comfyClass === "FolderLoraLoader" || node.comfyClass === "FolderLoraLoaderPretty" || node.type === "FolderLoraLoader" || node.type === "FolderLoraLoaderPretty") {
             const folderWidget = node.widgets.find(w => w.name === "folder");
             const loraWidget = node.widgets.find(w => w.name === "lora_name");
             
@@ -760,7 +760,7 @@ app.registerExtension({
         }
 
         // --- 3. VISUAL PRETTY PICKER V2 (Collapsible folders & Multi-selection) ---
-        if (node.comfyClass === "FolderLoraLoaderVisualPrettyV2") {
+        if (node.comfyClass === "FolderLoraLoaderVisualPrettyV2" || node.comfyClass === "VisualLoraLoader" || node.type === "FolderLoraLoaderVisualPrettyV2" || node.type === "VisualLoraLoader") {
             node.size = [380, 360];
 
             node.computeSize = function() {

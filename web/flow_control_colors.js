@@ -1,14 +1,35 @@
 import { app } from "/scripts/app.js";
 
 const COLOR_MAP = {
-    "PauseQueueNode": { color: "#059669", bgcolor: "#047857" },
-    "PersistentQueueNode": { color: "#059669", bgcolor: "#047857" },
+    // Loaders (Emerald green)
+    "VisualLoraLoader": { color: "#059669", bgcolor: "#047857" },
+    "FolderLoraLoader": { color: "#059669", bgcolor: "#047857" },
+    "FolderLoraLoaderPretty": { color: "#059669", bgcolor: "#047857" },
     "FolderLoraLoaderVisualPrettyV2": { color: "#059669", bgcolor: "#047857" },
+    "VisualImageLoader": { color: "#059669", bgcolor: "#047857" },
     "ImageLoaderVisualPrettyV2": { color: "#059669", bgcolor: "#047857" },
     "LoadRecentOutputs": { color: "#059669", bgcolor: "#047857" },
+    "FavoritePromptLoader": { color: "#059669", bgcolor: "#047857" },
+
+    // Automation & Utilities (Amber)
+    "LoadImageFromFolder": { color: "#d97706", bgcolor: "#b45309" },
     "AutoWatcherNode": { color: "#d97706", bgcolor: "#b45309" },
+    "BackToPlaceholder": { color: "#d97706", bgcolor: "#b45309" },
     "UndoPlaceholder": { color: "#d97706", bgcolor: "#b45309" },
-    "PreviewLatentLive": { color: "#7c3aed", bgcolor: "#6d28d9" }
+    "TextAspectRatioFinder": { color: "#d97706", bgcolor: "#b45309" },
+    "AspectRatioFinder": { color: "#d97706", bgcolor: "#b45309" },
+    "PreviewImageSizeAspectRatio": { color: "#d97706", bgcolor: "#b45309" },
+    "TextLoraFinder": { color: "#d97706", bgcolor: "#b45309" },
+    "LoraTextFinder": { color: "#d97706", bgcolor: "#b45309" },
+    "PromptQueueIterator": { color: "#d97706", bgcolor: "#b45309" },
+    "MultiTextReplacer": { color: "#d97706", bgcolor: "#b45309" },
+    "FlowControlDecision": { color: "#d97706", bgcolor: "#b45309" },
+
+    // Previews (Violet)
+    "PreviewLatentLive": { color: "#7c3aed", bgcolor: "#6d28d9" },
+    "SaveFavoritePreview": { color: "#7c3aed", bgcolor: "#6d28d9" },
+    "PauseQueueNode": { color: "#059669", bgcolor: "#047857" },
+    "PersistentQueueNode": { color: "#059669", bgcolor: "#047857" }
 };
 
 app.registerExtension({
