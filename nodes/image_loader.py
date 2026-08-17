@@ -84,6 +84,23 @@ async def get_images_endpoint(request):
         return web.json_response({"names": [], "mapping": {}, "prompts": {}})
         
     image_extensions = {".png", ".jpg", ".jpeg", ".webp", ".PNG", ".JPG", ".JPEG", ".WEBP"}
+    raw_files = []
+    
+    for root, dirs, files in os.walk(resolved_folder):
+        for file in files:
+            ext = os.path.splitext(file)[1]
+            if ext in image_extensions:
+                full_path = os.path.normpath(os.path.join(root, file))
+                try:
+                    mtime = os.path.getmtime(full_path)
+                except Exception:
+                    mtime = 0
+                rel_path = os.path.relpath(full_path, resolved_folder).replace("\\", "/")
+                raw_files.append((rel_path, full_path, mtime))
+
+    # Sort files by newest modified first
+    raw_files.sort(key=lambda x: x[2], reverse=True)
+
     names = []
     mapping = {}
     prompts = {}
@@ -91,33 +108,36 @@ async def get_images_endpoint(request):
     cache = load_prompts_cache()
     cache_modified = False
     
-    for root, dirs, files in os.walk(resolved_folder):
-        for file in files:
-            ext = os.path.splitext(file)[1]
-            if ext in image_extensions:
-                full_path = os.path.normpath(os.path.join(root, file))
-                rel_path = os.path.relpath(full_path, resolved_folder).replace("\\", "/")
-                names.append(rel_path)
-                mapping[rel_path] = rel_path
-                
-                try:
-                    mtime = os.path.getmtime(full_path)
-                    cached_entry = cache.get(full_path)
-                    
-                    if cached_entry and cached_entry.get("mtime") == mtime:
-                        prompt_text = cached_entry.get("prompt", "")
-                    else:
-                        prompt_text, _, _ = extract_metadata_from_image(full_path)
-                        cache[full_path] = {
-                            "mtime": mtime,
-                            "prompt": prompt_text
-                        }
-                        cache_modified = True
-                except Exception as e:
-                    print(f"[FlowControl] Error checking cache for {file}: {e}")
-                    prompt_text = ""
-                
-                prompts[rel_path] = prompt_text
+    # Extract prompt metadata for the most recent 128 images to keep cache small and fast
+    METADATA_LIMIT = 128
+    
+    for i, (rel_path, full_path, mtime) in enumerate(raw_files):
+        names.append(rel_path)
+        mapping[rel_path] = rel_path
+        
+        if i < METADATA_LIMIT:
+            try:
+                cached_entry = cache.get(full_path)
+                if cached_entry and cached_entry.get("mtime") == mtime:
+                    prompt_text = cached_entry.get("prompt", "")
+                else:
+                    prompt_text, _, _ = extract_metadata_from_image(full_path)
+                    cache[full_path] = {
+                        "mtime": mtime,
+                        "prompt": prompt_text
+                    }
+                    cache_modified = True
+            except Exception as e:
+                prompt_text = ""
+            prompts[rel_path] = prompt_text
+        else:
+            prompts[rel_path] = ""
+
+    # Prune cache to maximum 256 entries
+    if len(cache) > 256:
+        cache_keys = list(cache.keys())[-256:]
+        cache = {k: cache[k] for k in cache_keys}
+        cache_modified = True
 
     if cache_modified:
         save_prompts_cache(cache)

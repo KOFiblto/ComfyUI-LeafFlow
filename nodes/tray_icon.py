@@ -144,17 +144,22 @@ class TrayIconManager:
         def on_disable_tray(icon, item):
             self.disable_and_stop()
 
-        # Single action: Toggle Pause / Resume
-        toggle_label = "▶ Resume Queue" if is_paused else "⏸ Pause Queue"
+        if is_paused:
+            mode_desc = "Instant" if current_mode == "instantly" else "After Current"
+            status_display = f"Paused ({mode_desc})"
+            if is_waiting:
+                status_display = f"Pausing ({mode_desc})..."
 
-        status_display = "Paused" if is_paused else "Running"
-        if is_waiting:
-            status_display = "Pausing (finishing current prompt)..."
-
-        menu_items = [
-            pystray.MenuItem(f"● Status: {status_display}", None, enabled=False),
-            pystray.MenuItem(toggle_label, on_toggle_click, default=True),
-        ]
+            menu_items = [
+                pystray.MenuItem(f"● Status: {status_display}", None, enabled=False),
+                pystray.MenuItem("▶ Resume Queue", on_continue_click, default=True),
+            ]
+        else:
+            menu_items = [
+                pystray.MenuItem("● Status: Running", None, enabled=False),
+                pystray.MenuItem("⏸ Pause (Instant)", on_pause_instant_click, default=False),
+                pystray.MenuItem("⏳ Pause (After Current)", on_pause_finish_click, default=False),
+            ]
 
         return pystray.Menu(*menu_items)
 

@@ -4,10 +4,28 @@ import json
 import random
 import time
 import hashlib
+from aiohttp import web
+from server import PromptServer
 import folder_paths
 
 CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STATE_FILE = os.path.join(CURRENT_DIR, "user", "prompt_iterator_state.json")
+ENV_FILE = os.path.join(CURRENT_DIR, ".env")
+
+def get_env_setting(key, default_val):
+    if os.path.exists(ENV_FILE):
+        try:
+            with open(ENV_FILE, "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.strip().startswith(f"{key}="):
+                        return line.strip().split("=", 1)[1].strip()
+        except Exception:
+            pass
+    return default_val
+
+def is_clear_prompt_iterator_on_launch():
+    val = get_env_setting("CLEAR_PROMPT_ITERATOR_ON_LAUNCH", "false").lower()
+    return val in ["true", "1", "yes"]
 
 def ensure_user_dir():
     user_dir = os.path.dirname(STATE_FILE)
@@ -27,15 +45,40 @@ def load_state():
 def save_state(state):
     ensure_user_dir()
     try:
-        # Auto-prune abandoned state keys if count exceeds 100 entries
-        if len(state) > 100:
-            excess_keys = list(state.keys())[:-100]
+        # Auto-prune abandoned state keys if count exceeds 50 entries
+        if len(state) > 50:
+            excess_keys = list(state.keys())[:-50]
             for k in excess_keys:
                 del state[k]
         with open(STATE_FILE, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=4, ensure_ascii=False)
     except Exception as e:
         print(f"[FlowControl] 🍃 Error saving prompt iterator state: {e}")
+
+def clear_state():
+    ensure_user_dir()
+    try:
+        with open(STATE_FILE, "w", encoding="utf-8") as f:
+            json.dump({}, f)
+        print("[FlowControl] 🍃 Prompt iterator state cleared.")
+        return True
+    except Exception as e:
+        print(f"[FlowControl] 🍃 Error clearing prompt iterator state: {e}")
+        return False
+
+# Clear state on startup if privacy setting enabled
+if is_clear_prompt_iterator_on_launch():
+    clear_state()
+
+# Register clear endpoint
+try:
+    routes = PromptServer.instance.routes
+    @routes.post("/flow_control/prompt_iterator/clear")
+    async def clear_prompt_iterator_endpoint(request):
+        success = clear_state()
+        return web.json_response({"status": "ok" if success else "error"})
+except Exception:
+    pass
 
 def parse_prompt_blocks(text_str, separator):
     if not text_str or not text_str.strip():
@@ -51,8 +94,6 @@ def parse_prompt_blocks(text_str, separator):
     else: # ">1 Empty Line"
         raw_blocks = re.split(r'\n\s*\n+', clean_text)
         return [b.strip() for b in raw_blocks if b.strip()]
-
-from server import PromptServer
 
 class PromptQueueIterator:
     @classmethod
@@ -105,6 +146,10 @@ class PromptQueueIterator:
         if not text_str.strip():
             return ("", "", 0)
 
+        original_blocks = parse_prompt_blocks(text_str, separator)
+        if not original_blocks:
+            return ("", "", 0)
+
         text_hash = hashlib.sha256(text_str.encode('utf-8')).hexdigest()[:16]
         state_key = f"node_{unique_id}_{text_hash}_{separator}_{pop_mode}"
         
@@ -112,18 +157,19 @@ class PromptQueueIterator:
         cached_list = state.get(state_key)
 
         if cached_list is None or len(cached_list) == 0:
-            prompt_blocks = parse_prompt_blocks(text_str, separator)
+            prompt_blocks = list(original_blocks)
         else:
             prompt_blocks = list(cached_list)
-
-        if not prompt_blocks:
-            return ("", "", 0)
 
         selected_prompt = ""
         
         if pop_mode == "Pop Top & Delete":
             selected_prompt = prompt_blocks.pop(0)
-            state[state_key] = prompt_blocks
+            if len(prompt_blocks) > 0:
+                state[state_key] = prompt_blocks
+            else:
+                if state_key in state:
+                    del state[state_key]
             save_state(state)
         elif pop_mode == "Cycle / Loop":
             selected_prompt = prompt_blocks.pop(0)
@@ -133,7 +179,11 @@ class PromptQueueIterator:
         elif pop_mode == "Random (Delete)":
             idx = random.randint(0, len(prompt_blocks) - 1)
             selected_prompt = prompt_blocks.pop(idx)
-            state[state_key] = prompt_blocks
+            if len(prompt_blocks) > 0:
+                state[state_key] = prompt_blocks
+            else:
+                if state_key in state:
+                    del state[state_key]
             save_state(state)
         else: # "Random (Keep)"
             idx = random.randint(0, len(prompt_blocks) - 1)
