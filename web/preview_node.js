@@ -12,8 +12,8 @@ if (typeof document !== "undefined") {
             .flowcontrol-live-preview-container {
                 position: absolute !important;
                 inset: 0 !important;
-                top: 48px !important;
-                bottom: 8px !important;
+                top: 76px !important;
+                bottom: 30px !important;
                 left: 8px !important;
                 right: 8px !important;
                 width: auto !important;
@@ -237,8 +237,8 @@ app.registerExtension({
                 viewContainer.className = "flowcontrol-live-preview-container";
                 viewContainer.style.position = "absolute";
                 viewContainer.style.inset = "0";
-                viewContainer.style.top = "48px";
-                viewContainer.style.bottom = "8px";
+                viewContainer.style.top = "76px";
+                viewContainer.style.bottom = "30px";
                 viewContainer.style.left = "8px";
                 viewContainer.style.right = "8px";
                 viewContainer.style.display = "flex";
