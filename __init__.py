@@ -157,6 +157,7 @@ async def save_settings(request):
         enable_tray_icon = data.get("enable_tray_icon")
         enable_assets_restore = data.get("enable_assets_restore")
         restore_assets_count = data.get("restore_assets_count")
+        clear_prompt_iterator_on_launch = data.get("clear_prompt_iterator_on_launch")
         restored_state = data.get("persistent_queue_restored_state")
 
         lines = []
@@ -179,6 +180,7 @@ async def save_settings(request):
         has_tray_enable = False
         has_assets_restore = False
         has_restore_count = False
+        has_clear_prompt_iterator = False
         has_restored_state = False
 
         for line in lines:
@@ -215,6 +217,9 @@ async def save_settings(request):
             elif line.strip().startswith("RESTORE_ASSETS_COUNT=") and restore_assets_count is not None:
                 new_lines.append(f"RESTORE_ASSETS_COUNT={restore_assets_count}\n")
                 has_restore_count = True
+            elif line.strip().startswith("CLEAR_PROMPT_ITERATOR_ON_LAUNCH=") and clear_prompt_iterator_on_launch is not None:
+                new_lines.append(f"CLEAR_PROMPT_ITERATOR_ON_LAUNCH={clear_prompt_iterator_on_launch}\n")
+                has_clear_prompt_iterator = True
             elif line.strip().startswith("PERSISTENT_QUEUE_RESTORED_STATE=") and restored_state is not None:
                 new_lines.append(f"PERSISTENT_QUEUE_RESTORED_STATE={restored_state}\n")
                 has_restored_state = True
@@ -243,6 +248,8 @@ async def save_settings(request):
             new_lines.append(f"ENABLE_ASSETS_RESTORE={enable_assets_restore}\n")
         if not has_restore_count and restore_assets_count is not None:
             new_lines.append(f"RESTORE_ASSETS_COUNT={restore_assets_count}\n")
+        if not has_clear_prompt_iterator and clear_prompt_iterator_on_launch is not None:
+            new_lines.append(f"CLEAR_PROMPT_ITERATOR_ON_LAUNCH={clear_prompt_iterator_on_launch}\n")
         if not has_restored_state and restored_state is not None:
             new_lines.append(f"PERSISTENT_QUEUE_RESTORED_STATE={restored_state}\n")
 
@@ -263,6 +270,8 @@ async def save_settings(request):
             os.environ["ENABLE_ASSETS_RESTORE"] = str(enable_assets_restore)
         if restore_assets_count is not None:
             os.environ["RESTORE_ASSETS_COUNT"] = str(restore_assets_count)
+        if clear_prompt_iterator_on_launch is not None:
+            os.environ["CLEAR_PROMPT_ITERATOR_ON_LAUNCH"] = str(clear_prompt_iterator_on_launch)
 
         failed_file = os.path.join(CURRENT_DIR, "failed_scrapes.json")
         try:

@@ -241,5 +241,45 @@ app.registerExtension({
                 }).catch(() => {});
             }
         });
+
+        // 15. Clear Prompt Iterator State on Launch Setting
+        app.ui.settings.addSetting({
+            id: "FlowControl.ClearPromptIteratorOnLaunch",
+            name: "🍃 FlowControl: Clear Prompt Iterator State on Launch",
+            type: "boolean",
+            defaultValue: false,
+            tooltip: "Privacy setting. When enabled, prompt_iterator_state.json will be emptied automatically every time ComfyUI starts up.",
+            onChange(value) {
+                api.fetchApi("/flow_control/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ clear_prompt_iterator_on_launch: value ? "true" : "false" })
+                }).catch(() => {});
+            }
+        });
+
+        // 16. Clear Prompt Iterator State Now Button
+        app.ui.settings.addSetting({
+            id: "FlowControl.ClearPromptIteratorNow",
+            name: "🍃 FlowControl: Clear Prompt Iterator State Now",
+            type: "button",
+            defaultValue: "Clear State",
+            tooltip: "Immediately clears all saved prompt iterator state from disk.",
+            attrs: {
+                onClick: async () => {
+                    try {
+                        const resp = await api.fetchApi("/flow_control/prompt_iterator/clear", { method: "POST" });
+                        const data = await resp.json();
+                        if (data.status === "ok") {
+                            alert("FlowControl: Prompt Iterator state successfully cleared!");
+                        } else {
+                            alert("FlowControl: Failed to clear Prompt Iterator state.");
+                        }
+                    } catch (e) {
+                        alert("FlowControl: Error clearing Prompt Iterator state: " + e);
+                    }
+                }
+            }
+        });
     }
 });
