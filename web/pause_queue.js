@@ -38,7 +38,7 @@ class PauseQueueUI {
                 this.updateState(data);
             }
         } catch (e) {
-            console.error("[FlowControl] Error fetching status:", e);
+            console.error("[LeafFlow] Error fetching status:", e);
         }
     }
 
@@ -67,7 +67,7 @@ class PauseQueueUI {
                 this.updateState(data);
             }
         } catch (e) {
-            console.error("[FlowControl] Error toggling pause:", e);
+            console.error("[LeafFlow] Error toggling pause:", e);
         }
     }
 
@@ -83,7 +83,7 @@ class PauseQueueUI {
                 this.updateState(data);
             }
         } catch (e) {
-            console.error("[FlowControl] Error setting mode:", e);
+            console.error("[LeafFlow] Error setting mode:", e);
         }
     }
 
@@ -95,7 +95,7 @@ class PauseQueueUI {
                 this.updateState(data);
             }
         } catch (e) {
-            console.error("[FlowControl] Error continuing queue:", e);
+            console.error("[LeafFlow] Error continuing queue:", e);
         }
     }
 
@@ -319,7 +319,7 @@ class PauseQueueUI {
 }
 
 app.registerExtension({
-    name: "ComfyUI.FlowControl.PauseQueue",
+    name: "ComfyUI.LeafFlow.PauseQueue",
     async setup() {
         new PauseQueueUI();
     }

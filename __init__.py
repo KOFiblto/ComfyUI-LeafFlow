@@ -16,10 +16,10 @@ def ensure_dependencies():
             __import__(mod_name)
         except ImportError:
             try:
-                print(f"[ComfyUI-FlowControl] Auto-installing missing dependency: {pip_name}")
+                print(f"[ComfyUI-LeafFlow] Auto-installing missing dependency: {pip_name}")
                 subprocess.check_call([sys.executable, "-m", "pip", "install", pip_name])
             except Exception as e:
-                print(f"[ComfyUI-FlowControl] Warning: Failed to install {pip_name}: {e}")
+                print(f"[ComfyUI-LeafFlow] Warning: Failed to install {pip_name}: {e}")
 
 ensure_dependencies()
 
@@ -35,7 +35,7 @@ from .nodes.undo_placeholder import BackToPlaceholder
 from .nodes.auto_watcher import LoadImageFromFolder
 from .nodes.load_recent import LoadRecentOutputs
 from .nodes.preview_latent import PreviewLatentLiveNode
-from .nodes.decision_node import FlowControlDecision
+from .nodes.decision_node import LeafFlowDecision
 from .nodes.favorite_prompts import FavoritePromptLoader, SaveFavoritePreview
 from .nodes.aspect_ratio import TextAspectRatioFinder, AspectRatioFinder, PreviewImageSizeAspectRatio
 from .nodes.lora_finder import TextLoraFinder, LoraTextFinder
@@ -53,7 +53,7 @@ NODE_CLASS_MAPPINGS = {
     "LoadImageFromFolder": LoadImageFromFolder,
     "LoadRecentOutputs": LoadRecentOutputs,
     "PreviewLatentLive": PreviewLatentLiveNode,
-    "FlowControlDecision": FlowControlDecision,
+    "LeafFlowDecision": LeafFlowDecision,
     "FavoritePromptLoader": FavoritePromptLoader,
     "SaveFavoritePreview": SaveFavoritePreview,
     "TextAspectRatioFinder": TextAspectRatioFinder,
@@ -63,6 +63,7 @@ NODE_CLASS_MAPPINGS = {
     "MultiTextReplacer": MultiTextReplacer,
 
     # Backward Compatibility Aliases
+    "FlowControlDecision": LeafFlowDecision,
     "FolderLoraLoaderVisualPrettyV2": VisualLoraLoader,
     "ImageLoaderVisualPrettyV2": VisualImageLoader,
     "AspectRatioFinder": TextAspectRatioFinder,
@@ -82,7 +83,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LoadImageFromFolder": "🍃 📂 Load Image From Folder",
     "LoadRecentOutputs": "🍃 ⏱️ Recent Outputs",
     "PreviewLatentLive": "🍃 👁️ Live Latent Preview",
-    "FlowControlDecision": "🍃 ⏸️ FlowControl Decision",
+    "LeafFlowDecision": "🍃 ⏸️ LeafFlow Decision",
+    "FlowControlDecision": "🍃 ⏸️ LeafFlow Decision",
     "FavoritePromptLoader": "🍃 ⭐ Favorite Prompts",
     "SaveFavoritePreview": "🍃 💾 Save Favorite Preview",
     "TextAspectRatioFinder": "🍃 📐 Text Aspect Ratio Finder",
@@ -105,8 +107,9 @@ ENV_FILE = os.path.join(CURRENT_DIR, ".env")
 
 routes = server.routes
 
-print("[ComfyUI-FlowControl] 🍃 Loaded 16 nodes & visual endpoints successfully.")
+print("[ComfyUI-LeafFlow] 🍃 Loaded 16 nodes & visual endpoints successfully.")
 
+@routes.get("/leafflow/settings")
 @routes.get("/flow_control/settings")
 async def get_settings(request):
     civitai_key = os.getenv("CIVITAI_API_KEY", "")
@@ -142,6 +145,7 @@ async def get_settings(request):
         "restore_assets_count": restore_assets_count
     })
 
+@routes.post("/leafflow/settings")
 @routes.post("/flow_control/settings")
 async def save_settings(request):
     try:
@@ -281,6 +285,6 @@ async def save_settings(request):
             pass
 
     except Exception as e:
-        print(f"[FlowControl] 🍃 Error saving settings to .env: {e}")
+        print(f"[LeafFlow] 🍃 Error saving settings to .env: {e}")
 
     return web.json_response({"status": "ok"})

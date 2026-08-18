@@ -2,7 +2,7 @@ import { app } from "/scripts/app.js";
 import { api } from "/scripts/api.js";
 
 app.registerExtension({
-    name: "ComfyUI.FlowControl.PersistentQueue",
+    name: "ComfyUI.LeafFlow.PersistentQueue",
     async setup() {
         const patchRgthree = async () => {
             try {
@@ -24,7 +24,7 @@ app.registerExtension({
                     }
                     if (patched) {
                         rgthree.SERVICE.dispatchProgressUpdate();
-                        console.log("[FlowControl] Synced recovered queue with rgthree-comfy.");
+                        console.log("[LeafFlow] Synced recovered queue with rgthree-comfy.");
                     }
                 }
             } catch (e) {
@@ -44,7 +44,7 @@ app.registerExtension({
                     // Wait for server to sync queue state back to clients, then patch rgthree
                     setTimeout(patchRgthree, 500);
                 } catch (e) {
-                    console.error("[FlowControl] Error claiming queue ownership:", e);
+                    console.error("[LeafFlow] Error claiming queue ownership:", e);
                 }
             }
         };

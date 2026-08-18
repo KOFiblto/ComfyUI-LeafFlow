@@ -11,7 +11,7 @@ from server import PromptServer
 import folder_paths
 from .utils import sanitize_folder_path
 
-IMAGE_CATEGORY = "🍃 FlowControl/Loaders"
+IMAGE_CATEGORY = "🍃 LeafFlow/Loaders"
 CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE_FILE = os.path.join(CURRENT_DIR, "image_prompts_cache.json")
 
@@ -50,7 +50,7 @@ def extract_metadata_from_image(filepath):
                         except Exception:
                             pass
     except Exception as e:
-        print(f"[FlowControl] Error extracting metadata: {e}")
+        print(f"[LeafFlow] Error extracting metadata: {e}")
     return positive_prompt, width, height
 
 def load_prompts_cache():
@@ -67,7 +67,7 @@ def save_prompts_cache(cache):
         with open(CACHE_FILE, "w", encoding="utf-8") as f:
             json.dump(cache, f, indent=4, ensure_ascii=False)
     except Exception as e:
-        print(f"[FlowControl] Failed to save prompts cache: {e}")
+        print(f"[LeafFlow] Failed to save prompts cache: {e}")
 
 server = PromptServer.instance
 routes = server.routes

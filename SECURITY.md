@@ -2,7 +2,7 @@
 
 ## Reporting Security Issues
 
-We take the security of ComfyUI-FlowControl seriously. If you discover a security vulnerability or sensitive key exposure, please **DO NOT** open a public issue.
+We take the security of ComfyUI-LeafFlow seriously. If you discover a security vulnerability or sensitive key exposure, please **DO NOT** open a public issue.
 
 Instead, please report security vulnerabilities directly to the maintainer via GitHub private vulnerability reporting.
 

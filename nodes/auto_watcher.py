@@ -23,7 +23,7 @@ class LoadImageFromFolder:
     RETURN_TYPES = ("IMAGE", "BOOLEAN")
     RETURN_NAMES = ("image", "has_image")
     FUNCTION = "watch"
-    CATEGORY = "🍃 FlowControl/Automation"
+    CATEGORY = "🍃 LeafFlow/Automation"
     DESCRIPTION = "Loads an image from a folder, optionally waiting if the folder is empty."
 
     @classmethod
@@ -44,7 +44,7 @@ class LoadImageFromFolder:
         try:
             os.remove(filepath)
         except Exception as e:
-            print(f"[FlowControl] Warning: Failed to remove processed file '{filepath}': {e}")
+            print(f"[LeafFlow] Warning: Failed to remove processed file '{filepath}': {e}")
             
         return img_tensor
 
@@ -53,7 +53,7 @@ class LoadImageFromFolder:
         try:
             regex = re.compile(regex_filter)
         except Exception as e:
-            print(f"[FlowControl] Invalid regex: {e}. Falling back to .*")
+            print(f"[LeafFlow] Invalid regex: {e}. Falling back to .*")
             regex = re.compile(".*")
 
         files = []
@@ -102,9 +102,9 @@ class LoadImageFromFolder:
                                 img_tensor = self.load_and_remove_image(filepath)
                                 return (img_tensor, True)
                             except Exception as e:
-                                print(f"[FlowControl] Error processing {filepath}: {e}")
+                                print(f"[LeafFlow] Error processing {filepath}: {e}")
                     except Exception as e:
-                        print(f"[FlowControl] Error accessing directory {folder}: {e}")
+                        print(f"[LeafFlow] Error accessing directory {folder}: {e}")
 
                 time.sleep(rescan_interval)
         else:
@@ -117,9 +117,9 @@ class LoadImageFromFolder:
                             img_tensor = self.load_and_remove_image(filepath)
                             return (img_tensor, True)
                         except Exception as e:
-                            print(f"[FlowControl] Error processing {filepath}: {e}")
+                            print(f"[LeafFlow] Error processing {filepath}: {e}")
                 except Exception as e:
-                    print(f"[FlowControl] Error accessing directory {folder}: {e}")
+                    print(f"[LeafFlow] Error accessing directory {folder}: {e}")
 
             # No image present or folder missing -> return dummy tensor & False immediately
             return (self.create_dummy_image(), False)

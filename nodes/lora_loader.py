@@ -20,7 +20,7 @@ from .utils import (
     sanitize_folder_path
 )
 
-LORA_CATEGORY = "🍃 FlowControl/Loaders"
+LORA_CATEGORY = "🍃 LeafFlow/Loaders"
 LORA_OUTPUT_FORMAT_CHOICES = [
     "Parsed Name",
     "Filename",
@@ -60,7 +60,7 @@ def save_lora_cycle_state(state):
         with open(LORA_STATE_FILE, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=4, ensure_ascii=False)
     except Exception as e:
-        print(f"[FlowControl] Error saving lora loader cycle state: {e}")
+        print(f"[LeafFlow] Error saving lora loader cycle state: {e}")
 
 def get_api_keys():
     civitai_key = os.getenv("CIVITAI_API_KEY", "")
@@ -96,7 +96,7 @@ def load_usage_data():
                 else:
                     usage_data[k] = usage_data.get(k, 0) + v
         except Exception as e:
-            print(f"[FlowControl] Error loading usage data: {e}")
+            print(f"[LeafFlow] Error loading usage data: {e}")
     return usage_data
 
 def increment_lora_usage(lora_path):
@@ -112,7 +112,7 @@ def increment_lora_usage(lora_path):
         with open(usage_file, "w", encoding="utf-8") as f:
             json.dump(usage_data, f, indent=4, ensure_ascii=False)
     except Exception as e:
-        print(f"[FlowControl] Error updating lora usage: {e}")
+        print(f"[LeafFlow] Error updating lora usage: {e}")
 
 def find_preview_image(lora_relative_path):
     lora_full_path = folder_paths.get_full_path("loras", lora_relative_path)
@@ -202,7 +202,7 @@ def scrape_missing_images_sync():
                                 with urllib.request.urlopen(img_req, timeout=15) as img_resp:
                                     with open(dest_path, "wb") as f:
                                         f.write(img_resp.read())
-                                print(f"[FlowControl] Scraped Civitai preview for {pretty_name}")
+                                print(f"[LeafFlow] Scraped Civitai preview for {pretty_name}")
                                 success = True
                 except Exception:
                     pass
@@ -242,7 +242,7 @@ def scrape_missing_images_sync():
                                 with urllib.request.urlopen(img_req, timeout=15) as img_resp:
                                     with open(dest_path, "wb") as f:
                                         f.write(img_resp.read())
-                                print(f"[FlowControl] Scraped TMDB preview for {pretty_name} (via '{term}')")
+                                print(f"[LeafFlow] Scraped TMDB preview for {pretty_name} (via '{term}')")
                                 success = True
                                 break
                 except Exception as tmdb_err:
@@ -259,7 +259,7 @@ def scrape_missing_images_sync():
             except Exception:
                 pass
     except Exception as e:
-        print(f"[FlowControl] Error in preview scraping thread: {e}")
+        print(f"[LeafFlow] Error in preview scraping thread: {e}")
 
 def start_async_scraping():
     global scraping_thread

@@ -415,7 +415,7 @@ app.registerExtension({
 
                 let folder = folderWidget ? (folderWidget.value || "") : "";
                 if (node.comfyClass === "FavoritePromptLoader") {
-                    folder = app.ui.settings.getSettingValue("FlowControl.FavoritesFolder", "output/favorites");
+                    folder = app.ui.settings.getSettingValue("LeafFlow.FavoritesFolder", "output/favorites");
                     const favWidget = node.widgets ? node.widgets.find(w => w.name === "_favorites_folder") : null;
                     if(favWidget) favWidget.value = folder;
                 }
@@ -569,7 +569,7 @@ app.registerExtension({
             const updateImagesList = async () => {
                 let folder = folderWidget ? (folderWidget.value || "") : "";
                 if (node.comfyClass === "FavoritePromptLoader") {
-                    folder = app.ui.settings.getSettingValue("FlowControl.FavoritesFolder", "output/favorites");
+                    folder = app.ui.settings.getSettingValue("LeafFlow.FavoritesFolder", "output/favorites");
                 }
                 const currentRequest = Symbol();
                 activeRequest = currentRequest;

@@ -16,13 +16,13 @@ async function saveToFavorites(imgSrc, subcategory = "Default", custom_name = ""
     let subfolder = url.searchParams.get("subfolder") || "";
 
     if (!filename) {
-        alert("FlowControl: Could not resolve image filename to save.");
+        alert("LeafFlow: Could not resolve image filename to save.");
         return;
     }
 
-    const favFolder = app.ui.settings.getSettingValue("FlowControl.FavoritesFolder", "output/favorites");
+    const favFolder = app.ui.settings.getSettingValue("LeafFlow.FavoritesFolder", "output/favorites");
     try {
-        const response = await api.fetchApi(`/flowcontrol/save_favorite`, {
+        const response = await api.fetchApi(`/leafflow/save_favorite`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ filename, type, subfolder, subcategory, custom_name, dest_folder: favFolder })
@@ -30,7 +30,7 @@ async function saveToFavorites(imgSrc, subcategory = "Default", custom_name = ""
         const res = await response.json();
         
         if (res.success) {
-            console.log(`[FlowControl] Saved Favorite to ${res.dest}`);
+            console.log(`[LeafFlow] Saved Favorite to ${res.dest}`);
             return true;
         } else {
             alert("Failed to save favorite: " + res.error);
@@ -54,7 +54,7 @@ async function copyImagePrompt(imgSrc) {
     if (!filename) return false;
     
     try {
-        const response = await api.fetchApi(`/flowcontrol/get_image_prompt?filename=${encodeURIComponent(filename)}&type=${encodeURIComponent(type)}&subfolder=${encodeURIComponent(subfolder)}`);
+        const response = await api.fetchApi(`/leafflow/get_image_prompt?filename=${encodeURIComponent(filename)}&type=${encodeURIComponent(type)}&subfolder=${encodeURIComponent(subfolder)}`);
         const res = await response.json();
         if (res.success && res.prompt) {
             await navigator.clipboard.writeText(res.prompt);
@@ -68,7 +68,7 @@ async function copyImagePrompt(imgSrc) {
 
 async function promptForFavoriteDetails(defaultCategory = "", defaultName = "") {
     return new Promise((resolve) => {
-        const favFolder = app.ui.settings.getSettingValue("FlowControl.FavoritesFolder", "output/favorites");
+        const favFolder = app.ui.settings.getSettingValue("LeafFlow.FavoritesFolder", "output/favorites");
         api.fetchApi(`/image_loader/get_images?folder=${encodeURIComponent(favFolder)}`)
            .then(r => r.json())
            .then(data => {
@@ -241,8 +241,8 @@ async function promptForFavoriteDetails(defaultCategory = "", defaultName = "") 
                 dialog.showModal();
                 selectCat.focus();
             }).catch(e => {
-                console.error("[FlowControl] Error fetching favorites folder data:", e);
-                alert("FlowControl: Error fetching favorites folder. Check your FlowControl Favorites Folder setting or console logs.");
+                console.error("[LeafFlow] Error fetching favorites folder data:", e);
+                alert("LeafFlow: Error fetching favorites folder. Check your LeafFlow Favorites Folder setting or console logs.");
                 resolve(null);
             });
     });
@@ -250,8 +250,8 @@ async function promptForFavoriteDetails(defaultCategory = "", defaultName = "") 
 
 // Register settings
 app.ui.settings.addSetting({
-    id: "FlowControl.FavoritesFolder",
-    name: "🍃 FlowControl: Favorites Folder",
+    id: "LeafFlow.FavoritesFolder",
+    name: "🍃 LeafFlow: Favorites Folder",
     type: "text",
     defaultValue: "output/favorites",
     tooltip: "Path to store and load favorite prompts. Relative to ComfyUI directory, or absolute.",
@@ -259,7 +259,7 @@ app.ui.settings.addSetting({
 
 // 1. Hook into Node Context Menu (Right Click on Canvas Nodes)
 app.registerExtension({
-    name: "ComfyUI.FlowControl.FavoritePrompts",
+    name: "ComfyUI.LeafFlow.FavoritePrompts",
     
     async beforeRegisterNodeDef(nodeType, nodeData) {
         const origGetExtraMenuOptions = nodeType.prototype.getExtraMenuOptions;
@@ -332,7 +332,7 @@ app.registerExtension({
 
 // --- 2. Hook into Standard Top Hover Action Bar (White Popup Hover Menu over Asset/Preview Images) ---
 function injectHoverOverlayActions(overlayBar) {
-    if (!overlayBar || overlayBar.querySelector(".flowcontrol-hover-fav")) return;
+    if (!overlayBar || overlayBar.querySelector(".leafflow-hover-fav")) return;
     
     // Locate the white icon group container (div.flex.shrink-0) inside the overlay
     const iconGroup = overlayBar.querySelector('.flex.shrink-0') || 
@@ -349,11 +349,11 @@ function injectHoverOverlayActions(overlayBar) {
                     iconGroup.querySelector('button[aria-label="More"]') ||
                     iconGroup.lastElementChild;
 
-    const baseBtnClass = "flowcontrol-hover-btn relative inline-flex items-center justify-center cursor-pointer touch-manipulation appearance-none border-none text-xs font-medium font-inter transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-white text-gray-700 hover:bg-gray-100 size-8 p-0 rounded-none pointer-events-auto border-r border-gray-200 shrink-0";
+    const baseBtnClass = "leafflow-hover-btn relative inline-flex items-center justify-center cursor-pointer touch-manipulation appearance-none border-none text-xs font-medium font-inter transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-white text-gray-700 hover:bg-gray-100 size-8 p-0 rounded-none pointer-events-auto border-r border-gray-200 shrink-0";
 
     // 1. Save to Favorites Button
     const favBtn = document.createElement("button");
-    favBtn.className = baseBtnClass + " flowcontrol-hover-fav";
+    favBtn.className = baseBtnClass + " leafflow-hover-fav";
     favBtn.title = "Save to Favorites";
     favBtn.setAttribute("aria-label", "Save to Favorites");
     favBtn.setAttribute("data-pd-tooltip", "true");
@@ -378,7 +378,7 @@ function injectHoverOverlayActions(overlayBar) {
 
     // 2. Copy Prompt Button
     const copyBtn = document.createElement("button");
-    copyBtn.className = baseBtnClass + " flowcontrol-hover-copy";
+    copyBtn.className = baseBtnClass + " leafflow-hover-copy";
     copyBtn.title = "Copy Prompt";
     copyBtn.setAttribute("aria-label", "Copy Prompt");
     copyBtn.setAttribute("data-pd-tooltip", "true");

@@ -1,4 +1,4 @@
-# 🍃 ComfyUI-FlowControl
+# 🍃 ComfyUI-LeafFlow
 
 A unified custom node suite for **ComfyUI** featuring real-time queue controls, mid-generation pausing, queue crash recovery, visual model pickers, live latent canvas previews, folder automation, prompt utilities, and resolution tools.
 
@@ -153,12 +153,12 @@ Chronologically cycles through recently generated output images from ComfyUI's o
 Canvas rendering node that listens to sampler WebSocket latent binary streams and displays real-time live previews on the canvas during generation.
 
 #### Inputs & Outputs
-- **Category**: `FlowControl/Previews`
+- **Category**: `LeafFlow/Previews`
 - **Output Node**: True
 </details>
 
 <details>
-<summary><b>🍃 ⏸️ FlowControl Decision</b> (<code>FlowControlDecision</code>)</summary>
+<summary><b>🍃 ⏸️ LeafFlow Decision</b> (<code>LeafFlowDecision</code>)</summary>
 
 #### Overview
 Pauses workflow execution at a specific step and displays an inline UI popup with Continue, Cancel, or Stop Workflow actions, plus optional native OS desktop notifications.
@@ -305,23 +305,23 @@ Searches input text for multiple search targets specified in a comma-separated l
 Configure options directly under ComfyUI Settings (⚙ gear icon):
 
 <details>
-<summary><b>⚙️ FlowControl Settings</b></summary>
+<summary><b>⚙️ LeafFlow Settings</b></summary>
 
-- **🍃 FlowControl: Favorites Folder**: Path to store and load favorite prompts/images (default `output/favorites`).
-- **🍃 FlowControl: Enable LoRA Usage Tracking**: Toggle LoRA usage counting and visual rank badges (🔥, Gold, Silver, Bronze) ON/OFF.
-- **🍃 FlowControl: Enable Civitai Auto-Scraping**: Automatically download model preview images from Civitai via SHA256 file hashes.
-- **🍃 FlowControl: Civitai API Key**: Optional key for Civitai SHA256 model preview search (`Authorization: Bearer <key>`).
-- **🍃 FlowControl: Enable TMDB Auto-Scraping**: Automatically download celebrity preview images from TMDB.
-- **🍃 FlowControl: TMDB API Key**: Optional key or Read Access Token (`eyJ...`) for celebrity preview search.
-- **🍃 FlowControl: Default Pause Queue State on Launch**: Sets whether the queue should start `Unpaused` or `Paused` on boot.
-- **🍃 FlowControl: Default Pause Queue Mode on Launch**: Sets the default pause behavior (`Finish Active Prompt` vs `Instant Resume Node`).
-- **🍃 FlowControl: Persistent Queue Restored Launch State**: Controls what happens to crash-recovered queue items (`Start Paused` or `Start Unpaused`).
-- **🍃 FlowControl: Pause Button Unpaused Color**: Customizable hex color for the toolbar unpaused state.
-- **🍃 FlowControl: Enable Pause Queue Toolbar Button**: Toggle top action bar Pause & Continue button ON/OFF.
-- **🍃 FlowControl: Enable Persistent Queue (Auto-Recovery)**: Toggle the real-time crash recovery queue saving on or off.
-- **🍃 FlowControl: Enable System Tray Icon**: Enables an OS notification area / system tray icon to view queue status with matching colors and trigger Pause (Finish/Instant) or Continue/Resume without opening the browser.
-- **🍃 FlowControl: Restore Assets on Launch**: Automatically restores your latest generated images into the Assets / History pane when ComfyUI starts up.
-- **🍃 FlowControl: Restored Assets Count**: The number of newest images from the output folder to populate into the Assets / History pane on launch (default `64`).
+- **🍃 LeafFlow: Favorites Folder**: Path to store and load favorite prompts/images (default `output/favorites`).
+- **🍃 LeafFlow: Enable LoRA Usage Tracking**: Toggle LoRA usage counting and visual rank badges (🔥, Gold, Silver, Bronze) ON/OFF.
+- **🍃 LeafFlow: Enable Civitai Auto-Scraping**: Automatically download model preview images from Civitai via SHA256 file hashes.
+- **🍃 LeafFlow: Civitai API Key**: Optional key for Civitai SHA256 model preview search (`Authorization: Bearer <key>`).
+- **🍃 LeafFlow: Enable TMDB Auto-Scraping**: Automatically download celebrity preview images from TMDB.
+- **🍃 LeafFlow: TMDB API Key**: Optional key or Read Access Token (`eyJ...`) for celebrity preview search.
+- **🍃 LeafFlow: Default Pause Queue State on Launch**: Sets whether the queue should start `Unpaused` or `Paused` on boot.
+- **🍃 LeafFlow: Default Pause Queue Mode on Launch**: Sets the default pause behavior (`Finish Active Prompt` vs `Instant Resume Node`).
+- **🍃 LeafFlow: Persistent Queue Restored Launch State**: Controls what happens to crash-recovered queue items (`Start Paused` or `Start Unpaused`).
+- **🍃 LeafFlow: Pause Button Unpaused Color**: Customizable hex color for the toolbar unpaused state.
+- **🍃 LeafFlow: Enable Pause Queue Toolbar Button**: Toggle top action bar Pause & Continue button ON/OFF.
+- **🍃 LeafFlow: Enable Persistent Queue (Auto-Recovery)**: Toggle the real-time crash recovery queue saving on or off.
+- **🍃 LeafFlow: Enable System Tray Icon**: Enables an OS notification area / system tray icon to view queue status with matching colors and trigger Pause (Finish/Instant) or Continue/Resume without opening the browser.
+- **🍃 LeafFlow: Restore Assets on Launch**: Automatically restores your latest generated images into the Assets / History pane when ComfyUI starts up.
+- **🍃 LeafFlow: Restored Assets Count**: The number of newest images from the output folder to populate into the Assets / History pane on launch (default `64`).
 </details>
 
 ---
@@ -339,7 +339,7 @@ Configure options directly under ComfyUI Settings (⚙ gear icon):
 1. Open your terminal and navigate to your ComfyUI `custom_nodes` directory:
    ```bash
    cd ComfyUI/custom_nodes
-   git clone https://github.com/KOFiblto/ComfyUI-FlowControl.git
+   git clone https://github.com/KOFiblto/ComfyUI-LeafFlow.git
    ```
 2. Restart ComfyUI.
 3. Open ComfyUI Settings (⚙ gear menu) to configure API keys or feature toggles if desired.

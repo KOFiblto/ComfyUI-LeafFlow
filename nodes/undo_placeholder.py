@@ -3,7 +3,7 @@ import re
 import folder_paths
 from .utils import parse_pretty_name
 
-UTILS_CATEGORY = "🍃 FlowControl/Utils"
+UTILS_CATEGORY = "🍃 LeafFlow/Utils"
 
 def get_pretty_names_for_folder(folder):
     all_loras = folder_paths.get_filename_list("loras")

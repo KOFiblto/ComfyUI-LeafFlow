@@ -61,7 +61,7 @@ class TrayIconManager:
 
     def get_status_info(self):
         if not self.pause_manager:
-            return "Running", "#059669", "pause", "ComfyUI FlowControl: Running"
+            return "Running", "#059669", "pause", "ComfyUI LeafFlow: Running"
 
         unpaused_color, paused_color = self.get_current_colors()
         is_paused = self.pause_manager.paused
@@ -74,17 +74,17 @@ class TrayIconManager:
                 status_text = "Paused (Waiting)"
                 color = paused_color
                 symbol = "play"
-                title = f"ComfyUI FlowControl: Paused ({mode_label}) - Click to Continue"
+                title = f"ComfyUI LeafFlow: Paused ({mode_label}) - Click to Continue"
             else:
                 status_text = f"Pausing ({mode_label})..."
                 color = paused_color
                 symbol = "pause"
-                title = f"ComfyUI FlowControl: Pausing ({mode_label})... (Waiting to complete)"
+                title = f"ComfyUI LeafFlow: Pausing ({mode_label})... (Waiting to complete)"
         else:
             status_text = f"Running [Next Pause: {mode_label}]"
             color = unpaused_color
             symbol = "pause"
-            title = f"ComfyUI FlowControl: Running (Mode: {mode_label})"
+            title = f"ComfyUI LeafFlow: Running (Mode: {mode_label})"
 
         return status_text, color, symbol, title
 
@@ -139,7 +139,7 @@ class TrayIconManager:
                         server_url = f"http://{host}:{port}"
                 webbrowser.open(server_url)
             except Exception as e:
-                print(f"[FlowControl] Error opening browser: {e}")
+                print(f"[LeafFlow] Error opening browser: {e}")
 
         def on_disable_tray(icon, item):
             self.disable_and_stop()
@@ -173,12 +173,12 @@ class TrayIconManager:
             except ImportError:
                 try:
                     import subprocess
-                    print("[FlowControl] pystray is not installed. Auto-installing pystray...")
+                    print("[LeafFlow] pystray is not installed. Auto-installing pystray...")
                     subprocess.check_call([sys.executable, "-m", "pip", "install", "pystray"])
                     import pystray
-                    print("[FlowControl] Successfully auto-installed pystray.")
+                    print("[LeafFlow] Successfully auto-installed pystray.")
                 except Exception as e:
-                    print(f"[FlowControl] Failed to auto-install pystray: {e}. System tray icon cannot start.")
+                    print(f"[LeafFlow] Failed to auto-install pystray: {e}. System tray icon cannot start.")
                     return
 
             _, color, symbol, title = self.get_status_info()
@@ -186,7 +186,7 @@ class TrayIconManager:
             menu = self.build_menu()
 
             self._icon = pystray.Icon(
-                name="ComfyUI-FlowControl",
+                name="ComfyUI-LeafFlow",
                 icon=icon_img,
                 title=title,
                 menu=menu
@@ -195,10 +195,10 @@ class TrayIconManager:
             def _run():
                 try:
                     self._is_running = True
-                    print("[FlowControl] System tray icon started.")
+                    print("[LeafFlow] System tray icon started.")
                     self._icon.run()
                 except Exception as e:
-                    print(f"[FlowControl] System tray icon error: {e}")
+                    print(f"[LeafFlow] System tray icon error: {e}")
                 finally:
                     self._is_running = False
                     self._icon = None
@@ -215,7 +215,7 @@ class TrayIconManager:
                     pass
                 self._icon = None
             self._is_running = False
-            print("[FlowControl] System tray icon stopped.")
+            print("[LeafFlow] System tray icon stopped.")
 
     def update_status(self):
         with self._lock:
@@ -228,7 +228,7 @@ class TrayIconManager:
                 self._icon.title = title
                 self._icon.menu = self.build_menu()
             except Exception as e:
-                print(f"[FlowControl] Error updating system tray status: {e}")
+                print(f"[LeafFlow] Error updating system tray status: {e}")
 
     def set_enabled(self, enabled):
         if enabled:

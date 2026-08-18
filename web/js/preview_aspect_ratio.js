@@ -2,7 +2,7 @@ import { app } from "/scripts/app.js";
 import { api } from "/scripts/api.js";
 
 app.registerExtension({
-    name: "ComfyUI.FlowControl.PreviewImageSizeAspectRatio",
+    name: "ComfyUI.LeafFlow.PreviewImageSizeAspectRatio",
 
     async beforeRegisterNodeDef(nodeType, nodeData) {
         if (nodeData.name !== "PreviewImageSizeAspectRatio" && nodeData.name !== "TextAspectRatioFinder") return;
@@ -35,7 +35,7 @@ app.registerExtension({
 
                 // DOM Container for ComfyUI V2 Vue UI
                 const viewContainer = document.createElement("div");
-                viewContainer.className = "flowcontrol-ar-preview-container";
+                viewContainer.className = "leafflow-ar-preview-container";
                 viewContainer.style.width = "100%";
                 viewContainer.style.height = "calc(100% - 110px)";
                 viewContainer.style.minHeight = "80px";
@@ -296,7 +296,7 @@ app.registerExtension({
     }
 });
 
-api.addEventListener("flowcontrol_update_preview_aspect_ratio", (event) => {
+api.addEventListener("leafflow_update_preview_aspect_ratio", (event) => {
     const detail = event.detail;
     if (!detail || !detail.node_id) return;
 

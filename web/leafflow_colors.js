@@ -23,6 +23,7 @@ const COLOR_MAP = {
     "LoraTextFinder": { color: "#d97706", bgcolor: "#b45309" },
     "PromptQueueIterator": { color: "#d97706", bgcolor: "#b45309" },
     "MultiTextReplacer": { color: "#d97706", bgcolor: "#b45309" },
+    "LeafFlowDecision": { color: "#d97706", bgcolor: "#b45309" },
     "FlowControlDecision": { color: "#d97706", bgcolor: "#b45309" },
 
     // Previews (Violet)
@@ -33,7 +34,7 @@ const COLOR_MAP = {
 };
 
 app.registerExtension({
-    name: "ComfyUI.FlowControl.Colors",
+    name: "ComfyUI.LeafFlow.Colors",
     async nodeCreated(node) {
         if (node && node.type && COLOR_MAP[node.type]) {
             const theme = COLOR_MAP[node.type];

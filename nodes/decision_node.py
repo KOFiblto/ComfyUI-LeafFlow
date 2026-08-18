@@ -37,7 +37,7 @@ class DecisionManager:
         return False
 
 
-class FlowControlDecision:
+class LeafFlowDecision:
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -54,7 +54,7 @@ class FlowControlDecision:
     RETURN_TYPES = ("BOOLEAN",)
     RETURN_NAMES = ("cancel",)
     FUNCTION = "decide"
-    CATEGORY = "🍃 FlowControl/Utils"
+    CATEGORY = "🍃 LeafFlow/Utils"
     DESCRIPTION = "Pauses execution and waits for your input via the UI buttons.\n\n- 'Continue' outputs False (0).\n- 'Cancel' outputs True (1) so you can route it into a Switch node to bypass later nodes.\n- 'Stop Workflow' instantly aborts the entire ComfyUI generation queue.\n- 'OS Notification': Sends a native desktop toast (Windows/macOS/Linux) when waiting."
 
     def send_notification(self, title, message):
@@ -93,7 +93,7 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
                 # Linux dbus notify-send
                 subprocess.Popen(["notify-send", title, message])
         except Exception as e:
-            print(f"[FlowControl] Failed to send OS notification: {e}")
+            print(f"[LeafFlow] Failed to send OS notification: {e}")
 
     def decide(self, disable, send_os_notification, timeout, unique_id=None):
         if disable:
@@ -103,24 +103,24 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
             return (False,)
 
         # Notify frontend
-        PromptServer.instance.send_sync("flowcontrol_decision_waiting", {"node_id": unique_id})
+        PromptServer.instance.send_sync("leafflow_decision_waiting", {"node_id": unique_id})
 
         if send_os_notification:
-            self.send_notification("ComfyUI FlowControl", "Workflow paused! Waiting for your decision.")
+            self.send_notification("ComfyUI LeafFlow", "Workflow paused! Waiting for your decision.")
 
         # Wait for user input
         event = threading.Event()
         DecisionManager.register_wait(unique_id, event)
 
-        print(f"[FlowControl] Node {unique_id} is waiting for user decision...")
+        print(f"[LeafFlow] Node {unique_id} is waiting for user decision...")
 
         if timeout > 0:
             waited = event.wait(timeout)
             if not waited:
-                print(f"[FlowControl] Node {unique_id} timed out. Auto-continuing...")
+                print(f"[LeafFlow] Node {unique_id} timed out. Auto-continuing...")
                 DecisionManager.unregister_wait(unique_id)
                 # Notify frontend to update UI back to normal
-                PromptServer.instance.send_sync("flowcontrol_decision_resolved", {"node_id": unique_id})
+                PromptServer.instance.send_sync("leafflow_decision_resolved", {"node_id": unique_id})
                 return (False,)
         else:
             event.wait()
@@ -129,13 +129,13 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
         action = DecisionManager.get_action(unique_id)
         
         # Notify frontend that the decision has been resolved
-        PromptServer.instance.send_sync("flowcontrol_decision_resolved", {"node_id": unique_id})
+        PromptServer.instance.send_sync("leafflow_decision_resolved", {"node_id": unique_id})
 
         if action == "cancel":
-            print(f"[FlowControl] Node {unique_id} cancelled.")
+            print(f"[LeafFlow] Node {unique_id} cancelled.")
             return (True,)
         elif action == "stop":
-            print(f"[FlowControl] Node {unique_id} stopped workflow.")
+            print(f"[LeafFlow] Node {unique_id} stopped workflow.")
             try:
                 # Attempt to cancel current execution queue
                 PromptServer.instance.prompt_queue.cancel_current_execution()
@@ -147,16 +147,16 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
                 pass
             # Raise exception to halt this thread instantly
             try:
-                raise comfy.model_management.InterruptProcessingException("Workflow stopped by FlowControl Decision Node.")
+                raise comfy.model_management.InterruptProcessingException("Workflow stopped by LeafFlow Decision Node.")
             except AttributeError:
-                raise Exception("Workflow stopped by FlowControl Decision Node.")
+                raise Exception("Workflow stopped by LeafFlow Decision Node.")
 
-        print(f"[FlowControl] Node {unique_id} continuing.")
+        print(f"[LeafFlow] Node {unique_id} continuing.")
         return (False,)
 
 
 # Register API Route
-@PromptServer.instance.routes.post("/flowcontrol/decision")
+@PromptServer.instance.routes.post("/leafflow/decision")
 async def handle_decision(request):
     try:
         data = await request.json()

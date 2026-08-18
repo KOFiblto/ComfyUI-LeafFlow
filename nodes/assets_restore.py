@@ -136,7 +136,7 @@ class AssetsRestoreManager:
                     subfolder = item["subfolder"]
 
                     rel_key = f"{subfolder}/{filename}" if subfolder else filename
-                    prompt_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"flowcontrol:{rel_key}"))
+                    prompt_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"leafflow:{rel_key}"))
 
                     prompt_dict, workflow_dict, positive_prompt = self.extract_image_metadata(filepath)
                     output_node_id = "9"
@@ -161,7 +161,7 @@ class AssetsRestoreManager:
                             {
                                 "create_time": mtime_ms,
                                 "extra_pnginfo": extra_pnginfo,
-                                "client_id": "flowcontrol_restored"
+                                "client_id": "leafflow_restored"
                             },
                             [output_node_id]
                         ],
@@ -223,7 +223,7 @@ class AssetsRestoreManager:
         }
 
         if restored_count > 0:
-            print(f"[FlowControl] Restored {restored_count} recent image(s) into Assets / History pane.")
+            print(f"[LeafFlow] Restored {restored_count} recent image(s) into Assets / History pane.")
             if server:
                 try:
                     server.queue_updated()

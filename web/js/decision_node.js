@@ -4,7 +4,7 @@ import { api } from "/scripts/api.js";
 // Create global styles for the decision buttons
 const styles = document.createElement("style");
 styles.textContent = `
-    .flowcontrol-decision-btn {
+    .leafflow-decision-btn {
         margin: 4px;
         padding: 6px 12px;
         border: none;
@@ -14,19 +14,19 @@ styles.textContent = `
         color: white;
         transition: all 0.2s;
     }
-    .flowcontrol-decision-btn:disabled {
+    .leafflow-decision-btn:disabled {
         opacity: 0.3;
         cursor: not-allowed;
         filter: grayscale(100%);
     }
-    .flowcontrol-btn-continue { background-color: #2e7d32; }
-    .flowcontrol-btn-continue:hover:not(:disabled) { background-color: #388e3c; }
-    .flowcontrol-btn-cancel { background-color: #f57c00; }
-    .flowcontrol-btn-cancel:hover:not(:disabled) { background-color: #fb8c00; }
-    .flowcontrol-btn-stop { background-color: #d32f2f; }
-    .flowcontrol-btn-stop:hover:not(:disabled) { background-color: #f44336; }
+    .leafflow-btn-continue { background-color: #2e7d32; }
+    .leafflow-btn-continue:hover:not(:disabled) { background-color: #388e3c; }
+    .leafflow-btn-cancel { background-color: #f57c00; }
+    .leafflow-btn-cancel:hover:not(:disabled) { background-color: #fb8c00; }
+    .leafflow-btn-stop { background-color: #d32f2f; }
+    .leafflow-btn-stop:hover:not(:disabled) { background-color: #f44336; }
     
-    .flowcontrol-decision-container {
+    .leafflow-decision-container {
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -38,9 +38,9 @@ styles.textContent = `
 document.head.appendChild(styles);
 
 app.registerExtension({
-    name: "Comfy.FlowControlDecision",
+    name: "Comfy.LeafFlowDecision",
     async setup() {
-        api.addEventListener("flowcontrol_decision_waiting", (event) => {
+        api.addEventListener("leafflow_decision_waiting", (event) => {
             const data = event.detail;
             if (data && data.node_id) {
                 const node = app.graph.getNodeById(data.node_id);
@@ -50,7 +50,7 @@ app.registerExtension({
             }
         });
 
-        api.addEventListener("flowcontrol_decision_resolved", (event) => {
+        api.addEventListener("leafflow_decision_resolved", (event) => {
             const data = event.detail;
             if (data && data.node_id) {
                 const node = app.graph.getNodeById(data.node_id);
@@ -61,22 +61,22 @@ app.registerExtension({
         });
     },
     async nodeCreated(node) {
-        if (node.comfyClass === "FlowControlDecision") {
+        if (node.comfyClass === "LeafFlowDecision") {
             const container = document.createElement("div");
-            container.className = "flowcontrol-decision-container";
+            container.className = "leafflow-decision-container";
 
             const btnContinue = document.createElement("button");
-            btnContinue.className = "flowcontrol-decision-btn flowcontrol-btn-continue";
+            btnContinue.className = "leafflow-decision-btn leafflow-btn-continue";
             btnContinue.innerText = "Continue Workflow";
             btnContinue.disabled = true;
 
             const btnCancel = document.createElement("button");
-            btnCancel.className = "flowcontrol-decision-btn flowcontrol-btn-cancel";
+            btnCancel.className = "leafflow-decision-btn leafflow-btn-cancel";
             btnCancel.innerText = "Cancel (Return True)";
             btnCancel.disabled = true;
 
             const btnStop = document.createElement("button");
-            btnStop.className = "flowcontrol-decision-btn flowcontrol-btn-stop";
+            btnStop.className = "leafflow-decision-btn leafflow-btn-stop";
             btnStop.innerText = "Stop Workflow";
             btnStop.disabled = true;
 
@@ -87,7 +87,7 @@ app.registerExtension({
             const sendDecision = async (action) => {
                 node.disableDecisionButtons();
                 try {
-                    await api.fetchApi("/flowcontrol/decision", {
+                    await api.fetchApi("/leafflow/decision", {
                         method: "POST",
                         body: JSON.stringify({
                             node_id: node.id.toString(),
@@ -95,7 +95,7 @@ app.registerExtension({
                         }),
                     });
                 } catch (e) {
-                    console.error("[FlowControl] Failed to send decision:", e);
+                    console.error("[LeafFlow] Failed to send decision:", e);
                 }
             };
 

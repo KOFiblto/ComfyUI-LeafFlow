@@ -1,7 +1,7 @@
 # 🤖 Agent & Developer Standard Operating Procedure (SOP)
-## `ComfyUI-FlowControl` Contributor & Automation Guide
+## `ComfyUI-LeafFlow` Contributor & Automation Guide
 
-This guide defines the mandatory engineering checklist for all AI agents and human developers contributing to **`ComfyUI-FlowControl`**. Whenever you add a node, introduce a setting, modify dependencies, or create a commit, you **MUST** follow the synchronization steps below.
+This guide defines the mandatory engineering checklist for all AI agents and human developers contributing to **`ComfyUI-LeafFlow`**. Whenever you add a node, introduce a setting, modify dependencies, or create a commit, you **MUST** follow the synchronization steps below.
 
 ---
 
@@ -18,8 +18,8 @@ This guide defines the mandatory engineering checklist for all AI agents and hum
 ## 1. Architecture & Directory Layout
 
 ```
-ComfyUI-FlowControl/
-├── __init__.py                # Node registration (NODE_CLASS_MAPPINGS), web endpoints (/flow_control/settings)
+ComfyUI-LeafFlow/
+├── __init__.py                # Node registration (NODE_CLASS_MAPPINGS), web endpoints (/leafflow/settings)
 ├── install.py                 # Dependency installer script for ComfyUI Manager
 ├── pyproject.toml             # Package metadata and pip dependencies
 ├── .env.example               # Template of all supported environment variables
@@ -41,8 +41,8 @@ ComfyUI-FlowControl/
 │   ├── undo_placeholder.py    # Placeholder restoration utility node
 │   └── utils.py               # Shared path sanitization, string parsing, and formatting helpers
 ├── web/                       # Frontend extensions & static assets
-│   ├── flow_control_colors.js # Node theme colors (LiteGraph canvas & Vue V2)
-│   ├── flow_control_settings.js# Native ComfyUI Settings panel registrations
+│   ├── leafflow_colors.js # Node theme colors (LiteGraph canvas & Vue V2)
+│   ├── leafflow_settings.js# Native ComfyUI Settings panel registrations
 │   ├── pause_queue.js         # Top toolbar Pause/Continue button group & dropdown
 │   ├── pause_queue.css        # Toolbar styling
 │   ├── persistent_queue.js    # Queue crash-recovery client ownership claimer
@@ -72,14 +72,14 @@ When implementing a new custom node, you **must complete all 5 steps**:
   - `RETURN_TYPES`: Tuple of output types (e.g. `("IMAGE", "STRING")`).
   - `RETURN_NAMES`: Tuple of human-readable output labels.
   - `FUNCTION`: Exact method name to execute.
-  - `CATEGORY`: Categorized under `"🍃 FlowControl/Loaders"`, `"🍃 FlowControl/Utils"`, `"🍃 FlowControl/Automation"`, or `"🍃 FlowControl/Previews"`.
+  - `CATEGORY`: Categorized under `"🍃 LeafFlow/Loaders"`, `"🍃 LeafFlow/Utils"`, `"🍃 LeafFlow/Automation"`, or `"🍃 LeafFlow/Previews"`.
   - `DESCRIPTION`: Clear multi-line string explaining node functionality and parameters.
 - [ ] Use `sanitize_folder_path(folder_input, default_dir)` from `nodes.utils` for any path/directory arguments (handles Windows/Linux slashes, wildcards `*`, and relative paths cleanly).
 - [ ] Ensure dummy tensors are valid 4D float32 batches `torch.zeros((1, 64, 64, 3), dtype=torch.float32)` for empty image states.
 - [ ] Use `comfy.model_management.throw_exception_if_processing_interrupted()` inside long loops.
 
 ### Step 2.2: Export & Map in `__init__.py`
-- [ ] Import the node class into [`__init__.py`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-FlowControl/__init__.py).
+- [ ] Import the node class into [`__init__.py`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/__init__.py).
 - [ ] Register in `NODE_CLASS_MAPPINGS`:
   ```python
   NODE_CLASS_MAPPINGS = {
@@ -103,21 +103,21 @@ When implementing a new custom node, you **must complete all 5 steps**:
   const isTargetNode = ["YourNodeName", "YourOldAlias"].includes(node.comfyClass) || 
                        ["YourNodeName", "YourOldAlias"].includes(node.type);
   ```
-- [ ] Register node theme colors in [`web/flow_control_colors.js`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-FlowControl/web/flow_control_colors.js):
+- [ ] Register node theme colors in [`web/leafflow_colors.js`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/web/leafflow_colors.js):
   - Loaders: Emerald Green (`color: "#059669"`, `bgcolor: "#047857"`)
   - Automation & Utils: Amber (`color: "#d97706"`, `bgcolor: "#b45309"`)
   - Previews & Decisions: Violet (`color: "#7c3aed"`, `bgcolor: "#6d28d9"`)
 
 ### Step 2.4: Documentation (`README.md` & `WALKTHROUGH.md`)
-- [ ] Add a collapsible `<details>` section in [`README.md`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-FlowControl/README.md) under `## 📦 Individual Nodes Reference`:
+- [ ] Add a collapsible `<details>` section in [`README.md`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/README.md) under `## 📦 Individual Nodes Reference`:
   - Node summary tag: `<summary><b>🍃 🏷️ Display Name</b> (<code>ClassName</code>)</summary>`
   - `#### Overview`
   - `#### Inputs & Widgets`
   - `#### Outputs`
-- [ ] If the node introduces a new workflow pattern, add a section in [`WALKTHROUGH.md`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-FlowControl/WALKTHROUGH.md).
+- [ ] If the node introduces a new workflow pattern, add a section in [`WALKTHROUGH.md`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/WALKTHROUGH.md).
 
 ### Step 2.5: Changelog
-- [ ] Add entry under `### Added` in [`CHANGELOG.md`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-FlowControl/CHANGELOG.md).
+- [ ] Add entry under `### Added` in [`CHANGELOG.md`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/CHANGELOG.md).
 
 ---
 
@@ -126,7 +126,7 @@ When implementing a new custom node, you **must complete all 5 steps**:
 When introducing a configurable option or feature toggle:
 
 ### Step 3.1: `.env.example`
-- [ ] Add the variable with default value and explanation in [`.env.example`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-FlowControl/.env.example):
+- [ ] Add the variable with default value and explanation in [`.env.example`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/.env.example):
   ```ini
   # Brief description of what this setting controls
   YOUR_NEW_SETTING=true
@@ -136,17 +136,17 @@ When introducing a configurable option or feature toggle:
 - [ ] In `get_settings()` route: parse and return the setting.
 - [ ] In `save_settings()` route: read value from incoming JSON, persist to `.env` file via `new_lines`, update `os.environ`, and trigger any dynamic runtime manager updates.
 
-### Step 3.3: Frontend Settings Registration (`web/flow_control_settings.js`)
+### Step 3.3: Frontend Settings Registration (`web/leafflow_settings.js`)
 - [ ] Register via `app.ui.settings.addSetting({...})`:
   ```javascript
   app.ui.settings.addSetting({
-      id: "FlowControl.YourSettingName",
-      name: "🍃 FlowControl: Your Setting Display Name",
+      id: "LeafFlow.YourSettingName",
+      name: "🍃 LeafFlow: Your Setting Display Name",
       type: "boolean" /* or "text", "combo" */,
       defaultValue: false,
       tooltip: "Descriptive tooltip explaining user impact.",
       onChange(value) {
-          api.fetchApi("/flow_control/settings", {
+          api.fetchApi("/leafflow/settings", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ your_setting_key: value })
@@ -156,16 +156,16 @@ When introducing a configurable option or feature toggle:
   ```
 
 ### Step 3.4: Documentation
-- [ ] Update `## ⚙️ ComfyUI Settings Menu Reference` in [`README.md`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-FlowControl/README.md).
-- [ ] Update `## 4. Settings & Configuration` in [`WALKTHROUGH.md`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-FlowControl/WALKTHROUGH.md).
+- [ ] Update `## ⚙️ ComfyUI Settings Menu Reference` in [`README.md`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/README.md).
+- [ ] Update `## 4. Settings & Configuration` in [`WALKTHROUGH.md`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/WALKTHROUGH.md).
 
 ---
 
 ## 4. Checklist: Updating Dependencies
 
 If a feature requires a new Python package:
-- [ ] Add package to `dependencies` in [`pyproject.toml`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-FlowControl/pyproject.toml).
-- [ ] Add package to `dependencies` list in [`install.py`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-FlowControl/install.py).
+- [ ] Add package to `dependencies` in [`pyproject.toml`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/pyproject.toml).
+- [ ] Add package to `dependencies` list in [`install.py`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/install.py).
 - [ ] Check imports gracefully handle missing optional libraries (e.g. `try... except ImportError`).
 
 ---
@@ -173,7 +173,7 @@ If a feature requires a new Python package:
 ## 5. Cross-Platform & Safe Coding Standards
 
 1. **Terminal Console Safety (Windows `cp1252` encoding)**:
-   - **Never include raw unicode emojis in backend `print()` calls** (e.g. write `print("[FlowControl] Started")` instead of `print("[FlowControl] 🍃 ...")`).
+   - **Never include raw unicode emojis in backend `print()` calls** (e.g. write `print("[LeafFlow] Started")` instead of `print("[LeafFlow] 🍃 ...")`).
    - Windows consoles running on default codepages will raise fatal `UnicodeEncodeError: 'charmap' codec can't encode character` if raw emoji bytes hit standard output.
 2. **Path Sanitization**:
    - Never assume `/` or `\` separators; always use `os.path.join()`, `os.path.normpath()`, or `sanitize_folder_path()`.

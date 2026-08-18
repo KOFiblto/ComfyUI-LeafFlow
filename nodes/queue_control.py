@@ -8,7 +8,7 @@ import nodes
 from .tray_icon import TrayIconManager, is_tray_icon_enabled
 from .assets_restore import assets_restore_manager, is_assets_restore_enabled, get_assets_restore_count
 
-QUEUE_CATEGORY = "🍃 FlowControl/Queue"
+QUEUE_CATEGORY = "🍃 LeafFlow/Queue"
 
 CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PERSISTENT_FILE = os.path.join(CURRENT_DIR, "persistent_queue.json")
@@ -374,7 +374,7 @@ def setup_queue_control_routes(server):
 
     routes = server.routes
 
-    @routes.post("/flow_control/assets/restore")
+    @routes.post("/leafflow/assets/restore")
     async def restore_assets_endpoint(request):
         try:
             data = await request.json()
@@ -385,7 +385,7 @@ def setup_queue_control_routes(server):
         count = assets_restore_manager.restore_on_launch(server, limit=limit, force=force)
         return web.json_response({"success": True, "restored": count, "debug": assets_restore_manager.last_debug_report})
 
-    @routes.get("/flow_control/assets/debug")
+    @routes.get("/leafflow/assets/debug")
     async def get_assets_debug(request):
         return web.json_response(assets_restore_manager.last_debug_report)
 

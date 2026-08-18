@@ -32,7 +32,7 @@ class MultiTextReplacer:
     RETURN_TYPES = ("STRING", "INT")
     RETURN_NAMES = ("text", "replaced_count")
     FUNCTION = "replace_text"
-    CATEGORY = "🍃 FlowControl/Utils"
+    CATEGORY = "🍃 LeafFlow/Utils"
     DESCRIPTION = "Searches input text for multiple search targets specified in a comma-separated list or regex, and replaces all matches with a replacement string."
 
     def replace_text(
@@ -75,6 +75,6 @@ class MultiTextReplacer:
                     replaced_count += count
                     result_text = re.sub(pattern_str, lambda m: replace, result_text, flags=flags)
                 except Exception as e:
-                    print(f"[FlowControl] 🍃 Invalid regex pattern '{pattern_str}': {e}")
+                    print(f"[LeafFlow] 🍃 Invalid regex pattern '{pattern_str}': {e}")
 
         return (result_text, replaced_count)

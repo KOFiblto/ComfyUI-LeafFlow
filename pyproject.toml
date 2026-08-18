@@ -1,5 +1,5 @@
 [project]
-name = "comfyui-flowcontrol"
+name = "comfyui-leafflow"
 description = "Essential workflow controls, mid-generation pausing, real-time queue persistence, folder watcher, and visual model loaders for ComfyUI."
 version = "1.0.0"
 readme = "README.md"
@@ -7,9 +7,9 @@ license = "MIT"
 dependencies = ["torch", "pillow", "numpy", "piexif", "pystray"]
 
 [project.urls]
-Repository = "https://github.com/KOFiblto/ComfyUI-FlowControl"
+Repository = "https://github.com/KOFiblto/ComfyUI-LeafFlow"
 
 [tool.comfy]
 PublisherId = "KOFiblto"
-DisplayName = "ComfyUI-FlowControl"
+DisplayName = "ComfyUI-LeafFlow"
 Icon = ""

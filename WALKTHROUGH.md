@@ -1,6 +1,6 @@
-# 🍃 ComfyUI-FlowControl Complete Walkthrough
+# 🍃 ComfyUI-LeafFlow Complete Walkthrough
 
-Welcome to the full guide for ComfyUI-FlowControl! This custom node suite is designed to give you unprecedented control over your generations, visual asset management, and queue resilience. 
+Welcome to the full guide for ComfyUI-LeafFlow! This custom node suite is designed to give you unprecedented control over your generations, visual asset management, and queue resilience. 
 
 This walkthrough covers everything from basic setup to advanced workflows across both the new ComfyUI V2 (Vue) and the classic ComfyUI (LiteGraph).
 
@@ -19,8 +19,8 @@ You have two pause modes, accessible by clicking the small dropdown arrow next t
 
 ### The System Tray Icon (Outside-Browser Queue Control)
 Want to check your queue status or pause/resume generations while working in other apps (Photoshop, Blender, games) without opening ComfyUI in your browser?
-1. Open ComfyUI Settings (⚙️ gear icon) and enable **🍃 FlowControl: Enable System Tray Icon** (or set `ENABLE_TRAY_ICON=true` in `.env`).
-2. FlowControl will spawn an OS system tray icon in your Windows/macOS/Linux taskbar notification area:
+1. Open ComfyUI Settings (⚙️ gear icon) and enable **🍃 LeafFlow: Enable System Tray Icon** (or set `ENABLE_TRAY_ICON=true` in `.env`).
+2. LeafFlow will spawn an OS system tray icon in your Windows/macOS/Linux taskbar notification area:
    - **Green Icon (❚❚)**: Indicates ComfyUI queue is actively running.
    - **Orange Icon (▶)**: Indicates ComfyUI queue is paused and waiting for you to continue.
    - **Orange Icon (❚❚)**: Indicates ComfyUI is in the middle of a generation and will pause as soon as the active workflow/node finishes.
@@ -29,22 +29,22 @@ Want to check your queue status or pause/resume generations while working in oth
 
 ### The Persistent Queue (Crash Recovery)
 You don't need to interact with this—it runs silently in the background! 
-Every time you queue a prompt, FlowControl saves the entire queue state to your hard drive in real time. If your computer crashes, power goes out, or you accidentally close the terminal, ComfyUI will automatically restore your unfinished queue upon next boot (in a paused state, so it doesn't overwhelm your GPU before you're ready).
+Every time you queue a prompt, LeafFlow saves the entire queue state to your hard drive in real time. If your computer crashes, power goes out, or you accidentally close the terminal, ComfyUI will automatically restore your unfinished queue upon next boot (in a paused state, so it doesn't overwhelm your GPU before you're ready).
 
 ### Automatic Assets Pane & History Restore
 In standard ComfyUI, restarting your server wipes the in-memory execution history, leaving your sidebar Assets Pane / History tab completely blank on launch.
-- FlowControl automatically scans your `output` folder (read-only) on server startup and pre-populates the history with your latest **64 images** (or custom count).
+- LeafFlow automatically scans your `output` folder (read-only) on server startup and pre-populates the history with your latest **64 images** (or custom count).
 - All images are loaded in strict chronological order with embedded workflow and prompt graphs intact.
 - Features like **Copy Prompt** and **Copy Workflow** immediately work with restored images as if they were generated in your current session!
-- You can adjust the restored image count or toggle this feature in **ComfyUI Settings (⚙️)** under **`🍃 FlowControl: Restore Assets on Launch`** and **`🍃 FlowControl: Restored Assets Count`**.
+- You can adjust the restored image count or toggle this feature in **ComfyUI Settings (⚙️)** under **`🍃 LeafFlow: Restore Assets on Launch`** and **`🍃 LeafFlow: Restored Assets Count`**.
 
 ---
 
 ## 2. Advanced Nodes
 
-### 🍃 ⏸️ FlowControl Decision
+### 🍃 ⏸️ LeafFlow Decision
 Sometimes you run a complex workflow that takes hours (e.g., upscaling), but you want to check a low-res preview first to ensure it's worth the compute time.
-1. Drop the **`🍃 ⏸️ FlowControl Decision`** node into your workflow between the low-res and high-res stages.
+1. Drop the **`🍃 ⏸️ LeafFlow Decision`** node into your workflow between the low-res and high-res stages.
 2. When the execution reaches this node, your workflow will pause, and a native desktop notification (Windows/macOS/Linux) will alert you!
 3. You will see a popup UI on your ComfyUI canvas giving you three choices:
    - **Continue**: Proceeds with the workflow normally.
@@ -81,7 +81,7 @@ Several nodes across this suite (e.g. *Load Image From Folder*, *Recent Outputs*
 
 ## 4. Settings & Configuration
 
-Click the standard ComfyUI Settings gear ⚙️ to access FlowControl's configurations. Here you can:
+Click the standard ComfyUI Settings gear ⚙️ to access LeafFlow's configurations. Here you can:
 - Safely enter and mask API Keys for Civitai and TMDB scraping.
 - Change the colors of the Pause Queue buttons via built-in color pickers.
 - Adjust the default boot behavior for the Persistent Queue (e.g., forcing ComfyUI to always boot in a Paused state).

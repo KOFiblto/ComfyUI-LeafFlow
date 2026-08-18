@@ -25,7 +25,7 @@ class SaveFavoritePreview(PreviewImage):
     RETURN_TYPES = ()
     FUNCTION = "save_images"
     OUTPUT_NODE = True
-    CATEGORY = "🍃 FlowControl/Previews"
+    CATEGORY = "🍃 LeafFlow/Previews"
     DESCRIPTION = "Preview Image with a native Save to Favorites button."
 
     def save_images(self, images, filename_prefix="ComfyUI", prompt=None, extra_pnginfo=None):
@@ -48,7 +48,7 @@ class FavoritePromptLoader(VisualImageLoader):
     RETURN_TYPES = ("IMAGE", "STRING", "MASK", "INT", "INT")
     RETURN_NAMES = ("IMAGE", "positive_prompt", "MASK", "width", "height")
     FUNCTION = "load_favorite"
-    CATEGORY = "🍃 FlowControl/Loaders"
+    CATEGORY = "🍃 LeafFlow/Loaders"
     DESCRIPTION = "Visually pick an image from your saved Favorites and output its prompt."
 
     def load_favorite(self, display_mode="Scrollable", sort_images_by="Date Modified (Newest First)", _selected_image="", _favorites_folder="output/favorites", **kwargs):
@@ -74,7 +74,7 @@ class FavoritePromptLoader(VisualImageLoader):
 server = PromptServer.instance
 routes = server.routes
 
-@routes.post("/flowcontrol/save_favorite")
+@routes.post("/leafflow/save_favorite")
 async def save_favorite_endpoint(request):
     try:
         data = await request.json()
@@ -134,7 +134,7 @@ async def save_favorite_endpoint(request):
     except Exception as e:
         return web.json_response({"success": False, "error": str(e)})
 
-@routes.get("/flowcontrol/get_image_prompt")
+@routes.get("/leafflow/get_image_prompt")
 async def get_image_prompt_endpoint(request):
     try:
         filename = request.query.get("filename")

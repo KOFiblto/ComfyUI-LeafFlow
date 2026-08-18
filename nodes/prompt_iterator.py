@@ -53,17 +53,17 @@ def save_state(state):
         with open(STATE_FILE, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=4, ensure_ascii=False)
     except Exception as e:
-        print(f"[FlowControl] 🍃 Error saving prompt iterator state: {e}")
+        print(f"[LeafFlow] 🍃 Error saving prompt iterator state: {e}")
 
 def clear_state():
     ensure_user_dir()
     try:
         with open(STATE_FILE, "w", encoding="utf-8") as f:
             json.dump({}, f)
-        print("[FlowControl] 🍃 Prompt iterator state cleared.")
+        print("[LeafFlow] 🍃 Prompt iterator state cleared.")
         return True
     except Exception as e:
-        print(f"[FlowControl] 🍃 Error clearing prompt iterator state: {e}")
+        print(f"[LeafFlow] 🍃 Error clearing prompt iterator state: {e}")
         return False
 
 # Clear state on startup if privacy setting enabled
@@ -73,6 +73,7 @@ if is_clear_prompt_iterator_on_launch():
 # Register clear endpoint
 try:
     routes = PromptServer.instance.routes
+    @routes.post("/leafflow/prompt_iterator/clear")
     @routes.post("/flow_control/prompt_iterator/clear")
     async def clear_prompt_iterator_endpoint(request):
         success = clear_state()
@@ -124,7 +125,7 @@ class PromptQueueIterator:
     RETURN_TYPES = ("STRING", "STRING", "INT")
     RETURN_NAMES = ("prompt", "remaining_text", "remaining_count")
     FUNCTION = "process_queue"
-    CATEGORY = "🍃 FlowControl/Utils"
+    CATEGORY = "🍃 LeafFlow/Utils"
     DESCRIPTION = "Parses multiline prompt text blocks, popping/selecting prompts per batch queue iteration with live UI text updates."
 
     @classmethod
@@ -194,7 +195,7 @@ class PromptQueueIterator:
         remaining_text = join_delim.join(prompt_blocks) if prompt_blocks else ""
 
         try:
-            PromptServer.instance.send_sync("flowcontrol_update_prompt_iterator", {
+            PromptServer.instance.send_sync("leafflow_update_prompt_iterator", {
                 "node_id": str(unique_id),
                 "remaining_text": remaining_text
             })
