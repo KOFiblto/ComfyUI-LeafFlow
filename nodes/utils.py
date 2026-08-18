@@ -39,16 +39,70 @@ def sanitize_folder_path(folder_input, default_dir=None):
     if folder_input is None:
         folder_input = ""
     clean_folder = str(folder_input).strip()
-    if clean_folder.endswith("*"):
-        clean_folder = clean_folder[:-1].rstrip("\\/")
+    
+    # Strip any trailing wildcards (e.g. "krea2\*" -> "krea2", "krea2/*" -> "krea2")
+    clean_folder = re.sub(r'[\*\?]+$', '', clean_folder).rstrip("\\/")
     
     if not clean_folder and default_dir:
         clean_folder = default_dir
 
-    if clean_folder and not os.path.isabs(clean_folder):
-        clean_folder = os.path.normpath(os.path.join(folder_paths.base_path, clean_folder))
+    if not clean_folder:
+        return ""
 
-    return clean_folder
+    # 1. If absolute path, verify directly with case-insensitive check
+    if os.path.isabs(clean_folder):
+        norm_path = os.path.normpath(clean_folder)
+        if os.path.exists(norm_path):
+            return norm_path
+        parent_dir = os.path.dirname(norm_path)
+        base_name = os.path.basename(norm_path)
+        if os.path.exists(parent_dir):
+            try:
+                for entry in os.listdir(parent_dir):
+                    if entry.lower() == base_name.lower():
+                        return os.path.join(parent_dir, entry)
+            except Exception:
+                pass
+        return norm_path
+
+    # 2. If relative path, check output directory, input directory, then base path
+    candidates = []
+    try:
+        output_dir = folder_paths.get_output_directory()
+        if output_dir:
+            candidates.append(os.path.normpath(os.path.join(output_dir, clean_folder)))
+    except Exception:
+        pass
+
+    try:
+        input_dir = folder_paths.get_input_directory()
+        if input_dir:
+            candidates.append(os.path.normpath(os.path.join(input_dir, clean_folder)))
+    except Exception:
+        pass
+
+    try:
+        if folder_paths.base_path:
+            candidates.append(os.path.normpath(os.path.join(folder_paths.base_path, clean_folder)))
+    except Exception:
+        pass
+
+    for cand in candidates:
+        if os.path.exists(cand):
+            return cand
+
+    for cand in candidates:
+        parent_dir = os.path.dirname(cand)
+        base_name = os.path.basename(cand)
+        if os.path.exists(parent_dir):
+            try:
+                for entry in os.listdir(parent_dir):
+                    if entry.lower() == base_name.lower():
+                        return os.path.join(parent_dir, entry)
+            except Exception:
+                pass
+
+    return candidates[0] if candidates else os.path.normpath(os.path.join(folder_paths.base_path, clean_folder))
 
 def format_lora_output_name(resolved_path, display_name, output_format="Parsed Name", custom_regex=""):
     if not resolved_path or resolved_path in ["[ NONE ]", "[ RANDOM ]"]:

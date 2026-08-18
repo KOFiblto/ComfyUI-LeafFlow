@@ -46,15 +46,36 @@ visualStyles.textContent = `
         border-radius: 8px;
         padding: 8px;
         box-sizing: border-box;
+        height: 100%;
+        min-height: 0;
+        max-height: 100%;
         overflow-y: hidden;
     }
-    .lora-visual-container.vue-mode {
-        height: 400px;
-        min-height: 200px;
-        resize: vertical;
+    .lora-grid-container {
+        flex: 1 1 0px;
+        min-height: 0;
+        max-height: 100%;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+        box-sizing: border-box;
+        padding-right: 4px;
     }
-    .lora-visual-container.litegraph-mode {
-        height: 100%;
+    .lora-grid-container::-webkit-scrollbar {
+        width: 6px;
+    }
+    .lora-grid-container::-webkit-scrollbar-track {
+        background: rgba(0,0,0,0.1);
+        border-radius: 4px;
+    }
+    .lora-grid-container::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.15);
+        border-radius: 4px;
+    }
+    .lora-grid-container::-webkit-scrollbar-thumb:hover {
+        background: rgba(255,255,255,0.3);
     }
     .lora-visual-container.grid-layout {
         display: grid;
@@ -63,20 +84,6 @@ visualStyles.textContent = `
     .lora-visual-container.flex-layout {
         display: flex;
         flex-direction: column;
-    }
-    .lora-visual-container::-webkit-scrollbar {
-        width: 6px;
-    }
-    .lora-visual-container::-webkit-scrollbar-track {
-        background: rgba(0,0,0,0.1);
-        border-radius: 4px;
-    }
-    .lora-visual-container::-webkit-scrollbar-thumb {
-        background: rgba(255,255,255,0.15);
-        border-radius: 4px;
-    }
-    .lora-visual-container::-webkit-scrollbar-thumb:hover {
-        background: rgba(255,255,255,0.3);
     }
     .lora-none-container {
         width: 100%;
@@ -838,26 +845,65 @@ app.registerExtension({
             const initialZoom = localStorage.getItem("comfy_lora_picker_zoom") || "80";
             viewContainer.style.setProperty("--lora-tile-size", `${initialZoom}px`);
 
+            const gridContainer = document.createElement("div");
+            gridContainer.className = "lora-grid-container";
+
             // Isolate mouse wheel scroll events from triggering canvas zooming/panning
             viewContainer.addEventListener("wheel", (e) => {
                 e.stopPropagation();
             });
 
+            let userSavedHeight = 420;
+
+            const applyDisplayMode = (mode) => {
+                const isShowAll = mode === "Show All";
+                if (isShowAll) {
+                    viewContainer.style.setProperty("height", "auto", "important");
+                    viewContainer.style.setProperty("max-height", "none", "important");
+                    viewContainer.style.setProperty("overflow-y", "visible", "important");
+
+                    gridContainer.style.setProperty("height", "auto", "important");
+                    gridContainer.style.setProperty("max-height", "none", "important");
+                    gridContainer.style.setProperty("overflow-y", "visible", "important");
+                    gridContainer.style.setProperty("flex", "none", "important");
+
+                    setTimeout(() => {
+                        const contentH = gridContainer.scrollHeight || 0;
+                        const neededHeight = contentH + 160;
+                        node.setSize([node.size[0], Math.max(360, neededHeight)]);
+                        if (app.graph) app.graph.setDirtyCanvas(true, true);
+                    }, 50);
+                } else {
+                    viewContainer.style.removeProperty("height");
+                    viewContainer.style.removeProperty("max-height");
+                    viewContainer.style.setProperty("overflow-y", "hidden", "important");
+
+                    gridContainer.style.removeProperty("height");
+                    gridContainer.style.removeProperty("max-height");
+                    gridContainer.style.setProperty("overflow-y", "auto", "important");
+                    gridContainer.style.setProperty("flex", "1 1 0px", "important");
+
+                    const restoredH = node.userCustomHeight || userSavedHeight || 420;
+                    if (viewContainer.style) {
+                        viewContainer.style.height = `${restoredH - 80}px`;
+                    }
+                    node.setSize([node.size[0], Math.max(360, restoredH)]);
+                    if (app.graph) app.graph.setDirtyCanvas(true, true);
+                }
+            };
+
             node.computeSize = function() {
                 const displayModeWidget = node.widgets ? node.widgets.find(w => w.name === "display_mode") : null;
-                if (displayModeWidget && displayModeWidget.value === "Show All" && viewContainer) {
-                    return [node.size[0], Math.max(360, viewContainer.scrollHeight + 190)];
+                if (displayModeWidget && displayModeWidget.value === "Show All" && gridContainer) {
+                    return [node.size[0], Math.max(360, (gridContainer.scrollHeight || 0) + 160)];
                 }
                 return [node.size[0], Math.max(360, node.size[1])];
             };
 
             const updateNodeSize = () => {
                 const displayModeWidget = node.widgets ? node.widgets.find(w => w.name === "display_mode") : null;
-                if (displayModeWidget && displayModeWidget.value === "Show All") {
-                    const neededHeight = viewContainer.scrollHeight + 190;
-                    node.setSize([node.size[0], Math.max(360, neededHeight)]);
-                    if (app.graph) app.graph.setDirtyCanvas(true, true);
-                }
+                const mode = displayModeWidget ? displayModeWidget.value : "Scrollable";
+                applyDisplayMode(mode);
             };
 
             // --- Control Bar for Mode Selector ---
@@ -960,6 +1006,7 @@ app.registerExtension({
             controlBar.appendChild(scrapeToggleContainer);
 
             viewContainer.appendChild(controlBar);
+            viewContainer.appendChild(gridContainer);
 
             const domWidget = node.addDOMWidget("lora_visual_picker", "HTML", viewContainer, {
                 getValue() { return getHiddenWidget().value; },
@@ -969,6 +1016,20 @@ app.registerExtension({
 
             domWidget.computeSize = function() {
                 return [node.size[0] - 30, node.size[1] - 190];
+            };
+
+            const onResize = node.onResize;
+            node.onResize = function(size) {
+                if (onResize) onResize.apply(this, arguments);
+                const displayModeWidget = node.widgets ? node.widgets.find(w => w.name === "display_mode") : null;
+                const isShowAll = displayModeWidget && displayModeWidget.value === "Show All";
+                if (!isShowAll && size) {
+                    node.userCustomHeight = size[1];
+                    userSavedHeight = size[1];
+                    if (viewContainer && viewContainer.style) {
+                        viewContainer.style.height = `${size[1] - 80}px`;
+                    }
+                }
             };
 
             const zoomWidget = node.addWidget(
@@ -1072,11 +1133,7 @@ app.registerExtension({
                     if (activeRequest !== currentRequest) return;
                     const data = await response.json();
 
-                    // Keep the control bar and clear the rest
-                    const noneContainerExist = viewContainer.querySelector(".lora-none-container");
-                    if (noneContainerExist) noneContainerExist.remove();
-                    const foldersExist = viewContainer.querySelectorAll(".lora-folder-container");
-                    foldersExist.forEach(f => f.remove());
+                    gridContainer.innerHTML = "";
 
                     foldersMap = {};
                     foldersMap["Root"] = [];
@@ -1218,7 +1275,7 @@ app.registerExtension({
                                 observer.unobserve(img);
                             }
                         });
-                    }, { root: viewContainer, rootMargin: "100px" });
+                    }, { root: gridContainer, rootMargin: "150px" });
 
                     // --- Render folder groups ---
                     sortedFolders.forEach(subFolder => {
@@ -1380,8 +1437,8 @@ app.registerExtension({
                         fragment.appendChild(folderContainer);
                     });
 
-                    // Append entire DocumentFragment in a single high-performance DOM pass
-                    viewContainer.appendChild(fragment);
+                    // Append entire DocumentFragment to gridContainer
+                    gridContainer.appendChild(fragment);
 
                     // Set initial checkboxes state
                     updateFolderCheckboxes();
@@ -1446,18 +1503,9 @@ app.registerExtension({
                     const origCallback = displayModeWidget.callback;
                     displayModeWidget.callback = function(val) {
                         if (origCallback) origCallback.apply(this, arguments);
-                        if (val === "Show All") {
-                            viewContainer.style.overflowY = "hidden";
-                        } else {
-                            viewContainer.style.overflowY = "auto";
-                        }
-                        setTimeout(() => updateNodeSize(), 50);
+                        applyDisplayMode(val || displayModeWidget.value);
                     };
-                    if (displayModeWidget.value === "Show All") {
-                        viewContainer.style.overflowY = "hidden";
-                    } else {
-                        viewContainer.style.overflowY = "auto";
-                    }
+                    applyDisplayMode(displayModeWidget.value || "Scrollable");
                 }
                 updateVisualGrid();
             }, 100);
