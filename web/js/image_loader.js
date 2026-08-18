@@ -14,17 +14,10 @@ visualStyles.textContent = `
         border: 1px solid #222;
         border-radius: 6px;
         box-sizing: border-box;
-        overflow-y: hidden;
-    }
-    .img-visual-container.vue-mode {
-        height: 400px;
-        min-height: 200px;
-        resize: vertical;
-    }
-    .img-visual-container.litegraph-mode {
         height: 100%;
         min-height: 0;
         max-height: 100%;
+        overflow-y: hidden;
     }
     .img-visual-container::-webkit-scrollbar {
         width: 6px;
@@ -299,19 +292,57 @@ app.registerExtension({
 
             node.computeSize = function() {
                 const displayModeWidget = node.widgets ? node.widgets.find(w => w.name === "display_mode") : null;
-                if (displayModeWidget && displayModeWidget.value === "Show All" && gridContainer) {
-                    return [node.size[0], Math.max(480, gridContainer.scrollHeight + 140)];
+            let userSavedHeight = 480;
+
+            const applyDisplayMode = (mode) => {
+                const isShowAll = mode === "Show All";
+                if (isShowAll) {
+                    viewContainer.style.setProperty("height", "auto", "important");
+                    viewContainer.style.setProperty("max-height", "none", "important");
+                    viewContainer.style.setProperty("overflow-y", "visible", "important");
+
+                    gridContainer.style.setProperty("height", "auto", "important");
+                    gridContainer.style.setProperty("max-height", "none", "important");
+                    gridContainer.style.setProperty("overflow-y", "visible", "important");
+                    gridContainer.style.setProperty("flex", "none", "important");
+
+                    setTimeout(() => {
+                        const contentH = gridContainer.scrollHeight || 0;
+                        const neededHeight = contentH + 160;
+                        node.setSize([node.size[0], Math.max(420, neededHeight)]);
+                        if (app.graph) app.graph.setDirtyCanvas(true, true);
+                    }, 50);
+                } else {
+                    viewContainer.style.removeProperty("height");
+                    viewContainer.style.removeProperty("max-height");
+                    viewContainer.style.setProperty("overflow-y", "hidden", "important");
+
+                    gridContainer.style.removeProperty("height");
+                    gridContainer.style.removeProperty("max-height");
+                    gridContainer.style.setProperty("overflow-y", "auto", "important");
+                    gridContainer.style.setProperty("flex", "1 1 0px", "important");
+
+                    const restoredH = node.userCustomHeight || userSavedHeight || 480;
+                    if (viewContainer.style) {
+                        viewContainer.style.height = `${restoredH - 80}px`;
+                    }
+                    node.setSize([node.size[0], Math.max(420, restoredH)]);
+                    if (app.graph) app.graph.setDirtyCanvas(true, true);
                 }
-                return [node.size[0], Math.max(480, node.size[1])];
+            };
+
+            node.computeSize = function() {
+                const displayModeWidget = node.widgets ? node.widgets.find(w => w.name === "display_mode") : null;
+                if (displayModeWidget && displayModeWidget.value === "Show All" && gridContainer) {
+                    return [node.size[0], Math.max(420, (gridContainer.scrollHeight || 0) + 160)];
+                }
+                return [node.size[0], Math.max(420, node.size[1])];
             };
 
             const updateNodeSize = () => {
                 const displayModeWidget = node.widgets ? node.widgets.find(w => w.name === "display_mode") : null;
-                if (displayModeWidget && displayModeWidget.value === "Show All") {
-                    const neededHeight = gridContainer.scrollHeight + 140;
-                    node.setSize([node.size[0], Math.max(480, neededHeight)]);
-                    if (app.graph) app.graph.setDirtyCanvas(true, true);
-                }
+                const mode = displayModeWidget ? displayModeWidget.value : "Scrollable";
+                applyDisplayMode(mode);
             };
 
             const initialZoom = localStorage.getItem("comfy_img_picker_zoom") || "80";
@@ -324,20 +355,19 @@ app.registerExtension({
                 serialize: false
             });
 
-            // Detect Vue UI vs LiteGraph
-            const isVueUI = !!document.querySelector(".lg-node");
-            if (isVueUI) {
-                viewContainer.classList.add("vue-mode");
-            } else {
-                viewContainer.classList.add("litegraph-mode");
-                const onResize = node.onResize;
-                node.onResize = function(size) {
-                    if (onResize) onResize.apply(this, arguments);
-                    if (viewContainer.style) {
+            const onResize = node.onResize;
+            node.onResize = function(size) {
+                if (onResize) onResize.apply(this, arguments);
+                const displayModeWidget = node.widgets ? node.widgets.find(w => w.name === "display_mode") : null;
+                const isShowAll = displayModeWidget && displayModeWidget.value === "Show All";
+                if (!isShowAll && size) {
+                    node.userCustomHeight = size[1];
+                    userSavedHeight = size[1];
+                    if (viewContainer && viewContainer.style) {
                         viewContainer.style.height = `${size[1] - 80}px`;
                     }
-                };
-            }
+                }
+            };
 
             domWidget.computeSize = function() {
                 return [node.size[0] - 30, node.size[1] - 140];
@@ -594,18 +624,9 @@ app.registerExtension({
                     const origCallback = displayModeWidget.callback;
                     displayModeWidget.callback = function(val) {
                         if (origCallback) origCallback.apply(this, arguments);
-                        if (val === "Show All") {
-                            gridContainer.style.overflowY = "hidden";
-                        } else {
-                            gridContainer.style.overflowY = "auto";
-                        }
-                        setTimeout(() => updateNodeSize(), 50);
+                        applyDisplayMode(val || displayModeWidget.value);
                     };
-                    if (displayModeWidget.value === "Show All") {
-                        gridContainer.style.overflowY = "hidden";
-                    } else {
-                        gridContainer.style.overflowY = "auto";
-                    }
+                    applyDisplayMode(displayModeWidget.value || "Scrollable");
                 }
                 updateImagesList();
             }, 100);
