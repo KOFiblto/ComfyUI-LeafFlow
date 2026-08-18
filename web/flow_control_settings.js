@@ -198,7 +198,7 @@ app.registerExtension({
             id: "FlowControl.EnableTrayIcon",
             name: "🍃 FlowControl: Enable System Tray Icon",
             type: "boolean",
-            defaultValue: false,
+            defaultValue: true,
             tooltip: "Enables an OS system tray icon with matching status colors to pause (finish/instant) and resume the queue without having ComfyUI open in your browser.",
             onChange(value) {
                 api.fetchApi("/flow_control/settings", {

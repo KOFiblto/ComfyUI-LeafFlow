@@ -874,19 +874,20 @@ app.registerExtension({
                         if (app.graph) app.graph.setDirtyCanvas(true, true);
                     }, 50);
                 } else {
-                    viewContainer.style.removeProperty("height");
-                    viewContainer.style.removeProperty("max-height");
+                    viewContainer.classList.remove("show-all-mode");
+                    viewContainer.classList.add("scrollable-mode");
+                    const restoredH = node.userCustomHeight || userSavedHeight || 420;
+                    const containerH = Math.max(200, restoredH - 100);
+                    
+                    viewContainer.style.setProperty("height", `${containerH}px`, "important");
+                    viewContainer.style.setProperty("max-height", `${containerH}px`, "important");
                     viewContainer.style.setProperty("overflow-y", "hidden", "important");
 
-                    gridContainer.style.removeProperty("height");
-                    gridContainer.style.removeProperty("max-height");
+                    gridContainer.style.setProperty("height", "100%", "important");
+                    gridContainer.style.setProperty("max-height", "100%", "important");
                     gridContainer.style.setProperty("overflow-y", "auto", "important");
                     gridContainer.style.setProperty("flex", "1 1 0px", "important");
 
-                    const restoredH = node.userCustomHeight || userSavedHeight || 420;
-                    if (viewContainer.style) {
-                        viewContainer.style.height = `${restoredH - 80}px`;
-                    }
                     node.setSize([node.size[0], Math.max(360, restoredH)]);
                     if (app.graph) app.graph.setDirtyCanvas(true, true);
                 }
@@ -1027,7 +1028,9 @@ app.registerExtension({
                     node.userCustomHeight = size[1];
                     userSavedHeight = size[1];
                     if (viewContainer && viewContainer.style) {
-                        viewContainer.style.height = `${size[1] - 80}px`;
+                        const h = Math.max(200, size[1] - 100);
+                        viewContainer.style.setProperty("height", `${h}px`, "important");
+                        viewContainer.style.setProperty("max-height", `${h}px`, "important");
                     }
                 }
             };
