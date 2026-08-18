@@ -192,16 +192,29 @@ If a feature requires a new Python package:
 
 ## 6. Git, Branching & Commit Conventions
 
-1. **Branching**:
-   - Do not commit directly to `main`. Work on a descriptive feature branch (`feature/<name>` or `fix/<name>`).
-2. **Excluded Files**:
-   - Never commit sensitive keys, runtime states, or caches:
-     - `.env`, `.env.local`
-     - `persistent_queue.json`, `lora_usage.json`, `failed_scrapes.json`, `image_prompts_cache.json`
-     - `user/` directory
-3. **Commit Messages**:
-   - Use atomic, descriptive English commit headers:
-     - `Feat: ...` (New features or nodes)
-     - `Fix: ...` (Bug fixes, UI sync repairs)
-     - `Docs: ...` (Documentation, README, Walkthrough updates)
-     - `Refactor: ...` (Code restructuring)
+### 6.1 Strict Branch Naming Classification
+Never create misleading or overly narrow branch names when multiple components, fixes, and features are bundled together!
+- **Atomic Feature Branches** (`feature/<feature-name>`):
+  - Used **ONLY** when implementing a single, isolated new feature or node.
+  - Examples: `feature/prompt-iterator-privacy`, `feature/visual-loaders-pathing`
+- **Atomic Bug Fix Branches** (`fix/<bug-name>`):
+  - Used **ONLY** for targeted bug fixes.
+  - Examples: `fix/preview-latent-insets`, `fix/tray-icon-persistence`
+- **Comprehensive Integration & Release Branches** (`release/vX.Y.Z-<summary>` or `dev/<summary>`):
+  - **MANDATORY**: Whenever bundling multiple features, fixes, rebrands, or architectural updates into a combined testing or release candidate, use a `release/...` or `dev/...` branch name.
+  - **STRICTLY PROHIBITED**: Never disguise a multi-feature/fix release bundle under a single isolated `feature/<narrow-name>`.
+  - Examples: `release/v2.2.0-leafflow-update`, `dev/v2.2.0-full-integration`
+
+### 6.2 Excluded Files & Privacy
+Never commit sensitive keys, runtime states, or caches:
+- `.env`, `.env.local`
+- `persistent_queue.json`, `lora_usage.json`, `failed_scrapes.json`, `image_prompts_cache.json`
+- `user/` directory
+
+### 6.3 Commit Messages
+Use atomic, descriptive English commit headers:
+- `Feat: ...` (New features or nodes)
+- `Fix: ...` (Bug fixes, UI sync repairs)
+- `Docs: ...` (Documentation, README, Walkthrough updates)
+- `Refactor: ...` (Code restructuring or rebrands)
+- `Release: ...` (Consolidated version releases)
