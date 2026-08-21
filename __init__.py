@@ -44,6 +44,7 @@ from .nodes.prompt_iterator import PromptQueueIterator
 from .nodes.text_replacer import MultiTextReplacer
 from .nodes.text_split import LeafFlowTextSplit
 from .nodes.snapchat_sender import SnapchatCameraSnapNode
+from .nodes.snapchat_reader import LeafFlowSnapchatReadMessage
 
 
 NODE_CLASS_MAPPINGS = {
@@ -66,6 +67,7 @@ NODE_CLASS_MAPPINGS = {
     "MultiTextReplacer": MultiTextReplacer,
     "LeafFlowTextSplit": LeafFlowTextSplit,
     "SnapchatCameraSnapNode": SnapchatCameraSnapNode,
+    "LeafFlowSnapchatReadMessage": LeafFlowSnapchatReadMessage,
 
     # Backward Compatibility Aliases
     "FlowControlDecision": LeafFlowDecision,
@@ -100,7 +102,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "PromptQueueIterator": "🍃 🔄 Prompt Queue Iterator",
     "MultiTextReplacer": "🍃 🔤 Multi Text Replacer",
     "LeafFlowTextSplit": "🍃 ✂️ Text Split",
-    "SnapchatCameraSnapNode": "🍃 📸 Snapchat Camera Snap"
+    "SnapchatCameraSnapNode": "🍃 📸 Snapchat Camera Snap",
+    "LeafFlowSnapchatReadMessage": "🍃 💬 Snapchat Read Messages"
 }
 
 WEB_DIRECTORY = "./web"
