@@ -25,6 +25,7 @@ const COLOR_MAP = {
     "MultiTextReplacer": { color: "#d97706", bgcolor: "#b45309" },
     "LeafFlowDecision": { color: "#d97706", bgcolor: "#b45309" },
     "FlowControlDecision": { color: "#d97706", bgcolor: "#b45309" },
+    "SnapchatCameraSnapNode": { color: "#eab308", bgcolor: "#ca8a04" },
 
     // Previews (Violet)
     "PreviewLatentLive": { color: "#7c3aed", bgcolor: "#6d28d9" },

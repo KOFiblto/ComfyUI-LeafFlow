@@ -9,7 +9,8 @@ def ensure_dependencies():
         "pystray": "pystray",
         "piexif": "piexif",
         "PIL": "Pillow",
-        "numpy": "numpy"
+        "numpy": "numpy",
+        "playwright": "playwright"
     }
     for mod_name, pip_name in dep_map.items():
         try:
@@ -41,6 +42,7 @@ from .nodes.aspect_ratio import TextAspectRatioFinder, AspectRatioFinder, Previe
 from .nodes.lora_finder import TextLoraFinder, LoraTextFinder
 from .nodes.prompt_iterator import PromptQueueIterator
 from .nodes.text_replacer import MultiTextReplacer
+from .nodes.snapchat_sender import SnapchatCameraSnapNode
 
 
 NODE_CLASS_MAPPINGS = {
@@ -61,6 +63,7 @@ NODE_CLASS_MAPPINGS = {
     "TextLoraFinder": TextLoraFinder,
     "PromptQueueIterator": PromptQueueIterator,
     "MultiTextReplacer": MultiTextReplacer,
+    "SnapchatCameraSnapNode": SnapchatCameraSnapNode,
 
     # Backward Compatibility Aliases
     "FlowControlDecision": LeafFlowDecision,
@@ -93,7 +96,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TextLoraFinder": "🍃 🔎 Text LoRA Finder & Loader",
     "LoraTextFinder": "🍃 🔎 Text LoRA Finder & Loader",
     "PromptQueueIterator": "🍃 🔄 Prompt Queue Iterator",
-    "MultiTextReplacer": "🍃 🔤 Multi Text Replacer"
+    "MultiTextReplacer": "🍃 🔤 Multi Text Replacer",
+    "SnapchatCameraSnapNode": "🍃 📸 Snapchat Camera Snap"
 }
 
 WEB_DIRECTORY = "./web"

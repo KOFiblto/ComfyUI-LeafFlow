@@ -298,6 +298,27 @@ Searches input text for multiple search targets specified in a comma-separated l
 - **`replaced_count`** (`INT`): Total replacements executed.
 </details>
 
+<details>
+<summary><b>🍃 📸 Snapchat Camera Snap</b> (<code>SnapchatCameraSnapNode</code>)</summary>
+
+#### Overview
+Directly streams generated ComfyUI images into a virtual 1080x1920 canvas camera feed inside Snapchat Web and captures + dispatches an authentic live red Camera Snap to a recipient username.
+
+#### Inputs & Widgets
+- **`image`** (`IMAGE`): ComfyUI image tensor to stream and capture.
+- **`send_to`** (`STRING`): Target Snapchat username (e.g. `john_doe`).
+- **`caption`** (`STRING`, *Optional*): Optional text overlay on the snap.
+- **`username`** (`STRING`, *Optional*): Snapchat account login identifier.
+- **`password`** (`STRING`, *Optional*): Snapchat account password.
+- **`headless`** (`BOOLEAN`, *Default: true*): Set to false on initial run if 2FA verification is required.
+- **`profile_name`** (`STRING`, *Default: 'default'*): Persistent browser profile folder under `user/snapchat_profiles/`.
+- **`timeout`** (`INT`, *Default: 60*): Max seconds for page load / login approval.
+
+#### Outputs
+- **`image`** (`IMAGE`): Passthrough image tensor.
+- **`status`** (`STRING`): Result or error status message.
+</details>
+
 ---
 
 ## ⚙️ ComfyUI Settings Menu Reference
