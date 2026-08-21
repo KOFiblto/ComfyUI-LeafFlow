@@ -244,6 +244,11 @@ class LeafFlowSnapchatReadMessage:
     CATEGORY = SNAPCHAT_CATEGORY
     OUTPUT_NODE = True
 
+    @classmethod
+    def IS_CHANGED(cls, **kwargs):
+        # Force fresh execution on every queue run
+        return float("nan")
+
     def read_messages(
         self,
         send_to,
@@ -257,6 +262,7 @@ class LeafFlowSnapchatReadMessage:
         debug_screenshots=False,
         **kwargs
     ):
+        print(f"[LeafFlow Snapchat Read] Fetching latest {message_count} messages for '{send_to}'...")
         if not send_to or not send_to.strip():
             return ("", "", 0)
 
