@@ -53,32 +53,44 @@ def run_async_in_isolated_thread(coro):
     return result[0], result[1]
 
 
-def is_snapchat_profile_authenticated(profile_name="default"):
-    """Check if persistent browser session directory contains saved cookies/tokens."""
+AUTH_MARKER_FILENAME = "auth_state.json"
+
+
+def set_snapchat_auth_marker(profile_name="default", logged_in=True):
+    """Writes authentication state marker to profile directory."""
     profile_dir = os.path.join(PROFILES_DIR, profile_name)
-    if not os.path.exists(profile_dir):
-        return False
-    cookie_paths = [
-        os.path.join(profile_dir, "Default", "Network", "Cookies"),
-        os.path.join(profile_dir, "Default", "Cookies"),
-        os.path.join(profile_dir, "Network", "Cookies"),
-        os.path.join(profile_dir, "Default", "Local Storage", "leveldb")
-    ]
-    for p in cookie_paths:
-        if os.path.exists(p):
-            try:
-                if os.path.isdir(p) and len(os.listdir(p)) > 0:
-                    return True
-                elif os.path.isfile(p) and os.path.getsize(p) > 0:
-                    return True
-            except Exception:
-                pass
+    os.makedirs(profile_dir, exist_ok=True)
+    auth_file = os.path.join(profile_dir, AUTH_MARKER_FILENAME)
+    try:
+        with open(auth_file, "w", encoding="utf-8") as f:
+            json.dump({"logged_in": logged_in, "updated_at": time.time()}, f)
+    except Exception:
+        pass
+
+
+def is_snapchat_profile_authenticated(profile_name="default"):
+    """Check if persistent browser session directory contains verified login state."""
+    profile_dir = os.path.join(PROFILES_DIR, profile_name)
+    auth_file = os.path.join(profile_dir, AUTH_MARKER_FILENAME)
+    if os.path.exists(auth_file):
+        try:
+            with open(auth_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return bool(data.get("logged_in", False))
+        except Exception:
+            pass
     return False
 
 
 def clear_snapchat_profile(profile_name="default"):
     """Wipe saved session cookies and local storage from the specified profile."""
     profile_dir = os.path.join(PROFILES_DIR, profile_name)
+    auth_file = os.path.join(profile_dir, AUTH_MARKER_FILENAME)
+    if os.path.exists(auth_file):
+        try:
+            os.remove(auth_file)
+        except Exception:
+            pass
     if os.path.exists(profile_dir):
         try:
             shutil.rmtree(profile_dir, ignore_errors=True)
@@ -356,8 +368,11 @@ async def send_snapchat_text_message_async(
 
             # Check if login is required
             if "accounts.snapchat.com" in page.url or "login" in page.url:
+                set_snapchat_auth_marker(profile_name, False)
                 await save_shot(page, "02_login_required")
                 return False, "Not logged in to Snapchat. Please authenticate first."
+            else:
+                set_snapchat_auth_marker(profile_name, True)
 
             # Open chat with recipient
             await open_recipient_chat_async(page, send_to, log)
@@ -457,6 +472,7 @@ async def send_snapchat_camera_snap_async(
             # Check if login is required
             current_url = page.url
             if "accounts.snapchat.com" in current_url or "login" in current_url:
+                set_snapchat_auth_marker(profile_name, False)
                 log("Login required...")
                 await save_shot(page, "02_login_page")
                 if username and password:
@@ -485,10 +501,13 @@ async def send_snapchat_camera_snap_async(
                     for _ in range(int(timeout / 2)):
                         if "web.snapchat.com" in page.url and "accounts.snapchat.com" not in page.url:
                             log("Login successful!")
+                            set_snapchat_auth_marker(profile_name, True)
                             break
                         await page.wait_for_timeout(2000)
                 else:
                     return False, "Not logged in to Snapchat. Please click 'Log in' in ComfyUI Settings or run 'python snapchat_login.py' to authenticate."
+            else:
+                set_snapchat_auth_marker(profile_name, True)
 
             # Inject the ComfyUI image into the virtual camera feed
             log("Injecting image into virtual camera stream...")
