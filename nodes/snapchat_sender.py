@@ -221,22 +221,33 @@ def apply_snapchat_caption_bar(pil_img, text, position="classic (lower-third ~80
     return result
 
 
-def tensor_to_base64_png(image_tensor, caption="", caption_position="classic (lower-third ~80%)", caption_opacity=0.58, mirror_for_camera=True):
-    """
-    Strips ComfyUI workflow/metadata and converts image tensor to clean 1080x1920 base64 JPEG
-    with classic Snapchat banner overlay and mirror compensation for WebRTC selfie camera.
-    """
+def tensor_to_pil(image_tensor):
+    """Converts a ComfyUI image tensor to a PIL Image."""
     if isinstance(image_tensor, torch.Tensor):
         if len(image_tensor.shape) == 4:
             img_np = image_tensor[0].cpu().numpy()
         else:
             img_np = image_tensor.cpu().numpy()
         img_np = (img_np * 255.0).clip(0, 255).astype(np.uint8)
-        pil_img = Image.fromarray(img_np)
+        return Image.fromarray(img_np)
     elif isinstance(image_tensor, Image.Image):
-        pil_img = image_tensor
+        return image_tensor
     else:
         raise ValueError("Unsupported image format for Snapchat sender")
+
+
+def pil_to_tensor(pil_img):
+    """Converts a PIL Image (RGB) back to a ComfyUI torch tensor in shape [1, H, W, 3], float32 [0.0..1.0]."""
+    np_img = np.array(pil_img.convert("RGB")).astype(np.float32) / 255.0
+    return torch.from_numpy(np_img).unsqueeze(0)
+
+
+def tensor_to_base64_png(image_tensor, caption="", caption_position="classic (lower-third ~80%)", caption_opacity=0.58, mirror_for_camera=True):
+    """
+    Strips ComfyUI workflow/metadata and converts image tensor to clean 1080x1920 base64 JPEG
+    with classic Snapchat banner overlay and mirror compensation for WebRTC selfie camera.
+    """
+    pil_img = tensor_to_pil(image_tensor)
 
     # Downscale cleanly to 1080x1920 (or proportional 9:16) with Lanczos if larger
     w, h = pil_img.size
@@ -703,6 +714,21 @@ class SnapchatCameraSnapNode:
                     print(f"[LeafFlow Snapchat] {err_msg}")
                     return (image, err_msg)
 
+        # Prepare rendered image for the node's output slot (with Snapchat text banner rendered directly onto it)
+        out_image = image
+        if has_image:
+            pil_original = tensor_to_pil(image)
+            if clean_text:
+                rendered_pil = apply_snapchat_caption_bar(
+                    pil_original, 
+                    clean_text, 
+                    position=caption_position, 
+                    opacity=caption_opacity
+                )
+                out_image = pil_to_tensor(rendered_pil)
+            else:
+                out_image = image
+
         # Mode 2 & 3: Camera Snap (with or without caption banner)
         b64_image = tensor_to_base64_png(
             image, 
@@ -727,18 +753,18 @@ class SnapchatCameraSnapNode:
             enqueue_async_dispatch(send_snapchat_camera_snap_async, kwargs_call, label=f"Snap to {clean_send_to}")
             msg = f"Queued (Async): Camera Snap to '{clean_send_to}'"
             print(f"[LeafFlow Snapchat] {msg}")
-            return (image, msg)
+            return (out_image, msg)
         else:
             try:
                 success, message = run_async_in_isolated_thread(
                     send_snapchat_camera_snap_async(**kwargs_call)
                 )
                 print(f"[LeafFlow Snapchat] Result: {success} -> {message}")
-                return (image, message)
+                return (out_image, message)
             except Exception as e:
                 err_msg = f"Error in Snapchat camera automation loop: {str(e)}"
                 print(f"[LeafFlow Snapchat] {err_msg}")
-                return (image, err_msg)
+                return (out_image, err_msg)
 
 
 # Register Server Endpoints for Login / Logout & Session Status
