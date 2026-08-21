@@ -10,12 +10,13 @@ import threading
 import subprocess
 import torch
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 from aiohttp import web
 
 SNAPCHAT_CATEGORY = "🍃 LeafFlow/Automation"
 CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROFILES_DIR = os.path.join(CURRENT_DIR, "user", "snapchat_profiles")
+DESKTOP_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
 
 
 def ensure_playwright():
@@ -158,10 +159,10 @@ def apply_snapchat_caption_bar(pil_img, text, position="classic (lower-third ~80
     return result
 
 
-def tensor_to_base64_png(image_tensor, caption="", caption_position="classic (lower-third ~80%)", caption_opacity=0.58):
+def tensor_to_base64_png(image_tensor, caption="", caption_position="classic (lower-third ~80%)", caption_opacity=0.58, mirror_for_camera=True):
     """
     Strips ComfyUI workflow/metadata and converts image tensor to clean 1080x1920 base64 JPEG
-    with classic Snapchat banner overlay for maximum performance and zero lag.
+    with classic Snapchat banner overlay and mirror compensation for WebRTC selfie camera.
     """
     if isinstance(image_tensor, torch.Tensor):
         if len(image_tensor.shape) == 4:
@@ -185,6 +186,11 @@ def tensor_to_base64_png(image_tensor, caption="", caption_position="classic (lo
 
     if caption and caption.strip():
         pil_img = apply_snapchat_caption_bar(pil_img, caption, position=caption_position, opacity=caption_opacity)
+
+    # Mirror horizontally before passing to virtual camera feed so that Snapchat's
+    # selfie camera mirroring outputs a perfectly upright, non-reversed snap
+    if mirror_for_camera:
+        pil_img = ImageOps.mirror(pil_img)
 
     # Save to clean buffer (strips all EXIF/ComfyUI JSON metadata)
     buf = io.BytesIO()
@@ -269,6 +275,7 @@ async def send_snapchat_camera_snap_async(
         browser_context = await p.chromium.launch_persistent_context(
             user_data_dir=profile_path,
             headless=headless,
+            user_agent=DESKTOP_USER_AGENT,
             viewport={"width": 1440, "height": 960},
             permissions=["camera", "microphone"],
             args=[
@@ -287,7 +294,7 @@ async def send_snapchat_camera_snap_async(
 
             log("Navigating to web.snapchat.com...")
             await page.goto("https://web.snapchat.com", wait_until="networkidle", timeout=timeout * 1000)
-            await page.wait_for_timeout(2000)
+            await page.wait_for_timeout(2500)
 
             # Check if login is required
             current_url = page.url
@@ -325,84 +332,76 @@ async def send_snapchat_camera_snap_async(
                     return False, "Not logged in to Snapchat. Please click 'Log in' in ComfyUI Settings or run 'python snapchat_login.py' to authenticate."
 
             # Inject the ComfyUI image into the virtual camera feed
-            log("Injecting high-resolution ComfyUI image into 30fps camera stream...")
+            log("Injecting image into virtual camera stream...")
             await page.evaluate("(imgData) => { if (window.__updateVirtualCameraImage) window.__updateVirtualCameraImage(imgData); }", base64_image)
             await page.wait_for_timeout(1000)
 
-            # Activate camera feed if needed
-            log("Activating camera viewport...")
-            activate_btn = page.locator("text='Click the camera to send Snaps', div:has-text('Click the camera')").first
-            if await activate_btn.is_visible(timeout=2000):
-                await activate_btn.click()
-            else:
-                await page.mouse.click(750, 450)
+            # Strategy A: Direct Contact Chat Camera (Most reliable & native)
+            log(f"Locating recipient '{send_to}' in contact list...")
+            recipient_found = False
             
-            await page.wait_for_timeout(2000)
-
-            # Trigger shutter via Spacebar (instant native capture)
-            log("Snapping photo via camera shutter...")
-            await page.keyboard.press("Space")
-            await page.wait_for_timeout(2000)
-
-            # Click 'Send to' button
-            log("Clicking 'Send to' button...")
-            send_to_btn = page.locator("button:has-text('Send to'), [data-testid='send-to-button'], button:has-text('Send To')").first
-            if await send_to_btn.is_visible(timeout=5000):
-                await send_to_btn.click()
+            # Find contact row in left list
+            contact_item = page.locator("div[role='listitem'], div:has-text('" + send_to + "')").filter(has_text=send_to).last
+            if await contact_item.is_visible(timeout=3000):
+                await contact_item.click()
+                recipient_found = True
+                log(f"Opened chat with '{send_to}'.")
             else:
-                return False, "Failed to locate 'Send to' button after taking snap."
-
-            await page.wait_for_timeout(2000)
-
-            # Search recipient specifically inside the 'Send To' modal (placeholder='To:')
-            log(f"Searching for recipient '{send_to}' inside Send To modal...")
-            modal_container = page.locator("div[role='dialog'], div.modal, div:has(input[placeholder*='To'])").first
-            modal_to_input = page.locator("input[placeholder*='To'], input[aria-label*='To']").first
-
-            if await modal_to_input.is_visible(timeout=3000):
-                await modal_to_input.fill(send_to)
-                await page.wait_for_timeout(1500)
-
-                # Select contact specifically inside the modal dialog
-                target_contact = modal_container.locator("div, li").filter(has_text=send_to).last
-                if await target_contact.is_visible(timeout=3000):
-                    await target_contact.click()
-                    log(f"Selected contact '{send_to}' inside modal.")
-                else:
-                    first_cb = modal_container.locator("input[type='checkbox'], div[role='checkbox']").first
-                    if await first_cb.is_visible(timeout=2000):
-                        await first_cb.click()
-                        log(f"Selected first contact checkbox in modal for '{send_to}'.")
-            else:
-                # Direct select in Recents section of modal
-                recents_row = page.locator("text='Recents'").locator("..").locator("div, li").filter(has_text=send_to).first
-                if await recents_row.is_visible(timeout=3000):
-                    await recents_row.click()
-                    log(f"Selected '{send_to}' directly in Recents list.")
+                # Search sidebar
+                sidebar_search = page.locator("input[placeholder*='Search']").first
+                if await sidebar_search.is_visible(timeout=2000):
+                    await sidebar_search.fill(send_to)
+                    await page.wait_for_timeout(1000)
+                    search_res = page.locator("div[role='listitem'], div:has-text('" + send_to + "')").last
+                    if await search_res.is_visible(timeout=2000):
+                        await search_res.click()
+                        recipient_found = True
+                        log(f"Opened chat with '{send_to}' from search.")
 
             await page.wait_for_timeout(1500)
 
-            # Click final Send button inside modal
-            log("Clicking final Send button...")
-            final_send_selectors = [
+            # Click the camera icon at the bottom-left of the chat window
+            log("Opening camera for recipient...")
+            chat_camera_btn = page.locator("div:has(input[placeholder*='Send chat']) button:has(svg), button[aria-label*='Camera'], button[aria-label*='camera']").first
+            if await chat_camera_btn.is_visible(timeout=3000):
+                await chat_camera_btn.click()
+            else:
+                # Try finding any bottom-left camera button in the active chat view
+                bottom_buttons = await page.locator("button:has(svg)").all()
+                for btn in bottom_buttons:
+                    box = await btn.bounding_box()
+                    if box and box["y"] > 800 and box["x"] < 500:
+                        await btn.click()
+                        break
+
+            await page.wait_for_timeout(2500)
+
+            # Capture photo via Spacebar
+            log("Snapping photo via camera shutter...")
+            await page.keyboard.press("Space")
+            await page.wait_for_timeout(2500)
+
+            # Click final Send button
+            log("Sending Red Camera Snap...")
+            send_selectors = [
                 "button[aria-label*='Send']:not([disabled])",
                 "button:has-text('Send'):not([disabled])",
-                "[data-testid='send-arrow-button']",
+                "[data-testid*='send']",
                 "button.send-arrow",
-                "button[aria-label*='Send']"
+                "button:has-text('Send to')"
             ]
-            final_sent = False
-            for sel in final_send_selectors:
-                btn = page.locator(sel).first
+            sent = False
+            for sel in send_selectors:
+                btn = page.locator(sel).last
                 if await btn.is_visible(timeout=3000):
                     await btn.click()
-                    final_sent = True
-                    log("Final send button clicked!")
+                    sent = True
+                    log("Final Send button clicked!")
                     break
 
-            if not final_sent:
+            if not sent:
                 await page.keyboard.press("Enter")
-                log("Dispatched via Enter key.")
+                log("Dispatched via Enter key fallback.")
 
             await page.wait_for_timeout(4000)
             log(f"Success: Red Camera Snap successfully delivered to '{send_to}'!")
@@ -420,20 +419,21 @@ class SnapchatCameraSnapNode:
     """
     LeafFlow Automation Node:
     Streams a ComfyUI image into Snapchat Web's virtual camera feed and captures + dispatches
-    an authentic red Camera Snap to the specified recipient username.
-    Supports classic semi-transparent Snapchat text banners and full native resolution.
+    an authentic red Camera Snap to the specified recipient username or visual display name.
+    Supports classic semi-transparent Snapchat text banners, front-camera mirror compensation, and full resolution.
     """
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
                 "image": ("IMAGE",),
-                "send_to": ("STRING", {"default": "Mathias", "multiline": False, "placeholder": "Recipient username or visual name (e.g. Mathias or ko_mathias)"}),
+                "send_to": ("STRING", {"default": "Mathias", "multiline": False, "placeholder": "Recipient visual name or username (e.g. Mathias or ko_mathias)"}),
             },
             "optional": {
                 "caption": ("STRING", {"default": "", "multiline": True, "placeholder": "Classic Snapchat text banner..."}),
                 "caption_position": (["classic (lower-third ~80%)", "center (50%)", "upper (35%)"], {"default": "classic (lower-third ~80%)"}),
                 "caption_opacity": ("FLOAT", {"default": 0.58, "min": 0.0, "max": 1.0, "step": 0.02, "tooltip": "Opacity of the classic Snapchat black text banner (0.58 = exact reference standard)."}),
+                "mirror_camera": ("BOOLEAN", {"default": True, "tooltip": "Compensates for Snapchat Web's front/selfie camera horizontal mirror so text and image are upright."}),
                 "username": ("STRING", {"default": "", "multiline": False, "placeholder": "Optional if using Google Session"}),
                 "password": ("STRING", {"default": "", "multiline": False, "placeholder": "Optional if using Google Session"}),
                 "headless": ("BOOLEAN", {"default": True, "tooltip": "Set to false on first login if manual verification is required."}),
@@ -455,6 +455,7 @@ class SnapchatCameraSnapNode:
         caption="",
         caption_position="classic (lower-third ~80%)",
         caption_opacity=0.58,
+        mirror_camera=True,
         username="",
         password="",
         headless=True,
@@ -476,12 +477,13 @@ class SnapchatCameraSnapNode:
         except Exception as e:
             return (image, f"Error: Playwright installation failed: {e}")
 
-        # Convert tensor to stripped clean base64 image with classic Snapchat banner rendered directly onto the frame
+        # Convert tensor to stripped clean base64 image with classic Snapchat banner & mirror compensation
         b64_image = tensor_to_base64_png(
             image, 
             caption=clean_caption, 
             caption_position=caption_position, 
-            caption_opacity=caption_opacity
+            caption_opacity=caption_opacity,
+            mirror_for_camera=mirror_camera
         )
 
         # Run async Playwright automation worker
