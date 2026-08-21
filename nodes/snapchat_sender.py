@@ -5,6 +5,7 @@ import base64
 import asyncio
 import io
 import time
+import queue
 import shutil
 import threading
 import subprocess
@@ -18,6 +19,42 @@ SNAPCHAT_CATEGORY = "🍃 LeafFlow/Automation"
 CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROFILES_DIR = os.path.join(CURRENT_DIR, "user", "snapchat_profiles")
 DESKTOP_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+
+# Background Dispatch Queue for non-blocking asynchronous execution
+_dispatch_queue = queue.Queue()
+_queue_worker_thread = None
+_queue_lock = threading.Lock()
+
+
+def _ensure_background_worker():
+    global _queue_worker_thread
+    with _queue_lock:
+        if _queue_worker_thread is None or not _queue_worker_thread.is_alive():
+            def worker():
+                while True:
+                    task = _dispatch_queue.get()
+                    if task is None:
+                        break
+                    coro_fn, kwargs, label = task
+                    try:
+                        print(f"[LeafFlow Snapchat Async] Processing background dispatch for '{label}'...")
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        success, message = loop.run_until_complete(coro_fn(**kwargs))
+                        loop.close()
+                        print(f"[LeafFlow Snapchat Async] Completed: {success} -> {message}")
+                    except Exception as e:
+                        print(f"[LeafFlow Snapchat Async] Error: {str(e)}")
+                    finally:
+                        _dispatch_queue.task_done()
+
+            _queue_worker_thread = threading.Thread(target=worker, daemon=True)
+            _queue_worker_thread.start()
+
+
+def enqueue_async_dispatch(coro_fn, kwargs, label=""):
+    _ensure_background_worker()
+    _dispatch_queue.put((coro_fn, kwargs, label))
 
 
 def ensure_playwright():
@@ -301,6 +338,7 @@ async def open_recipient_chat_async(page, send_to: str, log):
             await page.wait_for_timeout(1500)
             return True
         else:
+            # Fallback: click first search result row
             first_res = page.locator("div.O4POs").first
             if await first_res.is_visible(timeout=2000):
                 await first_res.click()
@@ -570,6 +608,7 @@ class SnapchatCameraSnapNode:
     - If only text input -> sends direct text chat message.
     - If only image input -> captures and sends authentic red Camera Snap.
     - If image + text -> renders iconic Snapchat caption banner on image & sends as red Camera Snap.
+    Supports asynchronous non-blocking dispatch so ComfyUI generates next images immediately.
     """
     @classmethod
     def INPUT_TYPES(cls):
@@ -582,6 +621,7 @@ class SnapchatCameraSnapNode:
                 "text": ("STRING", {"default": "", "multiline": True, "placeholder": "Text message (if no image) OR caption bar (if image connected)..."}),
                 "caption_position": (["classic (lower-third ~80%)", "center (50%)", "upper (35%)"], {"default": "classic (lower-third ~80%)"}),
                 "caption_opacity": ("FLOAT", {"default": 0.58, "min": 0.0, "max": 1.0, "step": 0.02, "tooltip": "Opacity of the classic Snapchat black text banner (0.58 = exact reference standard)."}),
+                "async_dispatch": ("BOOLEAN", {"default": True, "tooltip": "When enabled (default), dispatches in background so ComfyUI continues to the next generation immediately without waiting."}),
                 "mirror_camera": ("BOOLEAN", {"default": True, "advanced": True, "tooltip": "Compensates for Snapchat Web's front/selfie camera horizontal mirror so text and image are upright."}),
                 "headless": ("BOOLEAN", {"default": True, "advanced": True, "tooltip": "Set to false on first login if manual verification is required."}),
                 "profile_name": ("STRING", {"default": "default", "multiline": False, "advanced": True, "tooltip": "Folder name under user/snapchat_profiles/ to persist cookies & session tokens."}),
@@ -605,6 +645,7 @@ class SnapchatCameraSnapNode:
         text="",
         caption_position="classic (lower-third ~80%)",
         caption_opacity=0.58,
+        async_dispatch=True,
         mirror_camera=True,
         headless=True,
         profile_name="default",
@@ -637,23 +678,30 @@ class SnapchatCameraSnapNode:
 
         # Mode 1: Pure text message
         if not has_image and has_text:
-            try:
-                success, message = run_async_in_isolated_thread(
-                    send_snapchat_text_message_async(
-                        text=clean_text,
-                        send_to=clean_send_to,
-                        headless=headless,
-                        profile_name=clean_profile,
-                        timeout=timeout,
-                        debug_screenshots=debug_screenshots
+            kwargs_call = {
+                "text": clean_text,
+                "send_to": clean_send_to,
+                "headless": headless,
+                "profile_name": clean_profile,
+                "timeout": timeout,
+                "debug_screenshots": debug_screenshots
+            }
+            if async_dispatch:
+                enqueue_async_dispatch(send_snapchat_text_message_async, kwargs_call, label=f"Text to {clean_send_to}")
+                msg = f"Queued (Async): Text message to '{clean_send_to}'"
+                print(f"[LeafFlow Snapchat] {msg}")
+                return (image, msg)
+            else:
+                try:
+                    success, message = run_async_in_isolated_thread(
+                        send_snapchat_text_message_async(**kwargs_call)
                     )
-                )
-                print(f"[LeafFlow Snapchat] Result: {success} -> {message}")
-                return (image, message)
-            except Exception as e:
-                err_msg = f"Error in text chat dispatch: {str(e)}"
-                print(f"[LeafFlow Snapchat] {err_msg}")
-                return (image, err_msg)
+                    print(f"[LeafFlow Snapchat] Result: {success} -> {message}")
+                    return (image, message)
+                except Exception as e:
+                    err_msg = f"Error in text chat dispatch: {str(e)}"
+                    print(f"[LeafFlow Snapchat] {err_msg}")
+                    return (image, err_msg)
 
         # Mode 2 & 3: Camera Snap (with or without caption banner)
         b64_image = tensor_to_base64_png(
@@ -664,25 +712,33 @@ class SnapchatCameraSnapNode:
             mirror_for_camera=mirror_camera
         )
 
-        try:
-            success, message = run_async_in_isolated_thread(
-                send_snapchat_camera_snap_async(
-                    base64_image=b64_image,
-                    send_to=clean_send_to,
-                    username=clean_username,
-                    password=clean_password,
-                    headless=headless,
-                    profile_name=clean_profile,
-                    timeout=timeout,
-                    debug_screenshots=debug_screenshots
+        kwargs_call = {
+            "base64_image": b64_image,
+            "send_to": clean_send_to,
+            "username": clean_username,
+            "password": clean_password,
+            "headless": headless,
+            "profile_name": clean_profile,
+            "timeout": timeout,
+            "debug_screenshots": debug_screenshots
+        }
+
+        if async_dispatch:
+            enqueue_async_dispatch(send_snapchat_camera_snap_async, kwargs_call, label=f"Snap to {clean_send_to}")
+            msg = f"Queued (Async): Camera Snap to '{clean_send_to}'"
+            print(f"[LeafFlow Snapchat] {msg}")
+            return (image, msg)
+        else:
+            try:
+                success, message = run_async_in_isolated_thread(
+                    send_snapchat_camera_snap_async(**kwargs_call)
                 )
-            )
-            print(f"[LeafFlow Snapchat] Result: {success} -> {message}")
-            return (image, message)
-        except Exception as e:
-            err_msg = f"Error in Snapchat camera automation loop: {str(e)}"
-            print(f"[LeafFlow Snapchat] {err_msg}")
-            return (image, err_msg)
+                print(f"[LeafFlow Snapchat] Result: {success} -> {message}")
+                return (image, message)
+            except Exception as e:
+                err_msg = f"Error in Snapchat camera automation loop: {str(e)}"
+                print(f"[LeafFlow Snapchat] {err_msg}")
+                return (image, err_msg)
 
 
 # Register Server Endpoints for Login / Logout & Session Status
