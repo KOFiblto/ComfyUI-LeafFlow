@@ -191,7 +191,7 @@ async def send_snapchat_camera_snap_async(
                             break
                         await page.wait_for_timeout(2000)
                 else:
-                    return False, "Not logged in to Snapchat. Please provide username & password or run with headless=False once to log in."
+                    return False, "Not logged in to Snapchat. Please run 'python snapchat_login.py' once to authenticate with Google, or provide username & password in the node."
 
             # Inject the ComfyUI image into the virtual camera feed
             log("Injecting ComfyUI image to virtual camera...")
