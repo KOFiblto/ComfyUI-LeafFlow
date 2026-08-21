@@ -249,6 +249,91 @@ ANIMATED_VIRTUAL_CAMERA_SCRIPT = """
 """
 
 
+async def send_snapchat_text_message_async(
+    text: str,
+    send_to: str,
+    headless: bool = True,
+    profile_name: str = "default",
+    timeout: int = 60
+):
+    """Sends a pure text chat message to the recipient on Snapchat Web."""
+    from playwright.async_api import async_playwright
+
+    profile_path = os.path.join(PROFILES_DIR, profile_name)
+    os.makedirs(profile_path, exist_ok=True)
+
+    def log(msg):
+        print(f"[LeafFlow Snapchat] {msg}")
+
+    log(f"Starting Snapchat text chat dispatch for recipient '{send_to}'...")
+
+    async with async_playwright() as p:
+        browser_context = await p.chromium.launch_persistent_context(
+            user_data_dir=profile_path,
+            headless=headless,
+            user_agent=DESKTOP_USER_AGENT,
+            viewport={"width": 1440, "height": 960},
+            permissions=["camera", "microphone"],
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--no-sandbox",
+                "--disable-setuid-sandbox"
+            ]
+        )
+
+        try:
+            page = await browser_context.new_page()
+            log("Navigating to web.snapchat.com...")
+            await page.goto("https://web.snapchat.com", wait_until="networkidle", timeout=timeout * 1000)
+            await page.wait_for_timeout(2500)
+
+            # Check if login is required
+            if "accounts.snapchat.com" in page.url or "login" in page.url:
+                return False, "Not logged in to Snapchat. Please authenticate first."
+
+            # Locate contact in left list
+            log(f"Locating recipient '{send_to}' in contact list...")
+            contact_item = page.locator("div[role='listitem'], div:has-text('" + send_to + "')").filter(has_text=send_to).last
+            if await contact_item.is_visible(timeout=3000):
+                await contact_item.click()
+                log(f"Opened chat with '{send_to}'.")
+            else:
+                sidebar_search = page.locator("input[placeholder*='Search']").first
+                if await sidebar_search.is_visible(timeout=2000):
+                    await sidebar_search.fill(send_to)
+                    await page.wait_for_timeout(1000)
+                    search_res = page.locator("div[role='listitem'], div:has-text('" + send_to + "')").last
+                    if await search_res.is_visible(timeout=2000):
+                        await search_res.click()
+                        log(f"Opened chat with '{send_to}' from search.")
+
+            await page.wait_for_timeout(1500)
+
+            # Locate chat input
+            log("Typing and sending text message...")
+            chat_input = page.locator("div[contenteditable='true'], div[role='textbox'], [placeholder*='Send chat'], input[placeholder*='Send chat'], textarea[placeholder*='Send chat']").first
+            if await chat_input.is_visible(timeout=4000):
+                await chat_input.click()
+                await page.wait_for_timeout(300)
+                await chat_input.fill(text)
+                await page.wait_for_timeout(300)
+                await page.keyboard.press("Enter")
+            else:
+                await page.keyboard.type(text)
+                await page.keyboard.press("Enter")
+
+            await page.wait_for_timeout(3000)
+            log(f"Success: Text message successfully sent to '{send_to}'!")
+            return True, f"Success: Text message delivered to '{send_to}'"
+
+        except Exception as e:
+            err_msg = f"Failed to send text message: {str(e)}"
+            log(f"Error: {err_msg}")
+            return False, err_msg
+        finally:
+            await browser_context.close()
+
+
 async def send_snapchat_camera_snap_async(
     base64_image: str,
     send_to: str,
@@ -336,7 +421,7 @@ async def send_snapchat_camera_snap_async(
             await page.evaluate("(imgData) => { if (window.__updateVirtualCameraImage) window.__updateVirtualCameraImage(imgData); }", base64_image)
             await page.wait_for_timeout(1000)
 
-            # Strategy A: Direct Contact Chat Camera (Most reliable & native)
+            # Direct Contact Chat Camera (Most reliable & native)
             log(f"Locating recipient '{send_to}' in contact list...")
             recipient_found = False
             
@@ -347,7 +432,6 @@ async def send_snapchat_camera_snap_async(
                 recipient_found = True
                 log(f"Opened chat with '{send_to}'.")
             else:
-                # Search sidebar
                 sidebar_search = page.locator("input[placeholder*='Search']").first
                 if await sidebar_search.is_visible(timeout=2000):
                     await sidebar_search.fill(send_to)
@@ -366,7 +450,6 @@ async def send_snapchat_camera_snap_async(
             if await chat_camera_btn.is_visible(timeout=3000):
                 await chat_camera_btn.click()
             else:
-                # Try finding any bottom-left camera button in the active chat view
                 bottom_buttons = await page.locator("button:has(svg)").all()
                 for btn in bottom_buttons:
                     box = await btn.bounding_box()
@@ -381,25 +464,13 @@ async def send_snapchat_camera_snap_async(
             await page.keyboard.press("Space")
             await page.wait_for_timeout(2500)
 
-            # Click final Send button
+            # Click final Send button (bright blue button at bottom-right of the snap preview)
             log("Sending Red Camera Snap...")
-            send_selectors = [
-                "button[aria-label*='Send']:not([disabled])",
-                "button:has-text('Send'):not([disabled])",
-                "[data-testid*='send']",
-                "button.send-arrow",
-                "button:has-text('Send to')"
-            ]
-            sent = False
-            for sel in send_selectors:
-                btn = page.locator(sel).last
-                if await btn.is_visible(timeout=3000):
-                    await btn.click()
-                    sent = True
-                    log("Final Send button clicked!")
-                    break
-
-            if not sent:
+            send_btn = page.locator("button:has-text('Send'), button:has-text('Send to')").last
+            if await send_btn.is_visible(timeout=5000):
+                await send_btn.click(force=True)
+                log("Final Send button clicked!")
+            else:
                 await page.keyboard.press("Enter")
                 log("Dispatched via Enter key fallback.")
 
@@ -418,19 +489,20 @@ async def send_snapchat_camera_snap_async(
 class SnapchatCameraSnapNode:
     """
     LeafFlow Automation Node:
-    Streams a ComfyUI image into Snapchat Web's virtual camera feed and captures + dispatches
-    an authentic red Camera Snap to the specified recipient username or visual display name.
-    Supports classic semi-transparent Snapchat text banners, front-camera mirror compensation, and full resolution.
+    Unified Snapchat Dispatcher:
+    - If only text input -> sends direct text chat message.
+    - If only image input -> captures and sends authentic red Camera Snap.
+    - If image + text -> renders iconic Snapchat caption banner on image & sends as red Camera Snap.
     """
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "image": ("IMAGE",),
                 "send_to": ("STRING", {"default": "Mathias", "multiline": False, "placeholder": "Recipient visual name or username (e.g. Mathias or ko_mathias)"}),
             },
             "optional": {
-                "caption": ("STRING", {"default": "", "multiline": True, "placeholder": "Classic Snapchat text banner..."}),
+                "image": ("IMAGE",),
+                "text": ("STRING", {"default": "", "multiline": True, "placeholder": "Text message (if no image) OR caption bar (if image connected)..."}),
                 "caption_position": (["classic (lower-third ~80%)", "center (50%)", "upper (35%)"], {"default": "classic (lower-third ~80%)"}),
                 "caption_opacity": ("FLOAT", {"default": 0.58, "min": 0.0, "max": 1.0, "step": 0.02, "tooltip": "Opacity of the classic Snapchat black text banner (0.58 = exact reference standard)."}),
                 "mirror_camera": ("BOOLEAN", {"default": True, "tooltip": "Compensates for Snapchat Web's front/selfie camera horizontal mirror so text and image are upright."}),
@@ -444,15 +516,15 @@ class SnapchatCameraSnapNode:
 
     RETURN_TYPES = ("IMAGE", "STRING")
     RETURN_NAMES = ("image", "status")
-    FUNCTION = "send_camera_snap"
+    FUNCTION = "dispatch_snapchat"
     CATEGORY = SNAPCHAT_CATEGORY
     OUTPUT_NODE = True
 
-    def send_camera_snap(
+    def dispatch_snapchat(
         self,
-        image,
         send_to,
-        caption="",
+        image=None,
+        text="",
         caption_position="classic (lower-third ~80%)",
         caption_opacity=0.58,
         mirror_camera=True,
@@ -469,7 +541,7 @@ class SnapchatCameraSnapNode:
         clean_send_to = send_to.strip().lstrip("@")
         clean_username = username.strip() if username else ""
         clean_password = password.strip() if password else ""
-        clean_caption = caption.strip() if caption else ""
+        clean_text = text.strip() if text else ""
         clean_profile = profile_name.strip() if profile_name else "default"
 
         try:
@@ -477,16 +549,41 @@ class SnapchatCameraSnapNode:
         except Exception as e:
             return (image, f"Error: Playwright installation failed: {e}")
 
-        # Convert tensor to stripped clean base64 image with classic Snapchat banner & mirror compensation
+        # Determine dispatch mode:
+        has_image = image is not None
+        has_text = bool(clean_text)
+
+        if not has_image and not has_text:
+            return (image, "Error: Neither image nor text was provided to send.")
+
+        # Mode 1: Pure text message
+        if not has_image and has_text:
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                success, message = loop.run_until_complete(
+                    send_snapchat_text_message_async(
+                        text=clean_text,
+                        send_to=clean_send_to,
+                        headless=headless,
+                        profile_name=clean_profile,
+                        timeout=timeout
+                    )
+                )
+                loop.close()
+                return (image, message)
+            except Exception as e:
+                return (image, f"Error in text chat dispatch: {str(e)}")
+
+        # Mode 2 & 3: Camera Snap (with or without caption banner)
         b64_image = tensor_to_base64_png(
             image, 
-            caption=clean_caption, 
+            caption=clean_text, 
             caption_position=caption_position, 
             caption_opacity=caption_opacity,
             mirror_for_camera=mirror_camera
         )
 
-        # Run async Playwright automation worker
         try:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
@@ -504,7 +601,7 @@ class SnapchatCameraSnapNode:
             loop.close()
             return (image, message)
         except Exception as e:
-            return (image, f"Error in Snapchat automation loop: {str(e)}")
+            return (image, f"Error in Snapchat camera automation loop: {str(e)}")
 
 
 # Register Server Endpoints for Login / Logout & Session Status
