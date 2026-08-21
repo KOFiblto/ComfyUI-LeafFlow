@@ -281,5 +281,43 @@ app.registerExtension({
                 }
             }
         });
+
+        // 17. Snapchat Login / Logout Action Button
+        let isSnapchatLoggedIn = false;
+        try {
+            const statusResp = await api.fetchApi("/leafflow/snapchat/status");
+            const statusData = await statusResp.json();
+            isSnapchatLoggedIn = !!statusData.logged_in;
+        } catch (e) {}
+
+        app.ui.settings.addSetting({
+            id: "LeafFlow.SnapchatAuthAction",
+            name: isSnapchatLoggedIn ? "🍃 LeafFlow: Snapchat Status (🟢 Logged In)" : "🍃 LeafFlow: Snapchat Status (🔴 Not Logged In)",
+            type: "button",
+            defaultValue: isSnapchatLoggedIn ? "🚪 Log out of Snapchat" : "🔐 Log in with Google / Browser",
+            tooltip: isSnapchatLoggedIn 
+                ? "Click to log out and clear saved Snapchat session cookies." 
+                : "Click to launch a browser window to log in to Snapchat with Google or credentials.",
+            attrs: {
+                onClick: async () => {
+                    try {
+                        const check = await api.fetchApi("/leafflow/snapchat/status");
+                        const currentStatus = await check.json();
+                        if (currentStatus.logged_in) {
+                            if (confirm("Are you sure you want to log out of Snapchat? This will clear saved session cookies.")) {
+                                const resp = await api.fetchApi("/leafflow/snapchat/logout", { method: "POST" });
+                                const res = await resp.json();
+                                alert(res.message || "Logged out of Snapchat.");
+                            }
+                        } else {
+                            alert("Launching browser window for Snapchat login...\nComplete your Google login in the browser window, then close it.");
+                            await api.fetchApi("/leafflow/snapchat/login", { method: "POST" });
+                        }
+                    } catch (e) {
+                        alert("LeafFlow: Error contacting Snapchat auth service: " + e);
+                    }
+                }
+            }
+        });
     }
 });

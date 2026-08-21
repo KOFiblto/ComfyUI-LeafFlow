@@ -5,10 +5,13 @@ import base64
 import asyncio
 import io
 import time
+import shutil
+import threading
 import subprocess
 import torch
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
+from aiohttp import web
 
 SNAPCHAT_CATEGORY = "🍃 LeafFlow/Automation"
 CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -36,10 +39,51 @@ def ensure_playwright():
         subprocess.check_call([sys.executable, "-m", "playwright", "install", "chromium"])
 
 
-def apply_snapchat_caption_bar(pil_img, text, position="center (50%)", opacity=0.55):
+def is_snapchat_profile_authenticated(profile_name="default"):
+    """Check if persistent browser session directory contains saved cookies/tokens."""
+    profile_dir = os.path.join(PROFILES_DIR, profile_name)
+    if not os.path.exists(profile_dir):
+        return False
+    cookie_paths = [
+        os.path.join(profile_dir, "Default", "Network", "Cookies"),
+        os.path.join(profile_dir, "Default", "Cookies"),
+        os.path.join(profile_dir, "Network", "Cookies"),
+        os.path.join(profile_dir, "Default", "Local Storage", "leveldb")
+    ]
+    for p in cookie_paths:
+        if os.path.exists(p):
+            try:
+                if os.path.isdir(p) and len(os.listdir(p)) > 0:
+                    return True
+                elif os.path.isfile(p) and os.path.getsize(p) > 0:
+                    return True
+            except Exception:
+                pass
+    return False
+
+
+def clear_snapchat_profile(profile_name="default"):
+    """Wipe saved session cookies and local storage from the specified profile."""
+    profile_dir = os.path.join(PROFILES_DIR, profile_name)
+    if os.path.exists(profile_dir):
+        try:
+            shutil.rmtree(profile_dir, ignore_errors=True)
+            return True
+        except Exception as e:
+            print(f"[LeafFlow] Error clearing snapchat profile: {e}")
+            return False
+    return True
+
+
+def apply_snapchat_caption_bar(pil_img, text, position="classic (lower-third ~80%)", opacity=0.58):
     """
     Renders the iconic, authentic classic Snapchat semi-transparent black caption bar
-    with centered crisp white text across the full width of the image at native resolution.
+    with centered crisp white text across the full width of the image.
+    Mathematically matched to the authentic Snapchat mobile reference layout:
+    - Position: Lower-third (~81% from top)
+    - Font Size: 4.5% of image width
+    - Padding: 60% of font size
+    - Opacity: 58% black overlay
     """
     if not text or not text.strip() or opacity <= 0.0:
         return pil_img
@@ -49,13 +93,13 @@ def apply_snapchat_caption_bar(pil_img, text, position="center (50%)", opacity=0
     overlay = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
 
-    # Dynamic proportional font size: ~3.3% of image width (e.g. ~51px on 1536x2720)
-    target_font_size = max(24, int(w * 0.033))
+    # 4.5% of width matches the reference image (26px on 576w, ~69px on 1536w)
+    target_font_size = max(20, int(w * 0.045))
     
     font = None
     candidate_fonts = [
-        "arialbd.ttf", "segoeuib.ttf", "arial.ttf", "segoeui.ttf", 
-        "Helvetica-Bold.ttf", "Helvetica.ttf", "DejaVuSans-Bold.ttf", "DejaVuSans.ttf"
+        "arial.ttf", "segoeui.ttf", "Helvetica.ttf", "DejaVuSans.ttf",
+        "arialbd.ttf", "segoeuib.ttf", "Helvetica-Bold.ttf"
     ]
     for font_name in candidate_fonts:
         try:
@@ -66,8 +110,8 @@ def apply_snapchat_caption_bar(pil_img, text, position="center (50%)", opacity=0
     if font is None:
         font = ImageFont.load_default()
 
-    # Word wrapping within 90% of image width
-    margin = int(w * 0.05)
+    # Word wrapping within 92% of image width
+    margin = int(w * 0.04)
     max_text_width = w - (margin * 2)
     
     words = text.strip().split()
@@ -87,31 +131,31 @@ def apply_snapchat_caption_bar(pil_img, text, position="center (50%)", opacity=0
     if current_line:
         lines.append(" ".join(current_line))
 
-    # Calculate exact vertical dimensions
+    # Exact line height and vertical padding matching reference (5.6% of image height)
     sample_bbox = draw.textbbox((0, 0), "Ag", font=font)
     line_h = sample_bbox[3] - sample_bbox[1]
-    line_spacing = int(target_font_size * 0.28)
+    line_spacing = int(target_font_size * 0.25)
     total_text_h = (len(lines) * line_h) + max(0, (len(lines) - 1) * line_spacing)
     
-    pad_y = int(target_font_size * 0.70)
+    pad_y = int(target_font_size * 0.60)
     banner_h = total_text_h + (pad_y * 2)
 
-    # Vertical position anchor
-    pos_pct = 0.50
-    if "lower" in position or "65" in position:
-        pos_pct = 0.65
+    # Position anchor: classic lower-third (81% from top) matching reference image
+    pos_pct = 0.81
+    if "center" in position or "50" in position:
+        pos_pct = 0.50
     elif "upper" in position or "35" in position:
         pos_pct = 0.35
 
     banner_top = int((h * pos_pct) - (banner_h / 2))
     banner_bottom = banner_top + banner_h
 
-    # Draw full-width semi-transparent black banner (classic Snapchat styling)
+    # Draw full-width semi-transparent black banner (0.58 default)
     alpha_int = int(min(1.0, max(0.0, opacity)) * 255)
     draw.rectangle([0, banner_top, w, banner_bottom], fill=(0, 0, 0, alpha_int))
 
-    # Draw centered crisp white text lines
-    curr_y = banner_top + pad_y
+    # Draw centered crisp white text lines with clean baseline alignment
+    curr_y = banner_top + pad_y - sample_bbox[1]
     for line in lines:
         l_bbox = draw.textbbox((0, 0), line, font=font)
         l_w = l_bbox[2] - l_bbox[0]
@@ -124,7 +168,7 @@ def apply_snapchat_caption_bar(pil_img, text, position="center (50%)", opacity=0
     return result
 
 
-def tensor_to_base64_png(image_tensor, caption="", caption_position="center (50%)", caption_opacity=0.55):
+def tensor_to_base64_png(image_tensor, caption="", caption_position="classic (lower-third ~80%)", caption_opacity=0.58):
     """Convert ComfyUI tensor to base64 PNG with optional native classic Snapchat text banner overlay."""
     if isinstance(image_tensor, torch.Tensor):
         if len(image_tensor.shape) == 4:
@@ -270,7 +314,7 @@ async def send_snapchat_camera_snap_async(
                             break
                         await page.wait_for_timeout(2000)
                 else:
-                    return False, "Not logged in to Snapchat. Please run 'python snapchat_login.py' once to authenticate with Google, or provide username & password in the node."
+                    return False, "Not logged in to Snapchat. Please click 'Log in' in ComfyUI Settings or run 'python snapchat_login.py' to authenticate."
 
             # Inject the ComfyUI image into the virtual camera feed
             log("Injecting high-resolution ComfyUI image to virtual camera...")
@@ -391,8 +435,8 @@ class SnapchatCameraSnapNode:
             },
             "optional": {
                 "caption": ("STRING", {"default": "", "multiline": True, "placeholder": "Classic Snapchat text banner..."}),
-                "caption_position": (["center (50%)", "lower (65%)", "upper (35%)"], {"default": "center (50%)"}),
-                "caption_opacity": ("FLOAT", {"default": 0.55, "min": 0.0, "max": 1.0, "step": 0.05, "tooltip": "Opacity of the classic Snapchat black text banner (0.55 = classic standard)."}),
+                "caption_position": (["classic (lower-third ~80%)", "center (50%)", "upper (35%)"], {"default": "classic (lower-third ~80%)"}),
+                "caption_opacity": ("FLOAT", {"default": 0.58, "min": 0.0, "max": 1.0, "step": 0.02, "tooltip": "Opacity of the classic Snapchat black text banner (0.58 = exact reference standard)."}),
                 "username": ("STRING", {"default": "", "multiline": False, "placeholder": "Optional if using Google Session"}),
                 "password": ("STRING", {"default": "", "multiline": False, "placeholder": "Optional if using Google Session"}),
                 "headless": ("BOOLEAN", {"default": True, "tooltip": "Set to false on first login if manual verification is required."}),
@@ -412,8 +456,8 @@ class SnapchatCameraSnapNode:
         image,
         send_to,
         caption="",
-        caption_position="center (50%)",
-        caption_opacity=0.55,
+        caption_position="classic (lower-third ~80%)",
+        caption_opacity=0.58,
         username="",
         password="",
         headless=True,
@@ -462,3 +506,29 @@ class SnapchatCameraSnapNode:
             return (image, message)
         except Exception as e:
             return (image, f"Error in Snapchat automation loop: {str(e)}")
+
+
+# Register Server Endpoints for Login / Logout & Session Status
+try:
+    from server import PromptServer
+    routes = PromptServer.instance.routes
+
+    @routes.get("/leafflow/snapchat/status")
+    async def snapchat_status_endpoint(request):
+        logged_in = is_snapchat_profile_authenticated("default")
+        return web.json_response({"logged_in": logged_in, "profile": "default"})
+
+    @routes.post("/leafflow/snapchat/login")
+    async def snapchat_login_endpoint(request):
+        def launch_browser():
+            login_script = os.path.join(CURRENT_DIR, "snapchat_login.py")
+            subprocess.Popen([sys.executable, login_script])
+        threading.Thread(target=launch_browser, daemon=True).start()
+        return web.json_response({"status": "ok", "message": "Browser login launcher started."})
+
+    @routes.post("/leafflow/snapchat/logout")
+    async def snapchat_logout_endpoint(request):
+        success = clear_snapchat_profile("default")
+        return web.json_response({"status": "ok" if success else "error", "message": "Logged out of Snapchat."})
+except Exception:
+    pass
