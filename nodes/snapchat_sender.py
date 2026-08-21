@@ -77,13 +77,9 @@ def clear_snapchat_profile(profile_name="default"):
 
 def apply_snapchat_caption_bar(pil_img, text, position="classic (lower-third ~80%)", opacity=0.58):
     """
-    Renders the iconic, authentic classic Snapchat semi-transparent black caption bar
+    Renders the iconic classic Snapchat semi-transparent black caption bar
     with centered crisp white text across the full width of the image.
-    Mathematically matched to the authentic Snapchat mobile reference layout:
-    - Position: Lower-third (~81% from top)
-    - Font Size: 4.5% of image width
-    - Padding: 60% of font size
-    - Opacity: 58% black overlay
+    Matched to authentic Snapchat mobile reference layout (81% Y, 4.5% font size, 58% alpha).
     """
     if not text or not text.strip() or opacity <= 0.0:
         return pil_img
@@ -93,7 +89,7 @@ def apply_snapchat_caption_bar(pil_img, text, position="classic (lower-third ~80
     overlay = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
 
-    # 4.5% of width matches the reference image (26px on 576w, ~69px on 1536w)
+    # 4.5% of width matches mobile reference proportions
     target_font_size = max(20, int(w * 0.045))
     
     font = None
@@ -110,7 +106,6 @@ def apply_snapchat_caption_bar(pil_img, text, position="classic (lower-third ~80
     if font is None:
         font = ImageFont.load_default()
 
-    # Word wrapping within 92% of image width
     margin = int(w * 0.04)
     max_text_width = w - (margin * 2)
     
@@ -131,7 +126,6 @@ def apply_snapchat_caption_bar(pil_img, text, position="classic (lower-third ~80
     if current_line:
         lines.append(" ".join(current_line))
 
-    # Exact line height and vertical padding matching reference (5.6% of image height)
     sample_bbox = draw.textbbox((0, 0), "Ag", font=font)
     line_h = sample_bbox[3] - sample_bbox[1]
     line_spacing = int(target_font_size * 0.25)
@@ -140,7 +134,6 @@ def apply_snapchat_caption_bar(pil_img, text, position="classic (lower-third ~80
     pad_y = int(target_font_size * 0.60)
     banner_h = total_text_h + (pad_y * 2)
 
-    # Position anchor: classic lower-third (81% from top) matching reference image
     pos_pct = 0.81
     if "center" in position or "50" in position:
         pos_pct = 0.50
@@ -150,11 +143,9 @@ def apply_snapchat_caption_bar(pil_img, text, position="classic (lower-third ~80
     banner_top = int((h * pos_pct) - (banner_h / 2))
     banner_bottom = banner_top + banner_h
 
-    # Draw full-width semi-transparent black banner (0.58 default)
     alpha_int = int(min(1.0, max(0.0, opacity)) * 255)
     draw.rectangle([0, banner_top, w, banner_bottom], fill=(0, 0, 0, alpha_int))
 
-    # Draw centered crisp white text lines with clean baseline alignment
     curr_y = banner_top + pad_y - sample_bbox[1]
     for line in lines:
         l_bbox = draw.textbbox((0, 0), line, font=font)
@@ -163,13 +154,15 @@ def apply_snapchat_caption_bar(pil_img, text, position="classic (lower-third ~80
         draw.text((curr_x, curr_y), line, font=font, fill=(255, 255, 255, 255))
         curr_y += line_h + line_spacing
 
-    # Composite cleanly back to RGB
     result = Image.alpha_composite(img, overlay).convert("RGB")
     return result
 
 
 def tensor_to_base64_png(image_tensor, caption="", caption_position="classic (lower-third ~80%)", caption_opacity=0.58):
-    """Convert ComfyUI tensor to base64 PNG with optional native classic Snapchat text banner overlay."""
+    """
+    Strips ComfyUI workflow/metadata and converts image tensor to clean 1080x1920 base64 JPEG
+    with classic Snapchat banner overlay for maximum performance and zero lag.
+    """
     if isinstance(image_tensor, torch.Tensor):
         if len(image_tensor.shape) == 4:
             img_np = image_tensor[0].cpu().numpy()
@@ -182,53 +175,68 @@ def tensor_to_base64_png(image_tensor, caption="", caption_position="classic (lo
     else:
         raise ValueError("Unsupported image format for Snapchat sender")
 
+    # Downscale cleanly to 1080x1920 (or proportional 9:16) with Lanczos if larger
+    w, h = pil_img.size
+    if w > 1080 or h > 1920:
+        scale = min(1080 / w, 1920 / h)
+        new_w = max(1, int(w * scale))
+        new_h = max(1, int(h * scale))
+        pil_img = pil_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
     if caption and caption.strip():
         pil_img = apply_snapchat_caption_bar(pil_img, caption, position=caption_position, opacity=caption_opacity)
 
+    # Save to clean buffer (strips all EXIF/ComfyUI JSON metadata)
     buf = io.BytesIO()
-    pil_img.save(buf, format="PNG")
+    pil_img.save(buf, format="JPEG", quality=95)
     raw_bytes = buf.getvalue()
     b64_str = base64.b64encode(raw_bytes).decode("utf-8")
-    return f"data:image/png;base64,{b64_str}"
+    return f"data:image/jpeg;base64,{b64_str}"
 
 
-VIRTUAL_CAMERA_INIT_SCRIPT = """
+ANIMATED_VIRTUAL_CAMERA_SCRIPT = """
 (function() {
     window.__snapchat_virtual_image = "";
     window.__snapchat_canvas = document.createElement("canvas");
     window.__snapchat_canvas.width = 1080;
     window.__snapchat_canvas.height = 1920;
-    const ctx = window.__snapchat_canvas.getContext("2d");
+    const ctx = window.__snapchat_canvas.getContext("2d", { alpha: false });
     
-    // Draw initial black frame
-    ctx.fillStyle = "#050505";
-    ctx.fillRect(0, 0, 1080, 1920);
+    let currentImageObj = null;
+    
+    function renderLoop() {
+        if (currentImageObj && currentImageObj.complete && currentImageObj.naturalWidth > 0) {
+            if (window.__snapchat_canvas.width !== currentImageObj.naturalWidth || window.__snapchat_canvas.height !== currentImageObj.naturalHeight) {
+                window.__snapchat_canvas.width = currentImageObj.naturalWidth;
+                window.__snapchat_canvas.height = currentImageObj.naturalHeight;
+            }
+            ctx.drawImage(currentImageObj, 0, 0, currentImageObj.naturalWidth, currentImageObj.naturalHeight);
+        } else {
+            ctx.fillStyle = "#1e293b";
+            ctx.fillRect(0, 0, window.__snapchat_canvas.width, window.__snapchat_canvas.height);
+        }
+        requestAnimationFrame(renderLoop);
+    }
+    requestAnimationFrame(renderLoop);
 
     window.__updateVirtualCameraImage = function(base64DataUrl) {
         window.__snapchat_virtual_image = base64DataUrl;
         const img = new Image();
         img.onload = function() {
-            // Dynamically match canvas to source resolution (e.g. 1536x2720) without downscaling
-            window.__snapchat_canvas.width = img.width;
-            window.__snapchat_canvas.height = img.height;
-            ctx.drawImage(img, 0, 0, img.width, img.height);
+            currentImageObj = img;
         };
         img.src = base64DataUrl;
     };
 
-    // Override navigator.mediaDevices.getUserMedia to pipe uncompressed video stream
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+        const origGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
         navigator.mediaDevices.getUserMedia = async function(constraints) {
-            if (constraints && (constraints.video || constraints.audio === false)) {
-                try {
-                    const stream = window.__snapchat_canvas.captureStream(30);
-                    return stream;
-                } catch(e) {
-                    console.warn("[LeafFlow Virtual Camera] captureStream fallback:", e);
-                }
+            try {
+                const stream = window.__snapchat_canvas.captureStream(30);
+                return stream;
+            } catch(e) {
+                return origGetUserMedia(constraints);
             }
-            return originalGetUserMedia(constraints);
         };
     }
 })();
@@ -255,13 +263,13 @@ async def send_snapchat_camera_snap_async(
         print(f"[LeafFlow Snapchat] {msg}")
         status_messages.append(msg)
 
-    log(f"Starting Snapchat camera dispatch for recipient '@{send_to}'...")
+    log(f"Starting Snapchat camera dispatch for recipient '{send_to}'...")
 
     async with async_playwright() as p:
         browser_context = await p.chromium.launch_persistent_context(
             user_data_dir=profile_path,
             headless=headless,
-            viewport={"width": 1280, "height": 850},
+            viewport={"width": 1440, "height": 960},
             permissions=["camera", "microphone"],
             args=[
                 "--use-fake-ui-for-media-stream",
@@ -275,10 +283,10 @@ async def send_snapchat_camera_snap_async(
         try:
             page = await browser_context.new_page()
             # Inject Virtual Camera Canvas Hook prior to page scripts
-            await page.add_init_script(VIRTUAL_CAMERA_INIT_SCRIPT)
+            await page.add_init_script(ANIMATED_VIRTUAL_CAMERA_SCRIPT)
 
             log("Navigating to web.snapchat.com...")
-            await page.goto("https://web.snapchat.com", wait_until="domcontentloaded", timeout=timeout * 1000)
+            await page.goto("https://web.snapchat.com", wait_until="networkidle", timeout=timeout * 1000)
             await page.wait_for_timeout(2000)
 
             # Check if login is required
@@ -317,73 +325,44 @@ async def send_snapchat_camera_snap_async(
                     return False, "Not logged in to Snapchat. Please click 'Log in' in ComfyUI Settings or run 'python snapchat_login.py' to authenticate."
 
             # Inject the ComfyUI image into the virtual camera feed
-            log("Injecting high-resolution ComfyUI image to virtual camera...")
+            log("Injecting high-resolution ComfyUI image into 30fps camera stream...")
             await page.evaluate("(imgData) => { if (window.__updateVirtualCameraImage) window.__updateVirtualCameraImage(imgData); }", base64_image)
-            await page.wait_for_timeout(1500)
+            await page.wait_for_timeout(1000)
 
-            # Open Camera View if not already open
-            camera_btn = page.locator("button[aria-label*='Camera'], [data-testid='camera-button'], button:has-text('Camera'), svg[aria-label='Camera']").first
-            if await camera_btn.is_visible(timeout=3000):
-                await camera_btn.click()
-                await page.wait_for_timeout(1500)
-
-            # Locate and click Shutter button to take the live Snap photo
-            log("Triggering camera shutter to capture live Snap...")
-            shutter_selectors = [
-                "button[aria-label*='Take snap']",
-                "button[aria-label*='Take photo']",
-                "button[aria-label*='Capture']",
-                "button.shutter",
-                "[data-testid='shutter-button']",
-                "div[role='button'][aria-label*='snap']",
-                "button[aria-label*='Take Snap']"
-            ]
-            shutter_clicked = False
-            for sel in shutter_selectors:
-                btn = page.locator(sel).first
-                if await btn.is_visible(timeout=1000):
-                    await btn.click()
-                    shutter_clicked = True
-                    log(f"Shutter clicked using selector '{sel}'.")
-                    break
-
-            if not shutter_clicked:
-                fallback_shutter = page.locator("button:has(svg), div[role='button']").filter(has_text="").first
-                if await fallback_shutter.is_visible():
-                    await fallback_shutter.click()
-                    shutter_clicked = True
-                    log("Shutter clicked via fallback locator.")
-
+            # Activate camera feed if needed
+            log("Activating camera viewport...")
+            activate_btn = page.locator("text='Click the camera to send Snaps', div:has-text('Click the camera')").first
+            if await activate_btn.is_visible(timeout=2000):
+                await activate_btn.click()
+            else:
+                await page.mouse.click(750, 450)
+            
             await page.wait_for_timeout(2000)
 
-            # Click 'Send To' button
-            log("Clicking 'Send To' button...")
-            send_to_selectors = [
-                "button:has-text('Send To')",
-                "button[aria-label*='Send To']",
-                "button:has-text('Send to')",
-                "[data-testid='send-to-button']",
-                "button.send-to"
-            ]
-            for sel in send_to_selectors:
-                btn = page.locator(sel).first
-                if await btn.is_visible(timeout=3000):
-                    await btn.click()
-                    break
+            # Trigger shutter via Spacebar (instant native capture)
+            log("Snapping photo via camera shutter...")
+            await page.keyboard.press("Space")
+            await page.wait_for_timeout(2000)
+
+            # Click 'Send to' button
+            log("Clicking 'Send to' button...")
+            send_to_btn = page.locator("button:has-text('Send to'), [data-testid='send-to-button'], button:has-text('Send To')").first
+            if await send_to_btn.is_visible(timeout=5000):
+                await send_to_btn.click()
+            else:
+                return False, "Failed to locate 'Send to' button after taking snap."
 
             await page.wait_for_timeout(1500)
 
-            # Search recipient username or visual name
-            log(f"Searching for recipient '{send_to}' (or @{send_to})...")
+            # Search recipient username or visual display name
+            log(f"Searching for recipient '{send_to}'...")
             search_input = page.locator("input[placeholder*='Search'], input[type='search'], input[aria-label*='Search']").first
             if await search_input.is_visible(timeout=4000):
                 await search_input.fill(send_to)
                 await page.wait_for_timeout(1500)
 
-            # Select matching contact: check row containers, checkboxes, or text items
+            # Select matching contact: check row containers or checkboxes
             recipient_selected = False
-            
-            # Strategy 1: Find container row containing the username or display name
             contact_rows = page.locator("div[role='listitem'], li, div[role='button'], div[data-testid*='recipient'], div[data-testid*='contact']").filter(
                 has_text=send_to
             )
@@ -397,7 +376,6 @@ async def send_snapchat_camera_snap_async(
                 recipient_selected = True
                 log(f"Selected contact row matching '{send_to}'.")
 
-            # Strategy 2: Try matching @username specifically
             if not recipient_selected:
                 at_rows = page.locator("div[role='listitem'], li, div[role='button']").filter(has_text=f"@{send_to}")
                 if await at_rows.count() > 0:
@@ -405,7 +383,6 @@ async def send_snapchat_camera_snap_async(
                     recipient_selected = True
                     log(f"Selected contact row matching '@{send_to}'.")
 
-            # Strategy 3: Text-based locator
             if not recipient_selected:
                 text_item = page.locator(f"text={send_to}, text=@{send_to}").first
                 if await text_item.is_visible(timeout=2000):
@@ -413,7 +390,6 @@ async def send_snapchat_camera_snap_async(
                     recipient_selected = True
                     log(f"Selected contact via text match for '{send_to}'.")
 
-            # Strategy 4: Fallback to first search result if filtered
             if not recipient_selected:
                 first_checkbox = page.locator("input[type='checkbox'], div[role='checkbox']").first
                 if await first_checkbox.is_visible(timeout=2000):
@@ -440,7 +416,7 @@ async def send_snapchat_camera_snap_async(
                     log("Final send button clicked!")
                     break
 
-            await page.wait_for_timeout(3000)
+            await page.wait_for_timeout(4000)
             log(f"Success: Red Camera Snap successfully delivered to '{send_to}'!")
             return True, f"Success: Red Camera Snap delivered to '{send_to}'"
 
@@ -464,7 +440,7 @@ class SnapchatCameraSnapNode:
         return {
             "required": {
                 "image": ("IMAGE",),
-                "send_to": ("STRING", {"default": "ko_mathias", "multiline": False, "placeholder": "Recipient Snapchat username"}),
+                "send_to": ("STRING", {"default": "Mathias", "multiline": False, "placeholder": "Recipient username or visual name (e.g. Mathias or ko_mathias)"}),
             },
             "optional": {
                 "caption": ("STRING", {"default": "", "multiline": True, "placeholder": "Classic Snapchat text banner..."}),
@@ -512,7 +488,7 @@ class SnapchatCameraSnapNode:
         except Exception as e:
             return (image, f"Error: Playwright installation failed: {e}")
 
-        # Convert tensor to high-res base64 with classic Snapchat banner rendered directly onto the frame
+        # Convert tensor to stripped clean base64 image with classic Snapchat banner rendered directly onto the frame
         b64_image = tensor_to_base64_png(
             image, 
             caption=clean_caption, 
