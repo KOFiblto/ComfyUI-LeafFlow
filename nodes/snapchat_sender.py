@@ -261,6 +261,44 @@ ANIMATED_VIRTUAL_CAMERA_SCRIPT = """
 """
 
 
+async def open_recipient_chat_async(page, send_to: str, log):
+    """Helper to locate recipient by username or display name and open their chat."""
+    log(f"Locating recipient '{send_to}' in contact list...")
+    
+    # 1. Check direct match in visible list
+    direct_match = page.locator("div[role='listitem'], div.O4POs, div:has-text('" + send_to + "')").filter(has_text=send_to).last
+    if await direct_match.is_visible(timeout=2000):
+        await direct_match.click()
+        log(f"Opened chat with '{send_to}' directly from list.")
+        await page.wait_for_timeout(1500)
+        return True
+
+    # 2. Search sidebar input
+    sidebar_search = page.locator("input[placeholder*='Search']").first
+    if await sidebar_search.is_visible(timeout=3000):
+        await sidebar_search.click()
+        await sidebar_search.fill(send_to)
+        await page.wait_for_timeout(1500)
+
+        # Click matching search result card
+        res = page.locator("div[role='listitem'], div.O4POs, div:has-text('" + send_to + "')").last
+        if await res.is_visible(timeout=3000):
+            await res.click()
+            log(f"Opened chat with '{send_to}' from search results.")
+            await page.wait_for_timeout(1500)
+            return True
+        else:
+            # Fallback: click first search result row
+            first_res = page.locator("div.O4POs").first
+            if await first_res.is_visible(timeout=2000):
+                await first_res.click()
+                log(f"Opened first search result for '{send_to}'.")
+                await page.wait_for_timeout(1500)
+                return True
+
+    return False
+
+
 async def send_snapchat_text_message_async(
     text: str,
     send_to: str,
@@ -303,23 +341,8 @@ async def send_snapchat_text_message_async(
             if "accounts.snapchat.com" in page.url or "login" in page.url:
                 return False, "Not logged in to Snapchat. Please authenticate first."
 
-            # Locate contact in left list
-            log(f"Locating recipient '{send_to}' in contact list...")
-            contact_item = page.locator("div[role='listitem'], div:has-text('" + send_to + "')").filter(has_text=send_to).last
-            if await contact_item.is_visible(timeout=3000):
-                await contact_item.click()
-                log(f"Opened chat with '{send_to}'.")
-            else:
-                sidebar_search = page.locator("input[placeholder*='Search']").first
-                if await sidebar_search.is_visible(timeout=2000):
-                    await sidebar_search.fill(send_to)
-                    await page.wait_for_timeout(1000)
-                    search_res = page.locator("div[role='listitem'], div:has-text('" + send_to + "')").last
-                    if await search_res.is_visible(timeout=2000):
-                        await search_res.click()
-                        log(f"Opened chat with '{send_to}' from search.")
-
-            await page.wait_for_timeout(1500)
+            # Open chat with recipient
+            await open_recipient_chat_async(page, send_to, log)
 
             # Locate chat input
             log("Typing and sending text message...")
@@ -434,31 +457,11 @@ async def send_snapchat_camera_snap_async(
             await page.wait_for_timeout(1000)
 
             # Direct Contact Chat Camera (Most reliable & native)
-            log(f"Locating recipient '{send_to}' in contact list...")
-            recipient_found = False
-            
-            # Find contact row in left list
-            contact_item = page.locator("div[role='listitem'], div:has-text('" + send_to + "')").filter(has_text=send_to).last
-            if await contact_item.is_visible(timeout=3000):
-                await contact_item.click()
-                recipient_found = True
-                log(f"Opened chat with '{send_to}'.")
-            else:
-                sidebar_search = page.locator("input[placeholder*='Search']").first
-                if await sidebar_search.is_visible(timeout=2000):
-                    await sidebar_search.fill(send_to)
-                    await page.wait_for_timeout(1000)
-                    search_res = page.locator("div[role='listitem'], div:has-text('" + send_to + "')").last
-                    if await search_res.is_visible(timeout=2000):
-                        await search_res.click()
-                        recipient_found = True
-                        log(f"Opened chat with '{send_to}' from search.")
-
-            await page.wait_for_timeout(1500)
+            await open_recipient_chat_async(page, send_to, log)
 
             # Click the camera icon at the bottom-left of the chat window
             log("Opening camera for recipient...")
-            chat_camera_btn = page.locator("div:has(input[placeholder*='Send chat']) button:has(svg), button[aria-label*='Camera'], button[aria-label*='camera']").first
+            chat_camera_btn = page.locator("button.cDumY, div:has(input[placeholder*='Send chat']) button:has(svg), button[aria-label*='Camera'], button[aria-label*='camera']").first
             if await chat_camera_btn.is_visible(timeout=3000):
                 await chat_camera_btn.click()
             else:
@@ -476,15 +479,16 @@ async def send_snapchat_camera_snap_async(
             await page.keyboard.press("Space")
             await page.wait_for_timeout(2500)
 
-            # Click final Send button (bright blue button at bottom-right of the snap preview)
+            # Click final Send button (class TYX6O at bottom-right of the snap preview)
             log("Sending Red Camera Snap...")
-            send_btn = page.locator("button:has-text('Send'), button:has-text('Send to')").last
+            send_btn = page.locator("button.TYX6O, button:has-text('Send'), button:has-text('Send to')").last
             if await send_btn.is_visible(timeout=5000):
                 await send_btn.click(force=True)
                 log("Final Send button clicked!")
             else:
-                await page.keyboard.press("Enter")
-                log("Dispatched via Enter key fallback.")
+                # Fallback: click coordinate x=1077, y=896
+                await page.mouse.click(1077, 896)
+                log("Dispatched via coordinate click (1077, 896).")
 
             await page.wait_for_timeout(4000)
             log(f"Success: Red Camera Snap successfully delivered to '{send_to}'!")
