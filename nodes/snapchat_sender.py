@@ -20,24 +20,36 @@ DESKTOP_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.
 
 
 def ensure_playwright():
-    """Ensure playwright package and chromium browser binaries are installed."""
+    """Ensure playwright package is installed."""
     try:
         import playwright
     except ImportError:
         print("[LeafFlow] Installing playwright package...")
         subprocess.check_call([sys.executable, "-m", "pip", "install", "playwright"])
-        import playwright
 
-    try:
-        from playwright.sync_api import sync_playwright
-        with sync_playwright() as p:
-            browser_type = p.chromium
-            executable = browser_type.executable_path
-            if not os.path.exists(executable):
-                raise FileNotFoundError("Chromium not found")
-    except Exception:
-        print("[LeafFlow] Installing Playwright Chromium browser binary...")
-        subprocess.check_call([sys.executable, "-m", "playwright", "install", "chromium"])
+
+def run_async_in_isolated_thread(coro):
+    """Runs a coroutine inside a fresh, dedicated thread with its own isolated asyncio event loop."""
+    result = [False, "Unknown error"]
+    exception = [None]
+
+    def runner():
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            res = loop.run_until_complete(coro)
+            result[0], result[1] = res
+            loop.close()
+        except Exception as e:
+            exception[0] = e
+
+    t = threading.Thread(target=runner)
+    t.start()
+    t.join()
+
+    if exception[0] is not None:
+        raise exception[0]
+    return result[0], result[1]
 
 
 def is_snapchat_profile_authenticated(profile_name="default"):
@@ -559,9 +571,7 @@ class SnapchatCameraSnapNode:
         # Mode 1: Pure text message
         if not has_image and has_text:
             try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                success, message = loop.run_until_complete(
+                success, message = run_async_in_isolated_thread(
                     send_snapchat_text_message_async(
                         text=clean_text,
                         send_to=clean_send_to,
@@ -570,10 +580,12 @@ class SnapchatCameraSnapNode:
                         timeout=timeout
                     )
                 )
-                loop.close()
+                print(f"[LeafFlow Snapchat] Result: {success} -> {message}")
                 return (image, message)
             except Exception as e:
-                return (image, f"Error in text chat dispatch: {str(e)}")
+                err_msg = f"Error in text chat dispatch: {str(e)}"
+                print(f"[LeafFlow Snapchat] {err_msg}")
+                return (image, err_msg)
 
         # Mode 2 & 3: Camera Snap (with or without caption banner)
         b64_image = tensor_to_base64_png(
@@ -585,9 +597,7 @@ class SnapchatCameraSnapNode:
         )
 
         try:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            success, message = loop.run_until_complete(
+            success, message = run_async_in_isolated_thread(
                 send_snapchat_camera_snap_async(
                     base64_image=b64_image,
                     send_to=clean_send_to,
@@ -598,10 +608,12 @@ class SnapchatCameraSnapNode:
                     timeout=timeout
                 )
             )
-            loop.close()
+            print(f"[LeafFlow Snapchat] Result: {success} -> {message}")
             return (image, message)
         except Exception as e:
-            return (image, f"Error in Snapchat camera automation loop: {str(e)}")
+            err_msg = f"Error in Snapchat camera automation loop: {str(e)}"
+            print(f"[LeafFlow Snapchat] {err_msg}")
+            return (image, err_msg)
 
 
 # Register Server Endpoints for Login / Logout & Session Status
