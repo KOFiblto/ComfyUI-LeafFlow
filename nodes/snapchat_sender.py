@@ -352,69 +352,57 @@ async def send_snapchat_camera_snap_async(
             else:
                 return False, "Failed to locate 'Send to' button after taking snap."
 
-            await page.wait_for_timeout(1500)
+            await page.wait_for_timeout(2000)
 
-            # Search recipient username or visual display name
-            log(f"Searching for recipient '{send_to}'...")
-            search_input = page.locator("input[placeholder*='Search'], input[type='search'], input[aria-label*='Search']").first
-            if await search_input.is_visible(timeout=4000):
-                await search_input.fill(send_to)
+            # Search recipient specifically inside the 'Send To' modal (placeholder='To:')
+            log(f"Searching for recipient '{send_to}' inside Send To modal...")
+            modal_container = page.locator("div[role='dialog'], div.modal, div:has(input[placeholder*='To'])").first
+            modal_to_input = page.locator("input[placeholder*='To'], input[aria-label*='To']").first
+
+            if await modal_to_input.is_visible(timeout=3000):
+                await modal_to_input.fill(send_to)
                 await page.wait_for_timeout(1500)
 
-            # Select matching contact: check row containers or checkboxes
-            recipient_selected = False
-            contact_rows = page.locator("div[role='listitem'], li, div[role='button'], div[data-testid*='recipient'], div[data-testid*='contact']").filter(
-                has_text=send_to
-            )
-            if await contact_rows.count() > 0:
-                first_row = contact_rows.first
-                checkbox = first_row.locator("input[type='checkbox'], div[role='checkbox'], svg").first
-                if await checkbox.is_visible(timeout=1000):
-                    await checkbox.click()
+                # Select contact specifically inside the modal dialog
+                target_contact = modal_container.locator("div, li").filter(has_text=send_to).last
+                if await target_contact.is_visible(timeout=3000):
+                    await target_contact.click()
+                    log(f"Selected contact '{send_to}' inside modal.")
                 else:
-                    await first_row.click()
-                recipient_selected = True
-                log(f"Selected contact row matching '{send_to}'.")
+                    first_cb = modal_container.locator("input[type='checkbox'], div[role='checkbox']").first
+                    if await first_cb.is_visible(timeout=2000):
+                        await first_cb.click()
+                        log(f"Selected first contact checkbox in modal for '{send_to}'.")
+            else:
+                # Direct select in Recents section of modal
+                recents_row = page.locator("text='Recents'").locator("..").locator("div, li").filter(has_text=send_to).first
+                if await recents_row.is_visible(timeout=3000):
+                    await recents_row.click()
+                    log(f"Selected '{send_to}' directly in Recents list.")
 
-            if not recipient_selected:
-                at_rows = page.locator("div[role='listitem'], li, div[role='button']").filter(has_text=f"@{send_to}")
-                if await at_rows.count() > 0:
-                    await at_rows.first.click()
-                    recipient_selected = True
-                    log(f"Selected contact row matching '@{send_to}'.")
+            await page.wait_for_timeout(1500)
 
-            if not recipient_selected:
-                text_item = page.locator(f"text={send_to}, text=@{send_to}").first
-                if await text_item.is_visible(timeout=2000):
-                    await text_item.click()
-                    recipient_selected = True
-                    log(f"Selected contact via text match for '{send_to}'.")
-
-            if not recipient_selected:
-                first_checkbox = page.locator("input[type='checkbox'], div[role='checkbox']").first
-                if await first_checkbox.is_visible(timeout=2000):
-                    await first_checkbox.click()
-                    recipient_selected = True
-                    log("Selected first contact checkbox from search results.")
-
-            await page.wait_for_timeout(1000)
-
-            # Click final Send button
-            log("Sending Snap...")
+            # Click final Send button inside modal
+            log("Clicking final Send button...")
             final_send_selectors = [
                 "button[aria-label*='Send']:not([disabled])",
                 "button:has-text('Send'):not([disabled])",
                 "[data-testid='send-arrow-button']",
                 "button.send-arrow",
-                "button[aria-label*='Send']",
-                "button:has-text('Send')"
+                "button[aria-label*='Send']"
             ]
+            final_sent = False
             for sel in final_send_selectors:
                 btn = page.locator(sel).first
                 if await btn.is_visible(timeout=3000):
                     await btn.click()
+                    final_sent = True
                     log("Final send button clicked!")
                     break
+
+            if not final_sent:
+                await page.keyboard.press("Enter")
+                log("Dispatched via Enter key.")
 
             await page.wait_for_timeout(4000)
             log(f"Success: Red Camera Snap successfully delivered to '{send_to}'!")
