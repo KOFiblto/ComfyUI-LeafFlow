@@ -373,24 +373,55 @@ async def send_snapchat_camera_snap_async(
 
             await page.wait_for_timeout(1500)
 
-            # Search recipient username
-            log(f"Searching for recipient '@{send_to}'...")
+            # Search recipient username or visual name
+            log(f"Searching for recipient '{send_to}' (or @{send_to})...")
             search_input = page.locator("input[placeholder*='Search'], input[type='search'], input[aria-label*='Search']").first
             if await search_input.is_visible(timeout=4000):
                 await search_input.fill(send_to)
                 await page.wait_for_timeout(1500)
 
-            # Select matching contact checkbox or item
-            recipient_item = page.locator(f"text={send_to}").first
-            if await recipient_item.is_visible(timeout=4000):
-                await recipient_item.click()
-                await page.wait_for_timeout(1000)
-                log(f"Recipient '@{send_to}' selected.")
-            else:
-                first_checkbox = page.locator("input[type='checkbox']").first
+            # Select matching contact: check row containers, checkboxes, or text items
+            recipient_selected = False
+            
+            # Strategy 1: Find container row containing the username or display name
+            contact_rows = page.locator("div[role='listitem'], li, div[role='button'], div[data-testid*='recipient'], div[data-testid*='contact']").filter(
+                has_text=send_to
+            )
+            if await contact_rows.count() > 0:
+                first_row = contact_rows.first
+                checkbox = first_row.locator("input[type='checkbox'], div[role='checkbox'], svg").first
+                if await checkbox.is_visible(timeout=1000):
+                    await checkbox.click()
+                else:
+                    await first_row.click()
+                recipient_selected = True
+                log(f"Selected contact row matching '{send_to}'.")
+
+            # Strategy 2: Try matching @username specifically
+            if not recipient_selected:
+                at_rows = page.locator("div[role='listitem'], li, div[role='button']").filter(has_text=f"@{send_to}")
+                if await at_rows.count() > 0:
+                    await at_rows.first.click()
+                    recipient_selected = True
+                    log(f"Selected contact row matching '@{send_to}'.")
+
+            # Strategy 3: Text-based locator
+            if not recipient_selected:
+                text_item = page.locator(f"text={send_to}, text=@{send_to}").first
+                if await text_item.is_visible(timeout=2000):
+                    await text_item.click()
+                    recipient_selected = True
+                    log(f"Selected contact via text match for '{send_to}'.")
+
+            # Strategy 4: Fallback to first search result if filtered
+            if not recipient_selected:
+                first_checkbox = page.locator("input[type='checkbox'], div[role='checkbox']").first
                 if await first_checkbox.is_visible(timeout=2000):
-                    await first_checkbox.check()
-                    log("Selected first contact from search results.")
+                    await first_checkbox.click()
+                    recipient_selected = True
+                    log("Selected first contact checkbox from search results.")
+
+            await page.wait_for_timeout(1000)
 
             # Click final Send button
             log("Sending Snap...")
@@ -398,7 +429,9 @@ async def send_snapchat_camera_snap_async(
                 "button[aria-label*='Send']:not([disabled])",
                 "button:has-text('Send'):not([disabled])",
                 "[data-testid='send-arrow-button']",
-                "button.send-arrow"
+                "button.send-arrow",
+                "button[aria-label*='Send']",
+                "button:has-text('Send')"
             ]
             for sel in final_send_selectors:
                 btn = page.locator(sel).first
@@ -408,8 +441,8 @@ async def send_snapchat_camera_snap_async(
                     break
 
             await page.wait_for_timeout(3000)
-            log(f"Success: Red Camera Snap successfully delivered to @{send_to}!")
-            return True, f"Success: Red Camera Snap delivered to @{send_to}"
+            log(f"Success: Red Camera Snap successfully delivered to '{send_to}'!")
+            return True, f"Success: Red Camera Snap delivered to '{send_to}'"
 
         except Exception as e:
             err_msg = f"Failed to send snap: {str(e)}"
