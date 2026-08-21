@@ -42,6 +42,7 @@ from .nodes.aspect_ratio import TextAspectRatioFinder, AspectRatioFinder, Previe
 from .nodes.lora_finder import TextLoraFinder, LoraTextFinder
 from .nodes.prompt_iterator import PromptQueueIterator
 from .nodes.text_replacer import MultiTextReplacer
+from .nodes.text_split import LeafFlowTextSplit
 from .nodes.snapchat_sender import SnapchatCameraSnapNode
 
 
@@ -63,6 +64,7 @@ NODE_CLASS_MAPPINGS = {
     "TextLoraFinder": TextLoraFinder,
     "PromptQueueIterator": PromptQueueIterator,
     "MultiTextReplacer": MultiTextReplacer,
+    "LeafFlowTextSplit": LeafFlowTextSplit,
     "SnapchatCameraSnapNode": SnapchatCameraSnapNode,
 
     # Backward Compatibility Aliases
@@ -97,6 +99,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LoraTextFinder": "🍃 🔎 Text LoRA Finder & Loader",
     "PromptQueueIterator": "🍃 🔄 Prompt Queue Iterator",
     "MultiTextReplacer": "🍃 🔤 Multi Text Replacer",
+    "LeafFlowTextSplit": "🍃 ✂️ Text Split",
     "SnapchatCameraSnapNode": "🍃 📸 Snapchat Camera Snap"
 }
 

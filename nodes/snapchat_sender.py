@@ -10,6 +10,7 @@ import threading
 import subprocess
 import torch
 import numpy as np
+from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from aiohttp import web
 
@@ -288,7 +289,6 @@ async def open_recipient_chat_async(page, send_to: str, log):
             await page.wait_for_timeout(1500)
             return True
         else:
-            # Fallback: click first search result row
             first_res = page.locator("div.O4POs").first
             if await first_res.is_visible(timeout=2000):
                 await first_res.click()
@@ -304,16 +304,32 @@ async def send_snapchat_text_message_async(
     send_to: str,
     headless: bool = True,
     profile_name: str = "default",
-    timeout: int = 60
+    timeout: int = 60,
+    debug_screenshots: bool = False
 ):
     """Sends a pure text chat message to the recipient on Snapchat Web."""
     from playwright.async_api import async_playwright
 
     profile_path = os.path.join(PROFILES_DIR, profile_name)
     os.makedirs(profile_path, exist_ok=True)
+    
+    debug_dir = None
+    if debug_screenshots:
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        debug_dir = os.path.join(profile_path, "debug_screenshots", f"text_{ts}")
+        os.makedirs(debug_dir, exist_ok=True)
 
     def log(msg):
         print(f"[LeafFlow Snapchat] {msg}")
+
+    async def save_shot(page, name):
+        if debug_dir:
+            path = os.path.join(debug_dir, f"{name}.png")
+            try:
+                await page.screenshot(path=path)
+                log(f"Debug screenshot saved: {path}")
+            except Exception:
+                pass
 
     log(f"Starting Snapchat text chat dispatch for recipient '{send_to}'...")
 
@@ -336,13 +352,16 @@ async def send_snapchat_text_message_async(
             log("Navigating to web.snapchat.com...")
             await page.goto("https://web.snapchat.com", wait_until="networkidle", timeout=timeout * 1000)
             await page.wait_for_timeout(2500)
+            await save_shot(page, "01_inbox")
 
             # Check if login is required
             if "accounts.snapchat.com" in page.url or "login" in page.url:
+                await save_shot(page, "02_login_required")
                 return False, "Not logged in to Snapchat. Please authenticate first."
 
             # Open chat with recipient
             await open_recipient_chat_async(page, send_to, log)
+            await save_shot(page, "02_chat_open")
 
             # Locate chat input
             log("Typing and sending text message...")
@@ -352,12 +371,14 @@ async def send_snapchat_text_message_async(
                 await page.wait_for_timeout(300)
                 await chat_input.fill(text)
                 await page.wait_for_timeout(300)
+                await save_shot(page, "03_text_typed")
                 await page.keyboard.press("Enter")
             else:
                 await page.keyboard.type(text)
                 await page.keyboard.press("Enter")
 
             await page.wait_for_timeout(3000)
+            await save_shot(page, "04_text_sent")
             log(f"Success: Text message successfully sent to '{send_to}'!")
             return True, f"Success: Text message delivered to '{send_to}'"
 
@@ -376,18 +397,34 @@ async def send_snapchat_camera_snap_async(
     password: str = "",
     headless: bool = True,
     profile_name: str = "default",
-    timeout: int = 60
+    timeout: int = 60,
+    debug_screenshots: bool = False
 ):
     from playwright.async_api import async_playwright
 
     profile_path = os.path.join(PROFILES_DIR, profile_name)
     os.makedirs(profile_path, exist_ok=True)
 
+    debug_dir = None
+    if debug_screenshots:
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        debug_dir = os.path.join(profile_path, "debug_screenshots", f"snap_{ts}")
+        os.makedirs(debug_dir, exist_ok=True)
+
     status_messages = []
 
     def log(msg):
         print(f"[LeafFlow Snapchat] {msg}")
         status_messages.append(msg)
+
+    async def save_shot(page, name):
+        if debug_dir:
+            path = os.path.join(debug_dir, f"{name}.png")
+            try:
+                await page.screenshot(path=path)
+                log(f"Debug screenshot saved: {path}")
+            except Exception:
+                pass
 
     log(f"Starting Snapchat camera dispatch for recipient '{send_to}'...")
 
@@ -415,11 +452,13 @@ async def send_snapchat_camera_snap_async(
             log("Navigating to web.snapchat.com...")
             await page.goto("https://web.snapchat.com", wait_until="networkidle", timeout=timeout * 1000)
             await page.wait_for_timeout(2500)
+            await save_shot(page, "01_inbox")
 
             # Check if login is required
             current_url = page.url
             if "accounts.snapchat.com" in current_url or "login" in current_url:
                 log("Login required...")
+                await save_shot(page, "02_login_page")
                 if username and password:
                     log(f"Attempting login as '{username}'...")
                     userInput = page.locator("input[name='accountIdentifier'], input[id='accountIdentifier'], input[type='text']").first
@@ -458,6 +497,7 @@ async def send_snapchat_camera_snap_async(
 
             # Direct Contact Chat Camera (Most reliable & native)
             await open_recipient_chat_async(page, send_to, log)
+            await save_shot(page, "02_chat_open")
 
             # Click the camera icon at the bottom-left of the chat window
             log("Opening camera for recipient...")
@@ -473,11 +513,13 @@ async def send_snapchat_camera_snap_async(
                         break
 
             await page.wait_for_timeout(2500)
+            await save_shot(page, "03_camera_live")
 
             # Capture photo via Spacebar
             log("Snapping photo via camera shutter...")
             await page.keyboard.press("Space")
             await page.wait_for_timeout(2500)
+            await save_shot(page, "04_photo_snapped")
 
             # Click final Send button (class TYX6O at bottom-right of the snap preview)
             log("Sending Red Camera Snap...")
@@ -486,11 +528,11 @@ async def send_snapchat_camera_snap_async(
                 await send_btn.click(force=True)
                 log("Final Send button clicked!")
             else:
-                # Fallback: click coordinate x=1077, y=896
                 await page.mouse.click(1077, 896)
                 log("Dispatched via coordinate click (1077, 896).")
 
             await page.wait_for_timeout(4000)
+            await save_shot(page, "05_delivered")
             log(f"Success: Red Camera Snap successfully delivered to '{send_to}'!")
             return True, f"Success: Red Camera Snap delivered to '{send_to}'"
 
@@ -521,12 +563,13 @@ class SnapchatCameraSnapNode:
                 "text": ("STRING", {"default": "", "multiline": True, "placeholder": "Text message (if no image) OR caption bar (if image connected)..."}),
                 "caption_position": (["classic (lower-third ~80%)", "center (50%)", "upper (35%)"], {"default": "classic (lower-third ~80%)"}),
                 "caption_opacity": ("FLOAT", {"default": 0.58, "min": 0.0, "max": 1.0, "step": 0.02, "tooltip": "Opacity of the classic Snapchat black text banner (0.58 = exact reference standard)."}),
-                "mirror_camera": ("BOOLEAN", {"default": True, "tooltip": "Compensates for Snapchat Web's front/selfie camera horizontal mirror so text and image are upright."}),
-                "username": ("STRING", {"default": "", "multiline": False, "placeholder": "Optional if using Google Session"}),
-                "password": ("STRING", {"default": "", "multiline": False, "placeholder": "Optional if using Google Session"}),
-                "headless": ("BOOLEAN", {"default": True, "tooltip": "Set to false on first login if manual verification is required."}),
-                "profile_name": ("STRING", {"default": "default", "multiline": False, "tooltip": "Folder name under user/snapchat_profiles/ to persist cookies & session tokens."}),
-                "timeout": ("INT", {"default": 60, "min": 10, "max": 300, "step": 5, "tooltip": "Max wait time in seconds for page navigation and login approval."}),
+                "mirror_camera": ("BOOLEAN", {"default": True, "advanced": True, "tooltip": "Compensates for Snapchat Web's front/selfie camera horizontal mirror so text and image are upright."}),
+                "headless": ("BOOLEAN", {"default": True, "advanced": True, "tooltip": "Set to false on first login if manual verification is required."}),
+                "profile_name": ("STRING", {"default": "default", "multiline": False, "advanced": True, "tooltip": "Folder name under user/snapchat_profiles/ to persist cookies & session tokens."}),
+                "timeout": ("INT", {"default": 60, "min": 10, "max": 300, "step": 5, "advanced": True, "tooltip": "Max wait time in seconds for page navigation and login approval."}),
+                "debug_screenshots": ("BOOLEAN", {"default": False, "advanced": True, "tooltip": "When enabled, captures and saves browser screenshots after every action into user/snapchat_profiles/<profile>/debug_screenshots/."}),
+                "username": ("STRING", {"default": "", "multiline": False, "advanced": True, "placeholder": "Optional if using Google Session"}),
+                "password": ("STRING", {"default": "", "multiline": False, "advanced": True, "placeholder": "Optional if using Google Session"}),
             }
         }
 
@@ -544,11 +587,12 @@ class SnapchatCameraSnapNode:
         caption_position="classic (lower-third ~80%)",
         caption_opacity=0.58,
         mirror_camera=True,
-        username="",
-        password="",
         headless=True,
         profile_name="default",
         timeout=60,
+        debug_screenshots=False,
+        username="",
+        password="",
         **kwargs
     ):
         if not send_to or not send_to.strip():
@@ -581,7 +625,8 @@ class SnapchatCameraSnapNode:
                         send_to=clean_send_to,
                         headless=headless,
                         profile_name=clean_profile,
-                        timeout=timeout
+                        timeout=timeout,
+                        debug_screenshots=debug_screenshots
                     )
                 )
                 print(f"[LeafFlow Snapchat] Result: {success} -> {message}")
@@ -609,7 +654,8 @@ class SnapchatCameraSnapNode:
                     password=clean_password,
                     headless=headless,
                     profile_name=clean_profile,
-                    timeout=timeout
+                    timeout=timeout,
+                    debug_screenshots=debug_screenshots
                 )
             )
             print(f"[LeafFlow Snapchat] Result: {success} -> {message}")
