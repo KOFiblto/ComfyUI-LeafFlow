@@ -8,7 +8,7 @@ import time
 import subprocess
 import torch
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 SNAPCHAT_CATEGORY = "🍃 LeafFlow/Automation"
 CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -27,7 +27,6 @@ def ensure_playwright():
     try:
         from playwright.sync_api import sync_playwright
         with sync_playwright() as p:
-            # Quick check if chromium executable is available
             browser_type = p.chromium
             executable = browser_type.executable_path
             if not os.path.exists(executable):
@@ -37,8 +36,96 @@ def ensure_playwright():
         subprocess.check_call([sys.executable, "-m", "playwright", "install", "chromium"])
 
 
-def tensor_to_base64_png(image_tensor):
-    """Convert a ComfyUI image tensor [B, H, W, C] to a base64 encoded PNG data URI."""
+def apply_snapchat_caption_bar(pil_img, text, position="center (50%)", opacity=0.55):
+    """
+    Renders the iconic, authentic classic Snapchat semi-transparent black caption bar
+    with centered crisp white text across the full width of the image at native resolution.
+    """
+    if not text or not text.strip() or opacity <= 0.0:
+        return pil_img
+
+    img = pil_img.convert("RGBA")
+    w, h = img.size
+    overlay = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+
+    # Dynamic proportional font size: ~3.3% of image width (e.g. ~51px on 1536x2720)
+    target_font_size = max(24, int(w * 0.033))
+    
+    font = None
+    candidate_fonts = [
+        "arialbd.ttf", "segoeuib.ttf", "arial.ttf", "segoeui.ttf", 
+        "Helvetica-Bold.ttf", "Helvetica.ttf", "DejaVuSans-Bold.ttf", "DejaVuSans.ttf"
+    ]
+    for font_name in candidate_fonts:
+        try:
+            font = ImageFont.truetype(font_name, target_font_size)
+            break
+        except Exception:
+            continue
+    if font is None:
+        font = ImageFont.load_default()
+
+    # Word wrapping within 90% of image width
+    margin = int(w * 0.05)
+    max_text_width = w - (margin * 2)
+    
+    words = text.strip().split()
+    lines = []
+    current_line = []
+    
+    for word in words:
+        test_line = " ".join(current_line + [word])
+        bbox = draw.textbbox((0, 0), test_line, font=font)
+        line_w = bbox[2] - bbox[0]
+        if line_w <= max_text_width:
+            current_line.append(word)
+        else:
+            if current_line:
+                lines.append(" ".join(current_line))
+            current_line = [word]
+    if current_line:
+        lines.append(" ".join(current_line))
+
+    # Calculate exact vertical dimensions
+    sample_bbox = draw.textbbox((0, 0), "Ag", font=font)
+    line_h = sample_bbox[3] - sample_bbox[1]
+    line_spacing = int(target_font_size * 0.28)
+    total_text_h = (len(lines) * line_h) + max(0, (len(lines) - 1) * line_spacing)
+    
+    pad_y = int(target_font_size * 0.70)
+    banner_h = total_text_h + (pad_y * 2)
+
+    # Vertical position anchor
+    pos_pct = 0.50
+    if "lower" in position or "65" in position:
+        pos_pct = 0.65
+    elif "upper" in position or "35" in position:
+        pos_pct = 0.35
+
+    banner_top = int((h * pos_pct) - (banner_h / 2))
+    banner_bottom = banner_top + banner_h
+
+    # Draw full-width semi-transparent black banner (classic Snapchat styling)
+    alpha_int = int(min(1.0, max(0.0, opacity)) * 255)
+    draw.rectangle([0, banner_top, w, banner_bottom], fill=(0, 0, 0, alpha_int))
+
+    # Draw centered crisp white text lines
+    curr_y = banner_top + pad_y
+    for line in lines:
+        l_bbox = draw.textbbox((0, 0), line, font=font)
+        l_w = l_bbox[2] - l_bbox[0]
+        curr_x = (w - l_w) // 2
+        draw.text((curr_x, curr_y), line, font=font, fill=(255, 255, 255, 255))
+        curr_y += line_h + line_spacing
+
+    # Composite cleanly back to RGB
+    result = Image.alpha_composite(img, overlay).convert("RGB")
+    return result
+
+
+def tensor_to_base64_png(image_tensor, caption="", caption_position="center (50%)", caption_opacity=0.55):
+    """Convert ComfyUI tensor to base64 PNG with optional native classic Snapchat text banner overlay."""
     if isinstance(image_tensor, torch.Tensor):
         if len(image_tensor.shape) == 4:
             img_np = image_tensor[0].cpu().numpy()
@@ -50,6 +137,9 @@ def tensor_to_base64_png(image_tensor):
         pil_img = image_tensor
     else:
         raise ValueError("Unsupported image format for Snapchat sender")
+
+    if caption and caption.strip():
+        pil_img = apply_snapchat_caption_bar(pil_img, caption, position=caption_position, opacity=caption_opacity)
 
     buf = io.BytesIO()
     pil_img.save(buf, format="PNG")
@@ -66,7 +156,7 @@ VIRTUAL_CAMERA_INIT_SCRIPT = """
     window.__snapchat_canvas.height = 1920;
     const ctx = window.__snapchat_canvas.getContext("2d");
     
-    // Draw initial blank black frame
+    // Draw initial black frame
     ctx.fillStyle = "#050505";
     ctx.fillRect(0, 0, 1080, 1920);
 
@@ -74,22 +164,15 @@ VIRTUAL_CAMERA_INIT_SCRIPT = """
         window.__snapchat_virtual_image = base64DataUrl;
         const img = new Image();
         img.onload = function() {
-            ctx.fillStyle = "#000000";
-            ctx.fillRect(0, 0, 1080, 1920);
-            
-            // Aspect-fit scale centered inside 1080x1920 vertical canvas
-            const scale = Math.min(1080 / img.width, 1920 / img.height);
-            const drawW = img.width * scale;
-            const drawH = img.height * scale;
-            const drawX = (1080 - drawW) / 2;
-            const drawY = (1920 - drawH) / 2;
-            
-            ctx.drawImage(img, drawX, drawY, drawW, drawH);
+            // Dynamically match canvas to source resolution (e.g. 1536x2720) without downscaling
+            window.__snapchat_canvas.width = img.width;
+            window.__snapchat_canvas.height = img.height;
+            ctx.drawImage(img, 0, 0, img.width, img.height);
         };
         img.src = base64DataUrl;
     };
 
-    // Override navigator.mediaDevices.getUserMedia to pipe our 1080x1920 canvas video stream
+    // Override navigator.mediaDevices.getUserMedia to pipe uncompressed video stream
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
         navigator.mediaDevices.getUserMedia = async function(constraints) {
@@ -111,7 +194,6 @@ VIRTUAL_CAMERA_INIT_SCRIPT = """
 async def send_snapchat_camera_snap_async(
     base64_image: str,
     send_to: str,
-    caption: str = "",
     username: str = "",
     password: str = "",
     headless: bool = True,
@@ -161,7 +243,6 @@ async def send_snapchat_camera_snap_async(
                 log("Login required...")
                 if username and password:
                     log(f"Attempting login as '{username}'...")
-                    # Fill username / email
                     userInput = page.locator("input[name='accountIdentifier'], input[id='accountIdentifier'], input[type='text']").first
                     if await userInput.is_visible(timeout=5000):
                         await userInput.fill(username)
@@ -172,7 +253,6 @@ async def send_snapchat_camera_snap_async(
                             await next_btn.click()
                             await page.wait_for_timeout(2000)
 
-                    # Fill password
                     passInput = page.locator("input[name='password'], input[type='password'], input[id='password']").first
                     if await passInput.is_visible(timeout=5000):
                         await passInput.fill(password)
@@ -183,7 +263,6 @@ async def send_snapchat_camera_snap_async(
                             await submit_btn.click()
                             await page.wait_for_timeout(3000)
 
-                    # Wait for login completion / 2FA approval
                     log("Waiting for authentication approval / dashboard redirect...")
                     for _ in range(int(timeout / 2)):
                         if "web.snapchat.com" in page.url and "accounts.snapchat.com" not in page.url:
@@ -194,7 +273,7 @@ async def send_snapchat_camera_snap_async(
                     return False, "Not logged in to Snapchat. Please run 'python snapchat_login.py' once to authenticate with Google, or provide username & password in the node."
 
             # Inject the ComfyUI image into the virtual camera feed
-            log("Injecting ComfyUI image to virtual camera...")
+            log("Injecting high-resolution ComfyUI image to virtual camera...")
             await page.evaluate("(imgData) => { if (window.__updateVirtualCameraImage) window.__updateVirtualCameraImage(imgData); }", base64_image)
             await page.wait_for_timeout(1500)
 
@@ -225,7 +304,6 @@ async def send_snapchat_camera_snap_async(
                     break
 
             if not shutter_clicked:
-                # Fallback: Search for large circular capture button in main view
                 fallback_shutter = page.locator("button:has(svg), div[role='button']").filter(has_text="").first
                 if await fallback_shutter.is_visible():
                     await fallback_shutter.click()
@@ -233,14 +311,6 @@ async def send_snapchat_camera_snap_async(
                     log("Shutter clicked via fallback locator.")
 
             await page.wait_for_timeout(2000)
-
-            # Add optional caption if requested
-            if caption:
-                log(f"Adding caption text: '{caption}'...")
-                caption_area = page.locator("div[contenteditable='true'], textarea[placeholder*='caption'], input[placeholder*='caption']").first
-                if await caption_area.is_visible(timeout=2000):
-                    await caption_area.fill(caption)
-                    await page.wait_for_timeout(500)
 
             # Click 'Send To' button
             log("Clicking 'Send To' button...")
@@ -273,7 +343,6 @@ async def send_snapchat_camera_snap_async(
                 await page.wait_for_timeout(1000)
                 log(f"Recipient '@{send_to}' selected.")
             else:
-                # Fallback: check first result item checkbox
                 first_checkbox = page.locator("input[type='checkbox']").first
                 if await first_checkbox.is_visible(timeout=2000):
                     await first_checkbox.check()
@@ -311,19 +380,22 @@ class SnapchatCameraSnapNode:
     LeafFlow Automation Node:
     Streams a ComfyUI image into Snapchat Web's virtual camera feed and captures + dispatches
     an authentic red Camera Snap to the specified recipient username.
+    Supports classic semi-transparent Snapchat text banners and full native resolution.
     """
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
                 "image": ("IMAGE",),
-                "send_to": ("STRING", {"default": "", "multiline": False, "placeholder": "Recipient Snapchat username"}),
+                "send_to": ("STRING", {"default": "ko_mathias", "multiline": False, "placeholder": "Recipient Snapchat username"}),
             },
             "optional": {
-                "caption": ("STRING", {"default": "", "multiline": True, "placeholder": "Optional snap text overlay"}),
-                "username": ("STRING", {"default": "", "multiline": False, "placeholder": "Your Snapchat username / email"}),
-                "password": ("STRING", {"default": "", "multiline": False, "placeholder": "Your Snapchat password"}),
-                "headless": ("BOOLEAN", {"default": True, "tooltip": "Set to false on first login if 2FA verification is required."}),
+                "caption": ("STRING", {"default": "", "multiline": True, "placeholder": "Classic Snapchat text banner..."}),
+                "caption_position": (["center (50%)", "lower (65%)", "upper (35%)"], {"default": "center (50%)"}),
+                "caption_opacity": ("FLOAT", {"default": 0.55, "min": 0.0, "max": 1.0, "step": 0.05, "tooltip": "Opacity of the classic Snapchat black text banner (0.55 = classic standard)."}),
+                "username": ("STRING", {"default": "", "multiline": False, "placeholder": "Optional if using Google Session"}),
+                "password": ("STRING", {"default": "", "multiline": False, "placeholder": "Optional if using Google Session"}),
+                "headless": ("BOOLEAN", {"default": True, "tooltip": "Set to false on first login if manual verification is required."}),
                 "profile_name": ("STRING", {"default": "default", "multiline": False, "tooltip": "Folder name under user/snapchat_profiles/ to persist cookies & session tokens."}),
                 "timeout": ("INT", {"default": 60, "min": 10, "max": 300, "step": 5, "tooltip": "Max wait time in seconds for page navigation and login approval."}),
             }
@@ -340,6 +412,8 @@ class SnapchatCameraSnapNode:
         image,
         send_to,
         caption="",
+        caption_position="center (50%)",
+        caption_opacity=0.55,
         username="",
         password="",
         headless=True,
@@ -361,7 +435,13 @@ class SnapchatCameraSnapNode:
         except Exception as e:
             return (image, f"Error: Playwright installation failed: {e}")
 
-        b64_image = tensor_to_base64_png(image)
+        # Convert tensor to high-res base64 with classic Snapchat banner rendered directly onto the frame
+        b64_image = tensor_to_base64_png(
+            image, 
+            caption=clean_caption, 
+            caption_position=caption_position, 
+            caption_opacity=caption_opacity
+        )
 
         # Run async Playwright automation worker
         try:
@@ -371,7 +451,6 @@ class SnapchatCameraSnapNode:
                 send_snapchat_camera_snap_async(
                     base64_image=b64_image,
                     send_to=clean_send_to,
-                    caption=clean_caption,
                     username=clean_username,
                     password=clean_password,
                     headless=headless,
