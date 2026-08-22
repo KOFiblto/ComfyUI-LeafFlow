@@ -33,9 +33,9 @@ def main():
     print("=" * 65)
     print(f"Profile Directory: {DEFAULT_PROFILE}")
     print("\nLaunching browser window...")
-    print("1. In the browser that opens, click 'Log in with Google' (or enter credentials).")
+    print("1. In the browser that opens, log in (Google or Snapchat credentials).")
     print("2. Complete any 2FA or security prompts.")
-    print("3. Once you see your Snapchat Web inbox / camera, your session is saved!")
+    print("3. Once your contacts / camera feed appear, the session is saved!")
     print("4. Close the browser window when finished.\n")
 
     try:
@@ -51,11 +51,13 @@ def main():
             user_data_dir=DEFAULT_PROFILE,
             headless=False,
             user_agent=DESKTOP_USER_AGENT,
-            viewport={"width": 1280, "height": 850},
+            viewport={"width": 1440, "height": 960},
             permissions=["camera", "microphone"],
+            ignore_default_args=["--enable-automation"],
             args=[
                 "--disable-blink-features=AutomationControlled",
-                "--no-sandbox"
+                "--no-sandbox",
+                "--disable-setuid-sandbox"
             ]
         )
         page = context.new_page()
@@ -66,13 +68,21 @@ def main():
 
         try:
             while not page.is_closed() and context.pages:
-                curr_url = page.url
-                if "web.snapchat.com" in curr_url and "accounts.snapchat.com" not in curr_url and "login" not in curr_url:
-                    if not logged_in_detected:
-                        logged_in_detected = True
-                        set_auth_state(True)
-                        print("\n[LeafFlow] Login detected and authenticated successfully!")
-                elif "accounts.snapchat.com" in curr_url or "login" in curr_url:
+                curr_url = page.url.lower()
+                is_logged_out = (
+                    "accounts.snapchat.com" in curr_url or
+                    "login" in curr_url or
+                    "www.snapchat.com" in curr_url
+                )
+                
+                if not is_logged_out and "web.snapchat.com" in curr_url:
+                    has_contacts = page.locator("div[role='listitem'], div.O4POs, input[placeholder*='Search'], button[aria-label*='profile']").count()
+                    if has_contacts > 0:
+                        if not logged_in_detected:
+                            logged_in_detected = True
+                            set_auth_state(True)
+                            print("\n[LeafFlow] Login verified and saved permanently!")
+                else:
                     logged_in_detected = False
                     set_auth_state(False)
 

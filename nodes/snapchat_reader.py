@@ -78,6 +78,7 @@ async def read_snapchat_messages_async(
             user_agent=DESKTOP_USER_AGENT,
             viewport={"width": 1440, "height": 960},
             permissions=["camera", "microphone"],
+            ignore_default_args=["--enable-automation"],
             args=[
                 "--disable-blink-features=AutomationControlled",
                 "--no-sandbox",
@@ -93,10 +94,24 @@ async def read_snapchat_messages_async(
             await save_shot(page, "01_inbox")
 
             # Check if login is required
-            if "accounts.snapchat.com" in page.url or "login" in page.url:
+            current_url = page.url.lower()
+            is_logged_out = (
+                "accounts.snapchat.com" in current_url or
+                "login" in current_url or
+                "www.snapchat.com" in current_url
+            )
+            if not is_logged_out and "web.snapchat.com" in current_url:
+                contacts_count = await page.locator("div[role='listitem'], div.O4POs, input[placeholder*='Search'], button[aria-label*='profile']").count()
+                if contacts_count == 0:
+                    await page.wait_for_timeout(2000)
+                    contacts_count = await page.locator("div[role='listitem'], div.O4POs, input[placeholder*='Search'], button[aria-label*='profile']").count()
+                if contacts_count == 0:
+                    is_logged_out = True
+
+            if is_logged_out:
                 set_snapchat_auth_marker(profile_name, False)
                 await save_shot(page, "02_login_required")
-                return [], "Not logged in to Snapchat. Please authenticate first."
+                return [], "Not logged in to Snapchat. Please authenticate first via ComfyUI Settings or snapchat_login.py."
             else:
                 set_snapchat_auth_marker(profile_name, True)
 
