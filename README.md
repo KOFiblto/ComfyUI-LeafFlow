@@ -299,24 +299,21 @@ Searches input text for multiple search targets specified in a comma-separated l
 </details>
 
 <details>
-<summary><b>🍃 📸 Snapchat Camera Snap</b> (<code>SnapchatCameraSnapNode</code>)</summary>
+<summary><b>🍃 ✂️ Text Split</b> (<code>LeafFlowTextSplit</code>)</summary>
 
 #### Overview
-Directly streams generated ComfyUI images into a virtual 1080x1920 canvas camera feed inside Snapchat Web and captures + dispatches an authentic live red Camera Snap to a recipient username.
+Splits an input text into two separate output strings (`text1` and `text2`) using either a literal character sequence or a Regular Expression pattern, with support for forward (from start) and backward (from end) splitting.
 
 #### Inputs & Widgets
-- **`image`** (`IMAGE`): ComfyUI image tensor to stream and capture.
-- **`send_to`** (`STRING`): Target Snapchat username (e.g. `john_doe`).
-- **`caption`** (`STRING`, *Optional*): Optional text overlay on the snap.
-- **`username`** (`STRING`, *Optional*): Snapchat account login identifier.
-- **`password`** (`STRING`, *Optional*): Snapchat account password.
-- **`headless`** (`BOOLEAN`, *Default: true*): Set to false on initial run if 2FA verification is required.
-- **`profile_name`** (`STRING`, *Default: 'default'*): Persistent browser profile folder under `user/snapchat_profiles/`.
-- **`timeout`** (`INT`, *Default: 60*): Max seconds for page load / login approval.
+- **`text`** (`STRING`, *Multiline*): Input text to split.
+- **`split_by`** (`STRING`): Character sequence (e.g. `--`) or Regex pattern to split on.
+- **`use_regex`** (`BOOLEAN`, *Default: false*): Interpret `split_by` as a regular expression.
+- **`split_direction`** (`COMBO`, *Advanced*, *Default: forward*): Choose between `forward (first occurrence from start)` or `backward (last occurrence from end)`.
+- **`strip_whitespace`** (`BOOLEAN`, *Advanced*, *Default: false*): Automatically trims leading and trailing whitespace from `text1` and `text2`.
 
 #### Outputs
-- **`image`** (`IMAGE`): Passthrough image tensor.
-- **`status`** (`STRING`): Result or error status message.
+- **`text1`** (`STRING`): The text portion before the split delimiter.
+- **`text2`** (`STRING`): The text portion after the split delimiter.
 </details>
 
 ---

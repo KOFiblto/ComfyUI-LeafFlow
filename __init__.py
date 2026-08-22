@@ -9,8 +9,7 @@ def ensure_dependencies():
         "pystray": "pystray",
         "piexif": "piexif",
         "PIL": "Pillow",
-        "numpy": "numpy",
-        "playwright": "playwright"
+        "numpy": "numpy"
     }
     for mod_name, pip_name in dep_map.items():
         try:
@@ -43,8 +42,6 @@ from .nodes.lora_finder import TextLoraFinder, LoraTextFinder
 from .nodes.prompt_iterator import PromptQueueIterator
 from .nodes.text_replacer import MultiTextReplacer
 from .nodes.text_split import LeafFlowTextSplit
-from .nodes.snapchat_sender import SnapchatCameraSnapNode
-from .nodes.snapchat_reader import LeafFlowSnapchatReadMessage
 
 
 NODE_CLASS_MAPPINGS = {
@@ -66,8 +63,6 @@ NODE_CLASS_MAPPINGS = {
     "PromptQueueIterator": PromptQueueIterator,
     "MultiTextReplacer": MultiTextReplacer,
     "LeafFlowTextSplit": LeafFlowTextSplit,
-    "SnapchatCameraSnapNode": SnapchatCameraSnapNode,
-    "LeafFlowSnapchatReadMessage": LeafFlowSnapchatReadMessage,
 
     # Backward Compatibility Aliases
     "FlowControlDecision": LeafFlowDecision,
@@ -101,9 +96,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LoraTextFinder": "🍃 🔎 Text LoRA Finder & Loader",
     "PromptQueueIterator": "🍃 🔄 Prompt Queue Iterator",
     "MultiTextReplacer": "🍃 🔤 Multi Text Replacer",
-    "LeafFlowTextSplit": "🍃 ✂️ Text Split",
-    "SnapchatCameraSnapNode": "🍃 📸 Snapchat Camera Snap",
-    "LeafFlowSnapchatReadMessage": "🍃 💬 Snapchat Read Messages"
+    "LeafFlowTextSplit": "🍃 ✂️ Text Split"
 }
 
 WEB_DIRECTORY = "./web"

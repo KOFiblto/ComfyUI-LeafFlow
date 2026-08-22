@@ -23,7 +23,7 @@ class LeafFlowTextSplit:
     RETURN_TYPES = ("STRING", "STRING")
     RETURN_NAMES = ("text1", "text2")
     FUNCTION = "split_text"
-    CATEGORY = "🍃 LeafFlow/Text"
+    CATEGORY = "🍃 LeafFlow/Utils"
     DESCRIPTION = "Splits input text into two parts (text1 and text2) by a character sequence or regex pattern, with forward/backward splitting."
 
     def split_text(
