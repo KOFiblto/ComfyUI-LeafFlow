@@ -1,5 +1,269 @@
-# AI Agent Guidelines
+# 🤖 Agent & Developer Standard Operating Procedure (SOP)
+## `ComfyUI-LeafFlow` Contributor & Automation Guide
 
-All AI agents contributing to this repository must follow the instructions in:
-- [`AGENT.md`](./AGENT.md) — Standard Operating Procedure & Architecture
-- [`CONTRIBUTING.md`](./CONTRIBUTING.md) — Git Workflow & Contribution Rules
+This guide defines the engineering checklist and architecture standards for all AI agents (Antigravity, Claude, Gemini, Cursor, Copilot) and human developers contributing to **`ComfyUI-LeafFlow`**.
+
+For Git workflow, branch protection, and Pull Request guidelines, see **[`CONTRIBUTING.md`](./CONTRIBUTING.md)**.
+
+---
+
+## 📚 Repository Markdown Index
+
+| File | Purpose & Contents | Link |
+| :--- | :--- | :--- |
+| **`AGENTS.md`** | Authoritative developer & agent standard operating procedure, engineering checklists, architecture rules. | [AGENTS.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/AGENTS.md) |
+| **`CONTRIBUTING.md`** | Community contribution guidelines, strict branch rules, PR submission workflow. | [CONTRIBUTING.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/CONTRIBUTING.md) |
+| **`README.md`** | Main project homepage, installation guide, complete node catalog with parameter tables and UI settings guide. | [README.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/README.md) |
+| **`WALKTHROUGH.md`** | Step-by-step user tutorials, example workflows, visual load guides, and batch prompting patterns. | [WALKTHROUGH.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/WALKTHROUGH.md) |
+| **`CHANGELOG.md`** | Strict Keep-A-Changelog semantic version release history across all updates. | [CHANGELOG.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/CHANGELOG.md) |
+| **`SECURITY.md`** | Security policies, supported versions, and private vulnerability disclosure instructions. | [SECURITY.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/SECURITY.md) |
+| **`CLAUDE.md`** | AI agent instruction pointer. | [CLAUDE.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/CLAUDE.md) |
+| **`GEMINI.md`** | AI agent instruction pointer. | [GEMINI.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/GEMINI.md) |
+| **`AGENTS.md`** | AI agent instruction pointer. | [AGENTS.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/AGENTS.md) |
+| **`bug_report.md`** | GitHub issue template for reporting reproducible defects. | [bug_report.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/.github/ISSUE_TEMPLATE/bug_report.md) |
+| **`feature_request.md`** | GitHub issue template for proposing new nodes or UI features. | [feature_request.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/.github/ISSUE_TEMPLATE/feature_request.md) |
+
+---
+
+## 📑 Table of Contents
+1. [Architecture & Directory Layout](#1-architecture--directory-layout)
+2. [Checklist: Adding a New Node](#2-checklist-adding-a-new-node)
+3. [Checklist: Adding a New Setting / Feature Flag](#3-checklist-adding-a-new-setting--feature-flag)
+4. [Checklist: Updating Dependencies](#4-checklist-updating-dependencies)
+5. [Cross-Platform & Safe Coding Standards](#5-cross-platform--safe-coding-standards)
+6. [User Data & Storage Architecture (`ComfyUI/user/default/LeafFlow/`)](#7-user-data--storage-architecture-comfyuiuserdefaultleafflow)
+7. [Git, Branching & Commit Conventions](#6-git-branching--commit-conventions)
+
+---
+
+## 1. Architecture & Directory Layout
+
+```
+ComfyUI-LeafFlow/
+├── __init__.py                # Node registration (NODE_CLASS_MAPPINGS), web endpoints (/leafflow/settings)
+├── install.py                 # Dependency installer script for ComfyUI Manager
+├── pyproject.toml             # Package metadata and pip dependencies
+├── .env.example               # Template of all supported environment variables
+├── .gitignore                 # Exclusion rules for caches, states, and credentials
+├── nodes/                     # Python backend node implementations
+│   ├── aspect_ratio.py        # Text & preview aspect ratio calculation nodes
+│   ├── auto_watcher.py        # Automated folder watch image loaders
+│   ├── decision_node.py       # Inline pause/gate decision node & notifications
+│   ├── favorite_prompts.py    # Visual favorites loader & save preview nodes
+│   ├── image_loader.py        # Visual image browser & EXIF/PNG metadata parser
+│   ├── load_recent.py         # Recent outputs loader node
+│   ├── lora_finder.py         # Text-based prompt LoRA scanner & patcher
+│   ├── lora_loader.py         # Folder & visual LoRA loaders + Civitai/TMDB scrapers
+│   ├── preview_latent.py      # Live latent WebSocket preview node
+│   ├── prompt_iterator.py     # Multiline prompt queue batch popper
+│   ├── queue_control.py       # Pause Queue, Persistent Queue hooks, and server routes
+│   ├── text_replacer.py       # Multiline regex & list text replacer node
+│   ├── tray_icon.py           # OS system tray icon manager & status indicator
+│   ├── undo_placeholder.py    # Placeholder restoration utility node
+│   └── utils.py               # Shared path sanitization, string parsing, and formatting helpers
+├── web/                       # Frontend extensions & static assets
+│   ├── leafflow_colors.js # Node theme colors (LiteGraph canvas & Vue V2)
+│   ├── leafflow_settings.js# Native ComfyUI Settings panel registrations
+│   ├── pause_queue.js         # Top toolbar Pause/Continue button group & dropdown
+│   ├── pause_queue.css        # Toolbar styling
+│   ├── persistent_queue.js    # Queue crash-recovery client ownership claimer
+│   ├── preview_node.js        # Live latent canvas preview widget
+│   └── js/                    # Node-specific UI widgets (visual pickers, buttons, aspect preview)
+│       ├── decision_node.js
+│       ├── favorite_prompts.js
+│       ├── folder_lora_loader.js
+│       ├── image_loader.js
+│       ├── preview_aspect_ratio.js
+│       ├── preview_manager.js
+│       └── prompt_iterator.js
+├── README.md                  # Main documentation & complete node reference
+├── WALKTHROUGH.md             # End-user guide for workflows and features
+└── CHANGELOG.md               # Version release history
+```
+
+---
+
+## 2. Checklist: Adding a New Node
+
+When implementing a new custom node, you **must complete all 5 steps**:
+
+### Step 2.1: Python Backend (`nodes/<module>.py`)
+- [ ] Define standard class attributes:
+  - `INPUT_TYPES(cls)`: Return dict with `required`, `optional`, and `hidden` widgets. Always specify defaults, min/max/step for numbers.
+  - `RETURN_TYPES`: Tuple of output types (e.g. `("IMAGE", "STRING")`).
+  - `RETURN_NAMES`: Tuple of human-readable output labels.
+  - `FUNCTION`: Exact method name to execute.
+  - `CATEGORY`: Categorized under `"🍃 LeafFlow/Loaders"`, `"🍃 LeafFlow/Utils"`, `"🍃 LeafFlow/Automation"`, or `"🍃 LeafFlow/Previews"`.
+  - `DESCRIPTION`: Clear multi-line string explaining node functionality and parameters.
+- [ ] Use `sanitize_folder_path(folder_input, default_dir)` from `nodes.utils` for any path/directory arguments (handles Windows/Linux slashes, wildcards `*`, and relative paths cleanly).
+- [ ] Ensure dummy tensors are valid 4D float32 batches `torch.zeros((1, 64, 64, 3), dtype=torch.float32)` for empty image states.
+- [ ] Use `comfy.model_management.throw_exception_if_processing_interrupted()` inside long loops.
+
+### Step 2.2: Export & Map in `__init__.py`
+- [ ] Import the node class into [`__init__.py`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/__init__.py).
+- [ ] Register in `NODE_CLASS_MAPPINGS`:
+  ```python
+  NODE_CLASS_MAPPINGS = {
+      "YourNewNodeName": YourNewNodeClass,
+      # ...
+  }
+  ```
+- [ ] Register in `NODE_DISPLAY_NAME_MAPPINGS` with leaf prefix and emoji:
+  ```python
+  NODE_DISPLAY_NAME_MAPPINGS = {
+      "YourNewNodeName": "🍃 🏷️ Your Display Name",
+      # ...
+  }
+  ```
+- [ ] If renaming or replacing an existing node, **always preserve the old name in `NODE_CLASS_MAPPINGS` as an alias** to avoid breaking user workflows!
+
+### Step 2.3: Frontend Extensions & Colors (`web/`)
+- [ ] If the node needs custom canvas/DOM widgets, implement the extension under `web/js/<feature>.js`.
+- [ ] In `nodeCreated(node)` or `beforeRegisterNodeDef(nodeType, nodeData)`, **always check both `node.comfyClass` and `node.type`**, and support aliases:
+  ```javascript
+  const isTargetNode = ["YourNodeName", "YourOldAlias"].includes(node.comfyClass) || 
+                       ["YourNodeName", "YourOldAlias"].includes(node.type);
+  ```
+- [ ] Register node theme colors in [`web/leafflow_colors.js`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/web/leafflow_colors.js):
+  - Loaders: Emerald Green (`color: "#059669"`, `bgcolor: "#047857"`)
+  - Automation & Utils: Amber (`color: "#d97706"`, `bgcolor: "#b45309"`)
+  - Previews & Decisions: Violet (`color: "#7c3aed"`, `bgcolor: "#6d28d9"`)
+
+### Step 2.4: Documentation (`README.md` & `WALKTHROUGH.md`)
+- [ ] Add a collapsible `<details>` section in [`README.md`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/README.md) under `## 📦 Individual Nodes Reference`:
+  - Node summary tag: `<summary><b>🍃 🏷️ Display Name</b> (<code>ClassName</code>)</summary>`
+  - `#### Overview`
+  - `#### Inputs & Widgets`
+  - `#### Outputs`
+- [ ] If the node introduces a new workflow pattern, add a section in [`WALKTHROUGH.md`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/WALKTHROUGH.md).
+
+### Step 2.5: Changelog
+- [ ] Add entry under `### Added` in [`CHANGELOG.md`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/CHANGELOG.md).
+
+---
+
+## 3. Checklist: Adding a New Setting / Feature Flag
+
+When introducing a configurable option or feature toggle:
+
+### Step 3.1: `.env.example`
+- [ ] Add the variable with default value and explanation in [`.env.example`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/.env.example):
+  ```ini
+  # Brief description of what this setting controls
+  YOUR_NEW_SETTING=true
+  ```
+
+### Step 3.2: Backend Settings Synchronization (`__init__.py`)
+- [ ] In `get_settings()` route: parse and return the setting.
+- [ ] In `save_settings()` route: read value from incoming JSON, persist to `.env` file via `new_lines`, update `os.environ`, and trigger any dynamic runtime manager updates.
+
+### Step 3.3: Frontend Settings Registration (`web/leafflow_settings.js`)
+- [ ] Register via `app.ui.settings.addSetting({...})`:
+  ```javascript
+  app.ui.settings.addSetting({
+      id: "LeafFlow.YourSettingName",
+      name: "🍃 LeafFlow: Your Setting Display Name",
+      type: "boolean" /* or "text", "combo" */,
+      defaultValue: false,
+      tooltip: "Descriptive tooltip explaining user impact.",
+      onChange(value) {
+          api.fetchApi("/leafflow/settings", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ your_setting_key: value })
+          }).catch(() => {});
+      }
+  });
+  ```
+
+### Step 3.4: Documentation
+- [ ] Update `## ⚙️ ComfyUI Settings Menu Reference` in [`README.md`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/README.md).
+- [ ] Update `## 4. Settings & Configuration` in [`WALKTHROUGH.md`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/WALKTHROUGH.md).
+
+---
+
+## 4. Checklist: Updating Dependencies
+
+If a feature requires a new Python package:
+- [ ] Add package to `dependencies` in [`pyproject.toml`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/pyproject.toml).
+- [ ] Add package to `dependencies` list in [`install.py`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/install.py).
+- [ ] Check imports gracefully handle missing optional libraries (e.g. `try... except ImportError`).
+
+---
+
+## 5. Cross-Platform & Safe Coding Standards
+
+1. **Terminal Console Safety (Windows `cp1252` encoding)**:
+   - **Never include raw unicode emojis in backend `print()` calls** (e.g. write `print("[LeafFlow] Started")` instead of `print("[LeafFlow] 🍃 ...")`).
+   - Windows consoles running on default codepages will raise fatal `UnicodeEncodeError: 'charmap' codec can't encode character` if raw emoji bytes hit standard output.
+2. **Path Sanitization**:
+   - Never assume `/` or `\` separators; always use `os.path.join()`, `os.path.normpath()`, or `sanitize_folder_path()`.
+3. **OS Platform Detection**:
+   - Use `sys.platform` (`'win32'`, `'darwin'`, `'linux'`) rather than POSIX-only calls like `os.uname()`.
+4. **Non-Blocking & Daemon Threads**:
+   - All background threads (scraping, tray icons, persistent queue sync) must set `daemon=True` so they do not block ComfyUI shutdown.
+5. **Bytecode Validation**:
+   - Before committing, always run:
+     ```bash
+     python -m compileall .
+     ```
+     Ensure 0 syntax errors across all modules.
+
+---
+
+## 7. User Data & Storage Architecture (`ComfyUI/user/default/LeafFlow/`)
+
+All user-specific runtime states, API credentials, usage counters, and temporary caches **MUST** be stored centrally in `ComfyUI/user/default/LeafFlow/` using the helper `get_leafflow_user_dir()` in `nodes/utils.py`:
+
+```python
+from .utils import get_leafflow_user_dir
+
+USER_DIR = get_leafflow_user_dir()
+STATE_FILE = os.path.join(USER_DIR, "your_state.json")
+```
+
+### Stored User Files:
+- `ComfyUI/user/default/LeafFlow/.env` — API keys and persistent settings
+- `ComfyUI/user/default/LeafFlow/lora_usage.json` — LoRA selection counts and usage badges
+- `ComfyUI/user/default/LeafFlow/image_prompts_cache.json` — Cached positive prompts extracted from images
+- `ComfyUI/user/default/LeafFlow/failed_scrapes.json` — Failed Civitai/TMDB scraping attempts cache
+- `ComfyUI/user/default/LeafFlow/prompt_iterator_state.json` — Current iteration pointers and popped prompt queues
+- `ComfyUI/user/default/LeafFlow/persistent_queue.json` — Real-time queue crash recovery state
+
+### Future Migration Hooks SOP:
+If legacy files need to be migrated in future multi-user releases or version upgrades:
+1. In `nodes/utils.py`, define a startup check `migrate_legacy_user_data()`.
+2. Inspect `custom_nodes/ComfyUI-LeafFlow/` for legacy files (`.env`, `lora_usage.json`, etc.).
+3. Atomically move them to `get_leafflow_user_dir()` using `shutil.move()` or copy + delete.
+4. Log a single clean notification `[LeafFlow] 🍃 Migrated legacy user data to ComfyUI/user/default/LeafFlow/`.
+
+---
+
+## 6. Git, Branching & Commit Conventions
+
+### 6.1 Strict Branch Naming Classification
+Never create misleading or overly narrow branch names when multiple components, fixes, and features are bundled together!
+- **Atomic Feature Branches** (`feature/<feature-name>`):
+  - Used **ONLY** when implementing a single, isolated new feature or node.
+  - Examples: `feature/prompt-iterator-privacy`, `feature/visual-loaders-pathing`
+- **Atomic Bug Fix Branches** (`fix/<bug-name>`):
+  - Used **ONLY** for targeted bug fixes.
+  - Examples: `fix/preview-latent-insets`, `fix/tray-icon-persistence`
+- **Comprehensive Integration & Release Branches** (`release/vX.Y.Z-<summary>` or `dev/<summary>`):
+  - **MANDATORY**: Whenever bundling multiple features, fixes, rebrands, or architectural updates into a combined testing or release candidate, use a `release/...` or `dev/...` branch name.
+  - **STRICTLY PROHIBITED**: Never disguise a multi-feature/fix release bundle under a single isolated `feature/<narrow-name>`.
+  - Examples: `release/v2.2.0-leafflow-update`, `dev/v2.2.0-full-integration`
+
+### 6.2 Excluded Files & Privacy
+Never commit sensitive keys, runtime states, or caches:
+- `.env`, `.env.local`
+- `persistent_queue.json`, `lora_usage.json`, `failed_scrapes.json`, `image_prompts_cache.json`
+- `user/` directory
+
+### 6.3 Commit Messages
+Use atomic, descriptive English commit headers:
+- `Feat: ...` (New features or nodes)
+- `Fix: ...` (Bug fixes, UI sync repairs)
+- `Docs: ...` (Documentation, README, Walkthrough updates)
+- `Refactor: ...` (Code restructuring or rebrands)
+- `Release: ...` (Consolidated version releases)
