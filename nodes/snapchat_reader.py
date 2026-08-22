@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import time
 import asyncio
 import threading
 import subprocess
@@ -10,6 +11,15 @@ SNAPCHAT_CATEGORY = "🍃 LeafFlow/Automation"
 CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROFILES_DIR = os.path.join(CURRENT_DIR, "user", "snapchat_profiles")
 DESKTOP_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+
+# ComfyUI interrupt handler
+try:
+    import comfy.model_management
+    def check_interrupted():
+        comfy.model_management.throw_exception_if_processing_interrupted()
+except Exception:
+    def check_interrupted():
+        pass
 
 # Import helper functions from snapchat_sender
 try:
@@ -33,9 +43,80 @@ except ImportError:
     is_snapchat_profile_authenticated = sender_mod.is_snapchat_profile_authenticated
 
 
+async def extract_chat_events_async(page, target_name: str):
+    """
+    Extracts all chronological messages and snaps from the active chat pane.
+    Returns: dict with 'events' (list of dicts) and 'last_sender' ('ME', target_name, or 'UNKNOWN').
+    """
+    return await page.evaluate("""(targetName) => {
+        const rightPane = Array.from(document.querySelectorAll('div'))
+            .filter(el => {
+                const rect = el.getBoundingClientRect();
+                return rect.x > 340 && rect.width > 300 && rect.height > 400;
+            });
+
+        if (rightPane.length === 0) return { events: [], last_sender: 'UNKNOWN' };
+
+        const mainText = rightPane[0].innerText || '';
+        const rawLines = mainText.split('\\n').map(l => l.trim()).filter(l => l.length > 0);
+
+        const events = [];
+        let currentSender = 'UNKNOWN';
+
+        const timeRegex = /^\\d{1,2}:\\d{2}$/;
+        const dateRegex = /^\\d{1,2}\\s+[A-Z]+$/i;
+        const snapMarkers = ['Delivered', 'Opened', 'Received', 'Pending', 'Tap to view', 'New Snap'];
+
+        for (let i = 0; i < rawLines.length; i++) {
+            const line = rawLines[i];
+
+            if (dateRegex.test(line)) continue;
+            if (line.includes('SNAPSTREAK') || line.includes('DELETED A CHAT') || line.includes('JOINED SNAPCHAT') || line.includes('YOU ARE USING SNAPCHAT') || line === 'Drag and drop to upload' || line === 'Send chat' || line === 'Send a chat' || line === 'Call') continue;
+
+            if (line.toUpperCase() === 'ME') {
+                currentSender = 'ME';
+                continue;
+            }
+
+            if (line.toUpperCase() === targetName.toUpperCase() || line.toLowerCase() === targetName.toLowerCase()) {
+                currentSender = targetName;
+                continue;
+            }
+
+            if (line.length > 0 && line.length <= 25 && line === line.toUpperCase() && !timeRegex.test(line) && !snapMarkers.includes(line)) {
+                currentSender = line;
+                continue;
+            }
+
+            if (timeRegex.test(line)) continue;
+
+            if (snapMarkers.includes(line)) {
+                events.push({
+                    sender: currentSender,
+                    type: 'snap',
+                    text: `[Snap: ${line}]`
+                });
+                continue;
+            }
+
+            events.push({
+                sender: currentSender,
+                type: 'text',
+                text: line
+            });
+        }
+
+        const last_sender = events.length > 0 ? events[events.length - 1].sender : 'UNKNOWN';
+        return { events, last_sender };
+    }""", target_name)
+
+
 async def read_snapchat_messages_async(
     send_to: str,
-    message_count: int = 5,
+    message_count: int = 1,
+    wait_for_new_message: bool = True,
+    poll_interval: int = 3,
+    max_wait_seconds: int = 0,
     filter_sender: str = "recipient_only",
     headless: bool = True,
     profile_name: str = "default",
@@ -43,8 +124,8 @@ async def read_snapchat_messages_async(
     debug_screenshots: bool = False
 ):
     """
-    Reads the latest text messages from the specified Snapchat recipient's chat.
-    Returns: (list_of_message_dicts, status_message)
+    Reads text messages from recipient chat, optionally waiting if the latest activity in chat is from ME.
+    Returns: (list_of_selected_messages, status_message)
     """
     from playwright.async_api import async_playwright
 
@@ -69,7 +150,7 @@ async def read_snapchat_messages_async(
             except Exception:
                 pass
 
-    log(f"Reading messages from '{send_to}' (count={message_count}, filter={filter_sender})...")
+    log(f"Starting read for '{send_to}' (wait={wait_for_new_message}, count={message_count})...")
 
     async with async_playwright() as p:
         browser_context = await p.chromium.launch_persistent_context(
@@ -123,102 +204,51 @@ async def read_snapchat_messages_async(
             await page.wait_for_timeout(2000)
             await save_shot(page, "02_chat_open")
 
-            # Extract chat messages from the conversation view
-            extracted_items = await page.evaluate("""(targetName) => {
-                // Find chat container in right pane
-                const rightPane = Array.from(document.querySelectorAll('div'))
-                    .filter(el => {
-                        const rect = el.getBoundingClientRect();
-                        return rect.x > 340 && rect.width > 300 && rect.height > 400;
-                    });
+            start_wait_time = time.time()
+            first_poll = True
 
-                if (rightPane.length === 0) return [];
+            while True:
+                check_interrupted()
 
-                // Traverse and parse chat lines
-                const mainText = rightPane[0].innerText || '';
-                const rawLines = mainText.split('\\n').map(l => l.trim()).filter(l => l.length > 0);
+                # Extract chat events
+                chat_data = await extract_chat_events_async(page, send_to)
+                events = chat_data.get("events", [])
+                last_sender = chat_data.get("last_sender", "UNKNOWN")
 
-                const messages = [];
-                let currentSender = 'RECIPIENT';
+                # Filter text messages according to filter_sender setting
+                filtered_text_messages = []
+                for ev in events:
+                    if ev.get("type") != "text":
+                        continue
+                    sender = ev.get("sender", "")
+                    if filter_sender == "recipient_only" and sender == "ME":
+                        continue
+                    elif filter_sender == "me_only" and sender != "ME":
+                        continue
+                    filtered_text_messages.append(ev)
 
-                const ignoredExact = [
-                    'YOU ARE USING SNAPCHAT',
-                    'Drag and drop to upload',
-                    'Send chat',
-                    'Send a chat',
-                    'Call',
-                    'Delivered',
-                    'Opened',
-                    'Received',
-                    'Pending',
-                    'Tap to view',
-                    'New Snap'
-                ];
+                # Check if we should wait for a new message
+                if wait_for_new_message:
+                    # If the last item in the chat was from ME, we wait for recipient to reply
+                    if last_sender == "ME" or not filtered_text_messages:
+                        if first_poll:
+                            log(f"Latest activity in chat is from 'ME'. Waiting for '{send_to}' to send a message... (polling every {poll_interval}s)")
+                            first_poll = False
+                        
+                        if max_wait_seconds > 0 and (time.time() - start_wait_time) >= max_wait_seconds:
+                            log(f"Max wait time of {max_wait_seconds}s reached. Proceeding with latest available messages.")
+                            break
 
-                const timeRegex = /^\\d{1,2}:\\d{2}$/;
-                const dateRegex = /^\\d{1,2}\\s+[A-Z]+$/i;
+                        await page.wait_for_timeout(poll_interval * 1000)
+                        continue
 
-                for (let i = 0; i < rawLines.length; i++) {
-                    const line = rawLines[i];
-
-                    // Date headers
-                    if (dateRegex.test(line)) continue;
-
-                    // System notices
-                    if (line.includes('SNAPSTREAK') || line.includes('DELETED A CHAT') || line.includes('JOINED SNAPCHAT')) continue;
-
-                    // Sender headers
-                    if (line.toUpperCase() === 'ME') {
-                        currentSender = 'ME';
-                        continue;
-                    }
-                    
-                    if (line.toUpperCase() === targetName.toUpperCase() || line.toLowerCase() === targetName.toLowerCase()) {
-                        currentSender = targetName;
-                        continue;
-                    }
-
-                    // Check all uppercase sender header
-                    if (line.length > 0 && line.length <= 25 && line === line.toUpperCase() && !timeRegex.test(line) && !ignoredExact.includes(line)) {
-                        currentSender = line;
-                        continue;
-                    }
-
-                    // Ignore timestamps
-                    if (timeRegex.test(line)) continue;
-
-                    // Ignore exact status badges
-                    if (ignoredExact.includes(line)) continue;
-
-                    // Valid text message
-                    messages.push({
-                        sender: currentSender,
-                        text: line
-                    });
-                }
-
-                return messages;
-            }""", send_to)
+                # Finished waiting or new message arrived from recipient
+                break
 
             await save_shot(page, "03_extracted")
 
-            # Filter messages by sender
-            filtered = []
-            for item in extracted_items:
-                sender = item.get("sender", "")
-                text = item.get("text", "")
-                if filter_sender == "recipient_only":
-                    if sender == "ME":
-                        continue
-                elif filter_sender == "me_only":
-                    if sender != "ME":
-                        continue
-                filtered.append(item)
-
-            # Take the latest N messages
-            selected = filtered[-message_count:] if message_count > 0 else filtered
-
-            log(f"Successfully read {len(selected)} messages from '{send_to}'.")
+            selected = filtered_text_messages[-message_count:] if message_count > 0 else filtered_text_messages
+            log(f"Successfully retrieved {len(selected)} messages (last sender: '{last_sender}').")
             return selected, "Success"
 
         except Exception as e:
@@ -233,19 +263,23 @@ class LeafFlowSnapchatReadMessage:
     """
     LeafFlow Automation Node:
     Reads the latest text messages from a Snapchat contact (e.g. ko_mathias or Mathias).
-    Outputs both a combined multiline string and the single latest message.
+    Supports 'wait_for_new_message' toggle to automatically pause and poll until the recipient
+    replies to your last message/snap.
     """
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
                 "send_to": ("STRING", {"default": "Mathias", "multiline": False, "placeholder": "Recipient visual name or username (e.g. Mathias or ko_mathias)"}),
-                "message_count": ("INT", {"default": 1, "min": 1, "max": 50, "step": 1, "tooltip": "Number of latest messages to read from the chat."}),
+                "wait_for_new_message": ("BOOLEAN", {"default": True, "tooltip": "When enabled (default), pauses and waits if the last message/snap in chat was sent by ME, until the recipient replies."}),
+                "message_count": ("INT", {"default": 1, "min": 1, "max": 50, "step": 1, "tooltip": "Number of latest text messages to retrieve."}),
             },
             "optional": {
-                "filter_sender": (["recipient_only", "all", "me_only"], {"default": "recipient_only", "tooltip": "Filter to only read incoming messages from the recipient, only outgoing from ME, or all."}),
+                "filter_sender": (["recipient_only", "all", "me_only"], {"default": "recipient_only", "tooltip": "Filter to only read incoming messages from recipient, only outgoing from ME, or all."}),
+                "poll_interval": ("INT", {"default": 3, "min": 1, "max": 60, "step": 1, "advanced": True, "tooltip": "Polling interval in seconds while waiting for recipient reply."}),
+                "max_wait_seconds": ("INT", {"default": 0, "min": 0, "max": 3600, "step": 10, "advanced": True, "tooltip": "Max seconds to wait before continuing anyway (0 = wait indefinitely)."}),
                 "join_delimiter": ("STRING", {"default": "\\n", "multiline": False, "advanced": True, "tooltip": "Delimiter used to join multiple messages together."}),
-                "include_sender_prefix": ("BOOLEAN", {"default": False, "advanced": True, "tooltip": "Prefix each message with the sender name (e.g. 'Mathias: ...')."}),
+                "include_sender_prefix": ("BOOLEAN", {"default": False, "advanced": True, "tooltip": "Prefix each message with sender name (e.g. 'Mathias: ...')."}),
                 "headless": ("BOOLEAN", {"default": True, "advanced": True, "tooltip": "Run browser in background without showing a window."}),
                 "profile_name": ("STRING", {"default": "default", "multiline": False, "advanced": True, "tooltip": "Folder name under user/snapchat_profiles/ for persistent session tokens."}),
                 "timeout": ("INT", {"default": 60, "min": 10, "max": 300, "step": 5, "advanced": True, "tooltip": "Max wait time in seconds for page navigation."}),
@@ -267,8 +301,11 @@ class LeafFlowSnapchatReadMessage:
     def read_messages(
         self,
         send_to,
+        wait_for_new_message=True,
         message_count=1,
         filter_sender="recipient_only",
+        poll_interval=3,
+        max_wait_seconds=0,
         join_delimiter="\n",
         include_sender_prefix=False,
         headless=True,
@@ -277,7 +314,7 @@ class LeafFlowSnapchatReadMessage:
         debug_screenshots=False,
         **kwargs
     ):
-        print(f"[LeafFlow Snapchat Read] Fetching latest {message_count} messages for '{send_to}'...")
+        print(f"[LeafFlow Snapchat Read] Fetching messages for '{send_to}' (wait_for_new_message={wait_for_new_message})...")
         if not send_to or not send_to.strip():
             return ("", "", 0)
 
@@ -298,6 +335,9 @@ class LeafFlowSnapchatReadMessage:
                 read_snapchat_messages_async(
                     send_to=clean_send_to,
                     message_count=message_count,
+                    wait_for_new_message=wait_for_new_message,
+                    poll_interval=poll_interval,
+                    max_wait_seconds=max_wait_seconds,
                     filter_sender=filter_sender,
                     headless=headless,
                     profile_name=clean_profile,
