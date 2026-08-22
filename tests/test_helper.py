@@ -29,6 +29,23 @@ if "aiohttp" not in sys.modules:
         sys.modules["aiohttp"] = aiohttp_mock
         sys.modules["aiohttp.web"] = web_mock
 
+if "piexif" not in sys.modules:
+    try:
+        import piexif
+    except ImportError:
+        piexif_mock = types.ModuleType("piexif")
+        piexif_mock.load = MagicMock(return_value={})
+        piexif_mock.dump = MagicMock(return_value=b"")
+        piexif_mock.insert = MagicMock()
+        sys.modules["piexif"] = piexif_mock
+
+if "pystray" not in sys.modules:
+    try:
+        import pystray
+    except ImportError:
+        pystray_mock = types.ModuleType("pystray")
+        sys.modules["pystray"] = pystray_mock
+
 if "comfy" not in sys.modules:
     comfy_mock = types.ModuleType("comfy")
     mm_mock = types.ModuleType("comfy.model_management")
