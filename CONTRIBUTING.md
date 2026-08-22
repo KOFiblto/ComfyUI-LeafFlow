@@ -21,10 +21,14 @@ Before opening a new issue:
 
 ## 🛠️ Contribution Workflow (Feature Branches & PRs)
 
-All development follows a **Feature Branch $\rightarrow$ Pull Request** workflow. Direct pushes to `main` are restricted by branch protection rulesets.
+> [!CAUTION]
+> ### ⛔ NEVER PUSH DIRECTLY TO `main`!
+> Direct pushes to `main` are strictly prohibited. All developers and automated AI agents must work exclusively on feature or fix branches (`feature/...`, `fix/...`, `docs/...`) and open a Pull Request.
+
+All development follows a **Feature Branch $\rightarrow$ Pull Request** workflow:
 
 ```
-1. Fork Repository  -->  2. Create Feature Branch  -->  3. Commit Changes  -->  4. Open Pull Request
+1. Fork/Branch Repository  -->  2. Create Feature Branch  -->  3. Commit Changes  -->  4. Open Pull Request
 ```
 
 ### Step 1: Fork and Clone

@@ -1,7 +1,31 @@
 # 🤖 Agent & Developer Standard Operating Procedure (SOP)
 ## `ComfyUI-LeafFlow` Contributor & Automation Guide
 
-This guide defines the mandatory engineering checklist for all AI agents and human developers contributing to **`ComfyUI-LeafFlow`**. Whenever you add a node, introduce a setting, modify dependencies, or create a commit, you **MUST** follow the synchronization steps below.
+> [!CAUTION]
+> ### ⛔ MANDATORY FOR ALL AI AGENTS & DEVELOPERS: NEVER PUSH DIRECTLY TO `main`!
+> Direct pushes to `main` are strictly forbidden under all circumstances, even if git credentials or admin tokens allow rule bypasses.
+> All work (features, bug fixes, refactorings, tests, docs) **MUST** be implemented on a dedicated branch (`feature/...`, `fix/...`, `docs/...`, `release/...`) and integrated only via Pull Request or explicit user directive.
+
+This guide defines the mandatory engineering checklist for all AI agents (Antigravity, Claude, Gemini, Cursor, Copilot) and human developers contributing to **`ComfyUI-LeafFlow`**. Whenever you add a node, introduce a setting, modify dependencies, or create a commit, you **MUST** follow the synchronization steps below.
+
+---
+
+## 📚 Repository Markdown Index & Cross-References
+
+All agents and contributors must consult and maintain the following documentation files:
+
+| File | Purpose & Contents | Link |
+| :--- | :--- | :--- |
+| **`AGENT.md`** | Authoritative developer & agent standard operating procedure, engineering rules, branching SOP. | [AGENT.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/AGENT.md) |
+| **`README.md`** | Main project homepage, installation guide, complete node catalog with parameter tables and UI settings guide. | [README.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/README.md) |
+| **`WALKTHROUGH.md`** | Step-by-step user tutorials, example workflows, visual load guides, and batch prompting patterns. | [WALKTHROUGH.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/WALKTHROUGH.md) |
+| **`CONTRIBUTING.md`** | Community contribution guidelines, bug reporting templates, and PR submission workflow. | [CONTRIBUTING.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/CONTRIBUTING.md) |
+| **`CHANGELOG.md`** | Strict Keep-A-Changelog semantic version release history across all updates. | [CHANGELOG.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/CHANGELOG.md) |
+| **`SECURITY.md`** | Security policies, supported versions, and private vulnerability disclosure instructions. | [SECURITY.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/SECURITY.md) |
+| **`CLAUDE.md`** | AI agent instruction redirect and mandatory compliance pointer. | [CLAUDE.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/CLAUDE.md) |
+| **`GEMINI.md`** | AI agent instruction redirect and mandatory compliance pointer. | [GEMINI.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/GEMINI.md) |
+| **`bug_report.md`** | GitHub issue template for reporting reproducible defects. | [bug_report.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/.github/ISSUE_TEMPLATE/bug_report.md) |
+| **`feature_request.md`** | GitHub issue template for proposing new nodes or UI features. | [feature_request.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/.github/ISSUE_TEMPLATE/feature_request.md) |
 
 ---
 
@@ -11,7 +35,8 @@ This guide defines the mandatory engineering checklist for all AI agents and hum
 3. [Checklist: Adding a New Setting / Feature Flag](#3-checklist-adding-a-new-setting--feature-flag)
 4. [Checklist: Updating Dependencies](#4-checklist-updating-dependencies)
 5. [Cross-Platform & Safe Coding Standards](#5-cross-platform--safe-coding-standards)
-6. [Git, Branching & Commit Conventions](#6-git-branching--commit-conventions)
+6. [User Data & Storage Architecture (`ComfyUI/user/default/LeafFlow/`)](#7-user-data--storage-architecture-comfyuiuserdefaultleafflow)
+7. [Git, Branching & Commit Conventions](#6-git-branching--commit-conventions)
 
 ---
 
