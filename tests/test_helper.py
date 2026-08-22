@@ -17,6 +17,18 @@ if "nodes" in sys.modules:
         del sys.modules["nodes"]
 
 # Provide lightweight mock stubs for ComfyUI environment if running in standalone CI / test runner
+if "aiohttp" not in sys.modules:
+    try:
+        import aiohttp
+    except ImportError:
+        aiohttp_mock = types.ModuleType("aiohttp")
+        web_mock = types.ModuleType("aiohttp.web")
+        web_mock.json_response = MagicMock(return_value={})
+        web_mock.Response = MagicMock()
+        aiohttp_mock.web = web_mock
+        sys.modules["aiohttp"] = aiohttp_mock
+        sys.modules["aiohttp.web"] = web_mock
+
 if "comfy" not in sys.modules:
     comfy_mock = types.ModuleType("comfy")
     mm_mock = types.ModuleType("comfy.model_management")
