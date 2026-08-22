@@ -17,7 +17,8 @@ from .utils import (
     parse_pretty_name,
     parse_pretty_name_with_version,
     format_lora_output_name,
-    sanitize_folder_path
+    sanitize_folder_path,
+    get_leafflow_user_dir
 )
 
 LORA_CATEGORY = "🍃 LeafFlow/Loaders"
@@ -31,13 +32,12 @@ LORA_OUTPUT_FORMAT_CHOICES = [
 ]
 
 CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ENV_FILE = os.path.join(CURRENT_DIR, ".env")
-LORA_STATE_FILE = os.path.join(CURRENT_DIR, "user", "lora_loader_state.json")
+USER_DIR = get_leafflow_user_dir()
+ENV_FILE = os.path.join(USER_DIR, ".env")
+LORA_STATE_FILE = os.path.join(USER_DIR, "lora_loader_state.json")
 
 def ensure_user_dir():
-    user_dir = os.path.dirname(LORA_STATE_FILE)
-    if not os.path.exists(user_dir):
-        os.makedirs(user_dir, exist_ok=True)
+    os.makedirs(USER_DIR, exist_ok=True)
 
 def load_lora_cycle_state():
     ensure_user_dir()
@@ -83,7 +83,7 @@ scraping_thread = None
 scraping_lock = threading.Lock()
 
 def load_usage_data():
-    usage_file = os.path.join(CURRENT_DIR, "lora_usage.json")
+    usage_file = os.path.join(USER_DIR, "lora_usage.json")
     usage_data = {}
     if os.path.exists(usage_file):
         try:
@@ -105,7 +105,7 @@ def increment_lora_usage(lora_path):
     if get_env_setting("ENABLE_LORA_USAGE", "true").lower() != "true":
         return
     try:
-        usage_file = os.path.join(CURRENT_DIR, "lora_usage.json")
+        usage_file = os.path.join(USER_DIR, "lora_usage.json")
         usage_data = load_usage_data()
         pretty_key = parse_pretty_name(lora_path)
         usage_data[pretty_key] = usage_data.get(pretty_key, 0) + 1
@@ -152,7 +152,7 @@ def scrape_missing_images_sync():
             return
 
         civitai_key, tmdb_key = get_api_keys()
-        failed_scrapes_file = os.path.join(CURRENT_DIR, "failed_scrapes.json")
+        failed_scrapes_file = os.path.join(USER_DIR, "failed_scrapes.json")
         failed_scrapes = {}
         if os.path.exists(failed_scrapes_file):
             try:

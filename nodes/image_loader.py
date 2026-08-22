@@ -9,11 +9,12 @@ import piexif.helper
 from aiohttp import web
 from server import PromptServer
 import folder_paths
-from .utils import sanitize_folder_path
+from .utils import sanitize_folder_path, get_leafflow_user_dir
 
 IMAGE_CATEGORY = "🍃 LeafFlow/Loaders"
 CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CACHE_FILE = os.path.join(CURRENT_DIR, "image_prompts_cache.json")
+USER_DIR = get_leafflow_user_dir()
+CACHE_FILE = os.path.join(USER_DIR, "image_prompts_cache.json")
 
 def parse_positive_from_parameters(parameters):
     if not parameters:

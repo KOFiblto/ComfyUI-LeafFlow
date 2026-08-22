@@ -102,11 +102,14 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 WEB_DIRECTORY = "./web"
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]
 
+from .nodes.utils import get_leafflow_user_dir
+
 server = PromptServer.instance
 setup_queue_control_routes(server)
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-ENV_FILE = os.path.join(CURRENT_DIR, ".env")
+USER_DIR = get_leafflow_user_dir()
+ENV_FILE = os.path.join(USER_DIR, ".env")
 
 routes = server.routes
 
@@ -280,7 +283,7 @@ async def save_settings(request):
         if clear_prompt_iterator_on_launch is not None:
             os.environ["CLEAR_PROMPT_ITERATOR_ON_LAUNCH"] = str(clear_prompt_iterator_on_launch)
 
-        failed_file = os.path.join(CURRENT_DIR, "failed_scrapes.json")
+        failed_file = os.path.join(USER_DIR, "failed_scrapes.json")
         try:
             with open(failed_file, "w", encoding="utf-8") as f:
                 f.write("{}")

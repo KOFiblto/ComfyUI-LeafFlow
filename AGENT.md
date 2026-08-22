@@ -190,6 +190,34 @@ If a feature requires a new Python package:
 
 ---
 
+## 7. User Data & Storage Architecture (`ComfyUI/user/default/LeafFlow/`)
+
+All user-specific runtime states, API credentials, usage counters, and temporary caches **MUST** be stored centrally in `ComfyUI/user/default/LeafFlow/` using the helper `get_leafflow_user_dir()` in `nodes/utils.py`:
+
+```python
+from .utils import get_leafflow_user_dir
+
+USER_DIR = get_leafflow_user_dir()
+STATE_FILE = os.path.join(USER_DIR, "your_state.json")
+```
+
+### Stored User Files:
+- `ComfyUI/user/default/LeafFlow/.env` — API keys and persistent settings
+- `ComfyUI/user/default/LeafFlow/lora_usage.json` — LoRA selection counts and usage badges
+- `ComfyUI/user/default/LeafFlow/image_prompts_cache.json` — Cached positive prompts extracted from images
+- `ComfyUI/user/default/LeafFlow/failed_scrapes.json` — Failed Civitai/TMDB scraping attempts cache
+- `ComfyUI/user/default/LeafFlow/prompt_iterator_state.json` — Current iteration pointers and popped prompt queues
+- `ComfyUI/user/default/LeafFlow/persistent_queue.json` — Real-time queue crash recovery state
+
+### Future Migration Hooks SOP:
+If legacy files need to be migrated in future multi-user releases or version upgrades:
+1. In `nodes/utils.py`, define a startup check `migrate_legacy_user_data()`.
+2. Inspect `custom_nodes/ComfyUI-LeafFlow/` for legacy files (`.env`, `lora_usage.json`, etc.).
+3. Atomically move them to `get_leafflow_user_dir()` using `shutil.move()` or copy + delete.
+4. Log a single clean notification `[LeafFlow] 🍃 Migrated legacy user data to ComfyUI/user/default/LeafFlow/`.
+
+---
+
 ## 6. Git, Branching & Commit Conventions
 
 ### 6.1 Strict Branch Naming Classification

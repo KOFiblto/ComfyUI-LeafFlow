@@ -7,10 +7,12 @@ import hashlib
 from aiohttp import web
 from server import PromptServer
 import folder_paths
+from .utils import get_leafflow_user_dir
 
 CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-STATE_FILE = os.path.join(CURRENT_DIR, "user", "prompt_iterator_state.json")
-ENV_FILE = os.path.join(CURRENT_DIR, ".env")
+USER_DIR = get_leafflow_user_dir()
+STATE_FILE = os.path.join(USER_DIR, "prompt_iterator_state.json")
+ENV_FILE = os.path.join(USER_DIR, ".env")
 
 def get_env_setting(key, default_val):
     if os.path.exists(ENV_FILE):
@@ -28,9 +30,7 @@ def is_clear_prompt_iterator_on_launch():
     return val in ["true", "1", "yes"]
 
 def ensure_user_dir():
-    user_dir = os.path.dirname(STATE_FILE)
-    if not os.path.exists(user_dir):
-        os.makedirs(user_dir, exist_ok=True)
+    os.makedirs(USER_DIR, exist_ok=True)
 
 def load_state():
     ensure_user_dir()

@@ -2,6 +2,26 @@ import os
 import re
 import folder_paths
 
+def get_leafflow_user_dir():
+    """
+    Returns the centralized user data directory: ComfyUI/user/default/LeafFlow/
+    """
+    base_user = None
+    try:
+        if hasattr(folder_paths, "get_user_directory"):
+            base_user = folder_paths.get_user_directory()
+    except Exception:
+        base_user = None
+
+    if not base_user:
+        # Fallback to ComfyUI/user/default
+        root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        base_user = os.path.join(root_dir, "user", "default")
+
+    leafflow_dir = os.path.join(base_user, "LeafFlow")
+    os.makedirs(leafflow_dir, exist_ok=True)
+    return leafflow_dir
+
 def parse_pretty_name(filepath):
     if not filepath or filepath in ["[ NONE ]", "[ RANDOM ]"]:
         return ""

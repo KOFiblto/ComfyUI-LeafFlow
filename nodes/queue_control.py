@@ -7,12 +7,14 @@ from server import PromptServer
 import nodes
 from .tray_icon import TrayIconManager, is_tray_icon_enabled
 from .assets_restore import assets_restore_manager, is_assets_restore_enabled, get_assets_restore_count
+from .utils import get_leafflow_user_dir
 
 QUEUE_CATEGORY = "🍃 LeafFlow/Queue"
 
 CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PERSISTENT_FILE = os.path.join(CURRENT_DIR, "persistent_queue.json")
-ENV_FILE = os.path.join(CURRENT_DIR, ".env")
+USER_DIR = get_leafflow_user_dir()
+PERSISTENT_FILE = os.path.join(USER_DIR, "persistent_queue.json")
+ENV_FILE = os.path.join(USER_DIR, ".env")
 
 def get_env_setting(key, default_val):
     if os.path.exists(ENV_FILE):
