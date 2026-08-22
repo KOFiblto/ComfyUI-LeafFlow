@@ -9,7 +9,15 @@ def get_leafflow_user_dir():
     base_user = None
     try:
         if hasattr(folder_paths, "get_user_directory"):
-            base_user = folder_paths.get_user_directory()
+            user_base = folder_paths.get_user_directory()
+            if user_base:
+                # ComfyUI get_user_directory() returns '.../ComfyUI/user'
+                # Ensure the 'default' user profile directory is used
+                norm_base = os.path.normpath(user_base)
+                if os.path.basename(norm_base).lower() == "user":
+                    base_user = os.path.join(norm_base, "default")
+                else:
+                    base_user = norm_base
     except Exception:
         base_user = None
 

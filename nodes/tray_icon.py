@@ -3,9 +3,10 @@ import sys
 import threading
 import webbrowser
 from PIL import Image, ImageDraw
+from .utils import get_leafflow_user_dir
 
-CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ENV_FILE = os.path.join(CURRENT_DIR, ".env")
+USER_DIR = get_leafflow_user_dir()
+ENV_FILE = os.path.join(USER_DIR, ".env")
 
 def get_env_setting(key, default_val):
     if os.path.exists(ENV_FILE):
