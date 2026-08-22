@@ -1,29 +1,25 @@
 # 🤖 Agent & Developer Standard Operating Procedure (SOP)
 ## `ComfyUI-LeafFlow` Contributor & Automation Guide
 
-> [!CAUTION]
-> ### ⛔ MANDATORY FOR ALL AI AGENTS & DEVELOPERS: NEVER PUSH DIRECTLY TO `main`!
-> Direct pushes to `main` are strictly forbidden under all circumstances, even if git credentials or admin tokens allow rule bypasses.
-> All work (features, bug fixes, refactorings, tests, docs) **MUST** be implemented on a dedicated branch (`feature/...`, `fix/...`, `docs/...`, `release/...`) and integrated only via Pull Request or explicit user directive.
+This guide defines the engineering checklist and architecture standards for all AI agents (Antigravity, Claude, Gemini, Cursor, Copilot) and human developers contributing to **`ComfyUI-LeafFlow`**.
 
-This guide defines the mandatory engineering checklist for all AI agents (Antigravity, Claude, Gemini, Cursor, Copilot) and human developers contributing to **`ComfyUI-LeafFlow`**. Whenever you add a node, introduce a setting, modify dependencies, or create a commit, you **MUST** follow the synchronization steps below.
+For Git workflow, branch protection, and Pull Request guidelines, see **[`CONTRIBUTING.md`](./CONTRIBUTING.md)**.
 
 ---
 
-## 📚 Repository Markdown Index & Cross-References
-
-All agents and contributors must consult and maintain the following documentation files:
+## 📚 Repository Markdown Index
 
 | File | Purpose & Contents | Link |
 | :--- | :--- | :--- |
-| **`AGENT.md`** | Authoritative developer & agent standard operating procedure, engineering rules, branching SOP. | [AGENT.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/AGENT.md) |
+| **`AGENT.md`** | Authoritative developer & agent standard operating procedure, engineering checklists, architecture rules. | [AGENT.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/AGENT.md) |
+| **`CONTRIBUTING.md`** | Community contribution guidelines, strict branch rules, PR submission workflow. | [CONTRIBUTING.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/CONTRIBUTING.md) |
 | **`README.md`** | Main project homepage, installation guide, complete node catalog with parameter tables and UI settings guide. | [README.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/README.md) |
 | **`WALKTHROUGH.md`** | Step-by-step user tutorials, example workflows, visual load guides, and batch prompting patterns. | [WALKTHROUGH.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/WALKTHROUGH.md) |
-| **`CONTRIBUTING.md`** | Community contribution guidelines, bug reporting templates, and PR submission workflow. | [CONTRIBUTING.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/CONTRIBUTING.md) |
 | **`CHANGELOG.md`** | Strict Keep-A-Changelog semantic version release history across all updates. | [CHANGELOG.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/CHANGELOG.md) |
 | **`SECURITY.md`** | Security policies, supported versions, and private vulnerability disclosure instructions. | [SECURITY.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/SECURITY.md) |
-| **`CLAUDE.md`** | AI agent instruction redirect and mandatory compliance pointer. | [CLAUDE.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/CLAUDE.md) |
-| **`GEMINI.md`** | AI agent instruction redirect and mandatory compliance pointer. | [GEMINI.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/GEMINI.md) |
+| **`CLAUDE.md`** | AI agent instruction pointer. | [CLAUDE.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/CLAUDE.md) |
+| **`GEMINI.md`** | AI agent instruction pointer. | [GEMINI.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/GEMINI.md) |
+| **`AGENTS.md`** | AI agent instruction pointer. | [AGENTS.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/AGENTS.md) |
 | **`bug_report.md`** | GitHub issue template for reporting reproducible defects. | [bug_report.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/.github/ISSUE_TEMPLATE/bug_report.md) |
 | **`feature_request.md`** | GitHub issue template for proposing new nodes or UI features. | [feature_request.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/.github/ISSUE_TEMPLATE/feature_request.md) |
 
