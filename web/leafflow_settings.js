@@ -1,45 +1,93 @@
 import { app } from "/scripts/app.js";
 import { api } from "/scripts/api.js";
 
+/**
+ * Custom renderer for real, styled action buttons in ComfyUI Settings Modal.
+ */
+function renderSettingButton(label, workingText, successText, onClickHandler) {
+    return (name, setter, value) => {
+        const container = document.createElement("div");
+        container.style.cssText = "display: flex; align-items: center; justify-content: flex-end; width: 100%; padding: 2px 0;";
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = label;
+        btn.className = "p-button leafflow-custom-setting-btn";
+        btn.style.cssText = `
+            padding: 6px 14px;
+            background: #23272e;
+            color: #eceff4;
+            border: 1px solid #4c566a;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            outline: none;
+            min-width: 140px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        `;
+
+        btn.onmouseover = () => {
+            if (!btn.disabled) {
+                btn.style.background = "#2e7d32";
+                btn.style.borderColor = "#4caf50";
+                btn.style.color = "#ffffff";
+            }
+        };
+        btn.onmouseout = () => {
+            if (!btn.disabled) {
+                btn.style.background = "#23272e";
+                btn.style.borderColor = "#4c566a";
+                btn.style.color = "#eceff4";
+            }
+        };
+
+        btn.onclick = async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            btn.disabled = true;
+            btn.style.opacity = "0.7";
+            btn.textContent = workingText || "⏳ Working...";
+            try {
+                await onClickHandler();
+                btn.textContent = successText || "✅ Done!";
+                btn.style.background = "#1b5e20";
+                btn.style.borderColor = "#2e7d32";
+                btn.style.color = "#ffffff";
+            } catch (err) {
+                console.error("[LeafFlow] Button action failed:", err);
+                btn.textContent = "❌ Error";
+                btn.style.background = "#c62828";
+                btn.style.borderColor = "#e53935";
+            }
+            setTimeout(() => {
+                btn.textContent = label;
+                btn.disabled = false;
+                btn.style.opacity = "1";
+                btn.style.background = "#23272e";
+                btn.style.borderColor = "#4c566a";
+                btn.style.color = "#eceff4";
+            }, 1800);
+        };
+
+        container.appendChild(btn);
+        return container;
+    };
+}
+
 app.registerExtension({
     name: "ComfyUI.LeafFlow.Settings",
     async setup() {
-        // 1. Enable Civitai Scraping Toggle
-        app.ui.settings.addSetting({
-            id: "LeafFlow.EnableCivitaiScraping",
-            name: "🍃 LeafFlow: Enable Civitai Auto-Scraping",
-            type: "boolean",
-            defaultValue: true,
-            tooltip: "Toggles automated downloading of preview thumbnails for new LoRAs from Civitai via SHA256 file hashes. Disabling this blocks Civitai network calls (local preview images next to LoRAs will still work).",
-            onChange(value) {
-                api.fetchApi("/leafflow/settings", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ enable_civitai_scraping: value ? "true" : "false" })
-                }).catch(() => {});
-            }
-        });
+        // =========================================================================
+        // GRUPPE 1: 🍃 🖼️ Visual LoRA & Image Loaders (Civitai & TMDB Duo)
+        // =========================================================================
 
-        // 1b. Enable LoRA Usage Tracking Setting
-        app.ui.settings.addSetting({
-            id: "LeafFlow.EnableLoraUsage",
-            name: "🍃 LeafFlow: Enable LoRA Usage Tracking",
-            type: "boolean",
-            defaultValue: true,
-            tooltip: "Toggles tracking and displaying LoRA usage counts & visual rank badges (🔥, Gold, Silver, Bronze). Existing usage history is preserved when disabled.",
-            onChange(value) {
-                api.fetchApi("/leafflow/settings", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ enable_lora_usage: value ? "true" : "false" })
-                }).catch(() => {});
-            }
-        });
-
-        // 2. Civitai API Key Setting
+        // 1.1 Civitai API Key
         app.ui.settings.addSetting({
             id: "LeafFlow.CivitaiAPIKey",
-            name: "🍃 LeafFlow: Civitai API Key",
+            name: "🍃 🖼️ Visual Loaders: 1. Civitai API Key",
             type: "text",
             defaultValue: "",
             tooltip: "Optional. Civitai SHA256 search works publicly without a key for normal models. Only needed for NSFW/private models or higher rate limits. Whitespace is automatically stripped.",
@@ -53,29 +101,29 @@ app.registerExtension({
             }
         });
 
-        // 3. Enable TMDB Scraping Toggle
+        // 1.2 Enable Civitai Auto-Scraping Toggle (default: true)
         app.ui.settings.addSetting({
-            id: "LeafFlow.EnableTMDBScraping",
-            name: "🍃 LeafFlow: Enable TMDB Auto-Scraping",
+            id: "LeafFlow.EnableCivitaiScraping",
+            name: "🍃 🖼️ Visual Loaders: 2. Enable Civitai Auto-Scraping",
             type: "boolean",
             defaultValue: true,
-            tooltip: "Toggles automated downloading of celebrity preview thumbnails from TMDB. Disabling this blocks TMDB network calls.",
+            tooltip: "Toggles automated downloading of preview thumbnails for new LoRAs from Civitai via SHA256 file hashes. Note: SHA256 hash searching will always work regardless of this setting when matching local models.",
             onChange(value) {
                 api.fetchApi("/leafflow/settings", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ enable_tmdb_scraping: value ? "true" : "false" })
+                    body: JSON.stringify({ enable_civitai_scraping: value ? "true" : "false" })
                 }).catch(() => {});
             }
         });
 
-        // 4. TMDB API Key Setting
+        // 1.3 TMDB Access Token
         app.ui.settings.addSetting({
             id: "LeafFlow.TMDBAPIKey",
-            name: "🍃 LeafFlow: TMDB API Key / Read Access Token",
+            name: "🍃 🖼️ Visual Loaders: 3. TMDB Access Token",
             type: "text",
             defaultValue: "",
-            tooltip: "Optional. Accepts TMDB v3 API keys or TMDB v4 Read Access Tokens (eyJ...). Whitespace is automatically stripped.",
+            tooltip: "Optional. Accepts TMDB v3 API keys or TMDB v4 Read Access Tokens (eyJ...). Used for celebrity poster image lookup. Whitespace is automatically stripped.",
             onChange(value) {
                 const cleanKey = (value || "").trim();
                 api.fetchApi("/leafflow/settings", {
@@ -86,166 +134,63 @@ app.registerExtension({
             }
         });
 
-        // 5. Default Pause Queue State (Paused vs Running)
+        // 1.4 Enable TMDB Auto-Scraping Toggle (default: false)
         app.ui.settings.addSetting({
-            id: "LeafFlow.DefaultPauseState",
-            name: "🍃 LeafFlow: Default Pause Queue State on Launch",
-            type: "combo",
-            options: ["Paused", "Running"],
-            defaultValue: "Paused",
-            tooltip: "Choose whether the queue starts in Paused state or Running state on normal ComfyUI startup.",
+            id: "LeafFlow.EnableTMDBScraping",
+            name: "🍃 🖼️ Visual Loaders: 4. Enable TMDB Auto-Scraping",
+            type: "boolean",
+            defaultValue: false,
+            tooltip: "Toggles automated downloading of celebrity preview thumbnails from TMDB. Default is disabled.",
             onChange(value) {
                 api.fetchApi("/leafflow/settings", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ default_pause_state: value })
+                    body: JSON.stringify({ enable_tmdb_scraping: value ? "true" : "false" })
                 }).catch(() => {});
             }
         });
 
-        // 6. Default Pause Queue Mode (Finish Active Prompt vs Instant Resume Node)
+        // 1.5 Enable LoRA Usage Tracking (default: true)
         app.ui.settings.addSetting({
-            id: "LeafFlow.DefaultPauseMode",
-            name: "🍃 LeafFlow: Default Pause Queue Mode on Launch",
-            type: "combo",
-            options: ["Finish Active Prompt", "Instant Resume Node"],
-            defaultValue: "Finish Active Prompt",
-            tooltip: "Choose default pause behavior mode on ComfyUI startup.",
-            onChange(value) {
-                const modeKey = (value === "Instant Resume Node" || value === "Pause (Instant)") ? "instantly" : "after_finish";
-                api.fetchApi("/leafflow/settings", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ default_pause_mode: modeKey })
-                }).catch(() => {});
-            }
-        });
-
-        // 7. Persistent Queue Restored Launch State Override
-        app.ui.settings.addSetting({
-            id: "LeafFlow.PersistentQueueRestoredState",
-            name: "🍃 LeafFlow: Persistent Queue Restored Launch State",
-            type: "combo",
-            options: ["Match Default", "Force Paused", "Force Running"],
-            defaultValue: "Match Default",
-            tooltip: "Override launch state when unfinished queue items are restored on startup (e.g., keep normal launch Running, but force Restored queue startup Paused).",
-            onChange(value) {
-                api.fetchApi("/leafflow/settings", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ persistent_queue_restored_state: value })
-                }).catch(() => {});
-            }
-        });
-
-        // 8. Toolbar Button Unpaused Color
-        app.ui.settings.addSetting({
-            id: "LeafFlow.PauseButtonUnpausedColor",
-            name: "🍃 LeafFlow: Pause Button Unpaused Color",
-            type: "text",
-            defaultValue: "#059669",
-            tooltip: "Hex color code for the Pause toolbar button when execution is unpaused/running (default: #059669).",
-            onChange(value) {
-                document.documentElement.style.setProperty("--pq-unpaused-color", value || "#059669");
-            }
-        });
-
-        // 9. Toolbar Button Paused Color
-        app.ui.settings.addSetting({
-            id: "LeafFlow.PauseButtonPausedColor",
-            name: "🍃 LeafFlow: Pause Button Paused Color",
-            type: "text",
-            defaultValue: "#ea580c",
-            tooltip: "Hex color code for the Pause toolbar button when execution is paused (default: #ea580c).",
-            onChange(value) {
-                document.documentElement.style.setProperty("--pq-paused-color", value || "#ea580c");
-            }
-        });
-
-        // 10. Pause Queue Toolbar Toggle Setting
-        app.ui.settings.addSetting({
-            id: "LeafFlow.EnablePauseQueue",
-            name: "🍃 LeafFlow: Enable Pause Queue Toolbar Button",
+            id: "LeafFlow.EnableLoraUsage",
+            name: "🍃 🖼️ Visual Loaders: 5. Enable LoRA Usage Tracking",
             type: "boolean",
             defaultValue: true,
-            tooltip: "Displays the green/orange Pause & Continue button group in top action bar.",
+            tooltip: "Toggles tracking and displaying LoRA usage counts & visual rank badges (🔥, Gold, Silver, Bronze) in the LoRA picker. Existing usage history is preserved when disabled.",
             onChange(value) {
-                const group = document.querySelector(".pq-button-group");
-                if (group) {
-                    group.style.display = value ? "inline-flex" : "none";
+                api.fetchApi("/leafflow/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ enable_lora_usage: value ? "true" : "false" })
+                }).catch(() => {});
+            }
+        });
+
+        // 1.6 Reset Scrapes Cache Button (Real Button)
+        app.ui.settings.addSetting({
+            id: "LeafFlow.ResetScrapesCache",
+            name: "🍃 🖼️ Visual Loaders: 6. Failed Scrapes Cache",
+            type: "hidden",
+            defaultValue: "",
+            tooltip: "Immediately clears failed_scrapes.json so Civitai and TMDB can retry downloading missing preview thumbnails on the next folder scan.",
+            render: renderSettingButton("🗑️ Reset Scrapes Cache", "⏳ Clearing...", "✅ Cache Reset!", async () => {
+                const resp = await api.fetchApi("/leafflow/scrapes/clear", { method: "POST" });
+                const data = await resp.json();
+                if (data.status !== "ok") {
+                    throw new Error(data.message || "Failed to reset scrapes cache");
                 }
-            }
+            })
         });
 
-        // 11. Enable Persistent Queue Setting
-        app.ui.settings.addSetting({
-            id: "LeafFlow.EnablePersistentQueue",
-            name: "🍃 LeafFlow: Enable Persistent Queue (Auto-Recovery)",
-            type: "boolean",
-            defaultValue: true,
-            tooltip: "Automatically saves unfinished queue items to disk and restores them after restart/crash.",
-            onChange(value) {
-                api.fetchApi("/leafflow/settings", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ enable_persistent_queue: value ? "true" : "false" })
-                }).catch(() => {});
-            }
-        });
 
-        // 12. Enable System Tray Icon Setting
-        app.ui.settings.addSetting({
-            id: "LeafFlow.EnableTrayIcon",
-            name: "🍃 LeafFlow: Enable System Tray Icon",
-            type: "boolean",
-            defaultValue: true,
-            tooltip: "Enables an OS system tray icon with matching status colors to pause (finish/instant) and resume the queue without having ComfyUI open in your browser.",
-            onChange(value) {
-                api.fetchApi("/leafflow/settings", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ enable_tray_icon: value ? "true" : "false" })
-                }).catch(() => {});
-            }
-        });
+        // =========================================================================
+        // GRUPPE 2: 🍃 🔄 Prompt Queue Iterator
+        // =========================================================================
 
-        // 13. Enable Assets / History Restore on Launch
-        app.ui.settings.addSetting({
-            id: "LeafFlow.EnableAssetsRestore",
-            name: "🍃 LeafFlow: Restore Assets on Launch",
-            type: "boolean",
-            defaultValue: true,
-            tooltip: "Automatically populates the Assets / History pane upon ComfyUI launch with your latest generated images.",
-            onChange(value) {
-                api.fetchApi("/leafflow/settings", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ enable_assets_restore: value ? "true" : "false" })
-                }).catch(() => {});
-            }
-        });
-
-        // 14. Restored Assets Count
-        app.ui.settings.addSetting({
-            id: "LeafFlow.RestoreAssetsCount",
-            name: "🍃 LeafFlow: Restored Assets Count",
-            type: "number",
-            defaultValue: 64,
-            tooltip: "Number of newest images from the output folder to restore into the Assets / History pane on launch (default: 64).",
-            onChange(value) {
-                const count = parseInt(value, 10) || 64;
-                api.fetchApi("/leafflow/settings", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ restore_assets_count: count })
-                }).catch(() => {});
-            }
-        });
-
-        // 15. Clear Prompt Iterator State on Launch Setting
+        // 2.1 Clear Prompt Iterator State on Launch (default: false)
         app.ui.settings.addSetting({
             id: "LeafFlow.ClearPromptIteratorOnLaunch",
-            name: "🍃 LeafFlow: Clear Prompt Iterator State on Launch",
+            name: "🍃 🔄 Prompt Iterator: 1. Clear State on Launch",
             type: "boolean",
             defaultValue: false,
             tooltip: "Privacy setting. When enabled, prompt_iterator_state.json will be emptied automatically every time ComfyUI starts up.",
@@ -258,65 +203,202 @@ app.registerExtension({
             }
         });
 
-        // 16. Clear Prompt Iterator State Now Button
+        // 2.2 Reset Prompt Iterator Queues Now (Real Button)
         app.ui.settings.addSetting({
-            id: "LeafFlow.ClearPromptIteratorNow",
-            name: "🍃 LeafFlow: Clear Prompt Iterator State Now",
-            type: "button",
-            defaultValue: "Clear State",
-            tooltip: "Immediately clears all saved prompt iterator state from disk.",
-            attrs: {
-                onClick: async () => {
-                    try {
-                        const resp = await api.fetchApi("/leafflow/prompt_iterator/clear", { method: "POST" });
-                        const data = await resp.json();
-                        if (data.status === "ok") {
-                            alert("LeafFlow: Prompt Iterator state successfully cleared!");
-                        } else {
-                            alert("LeafFlow: Failed to clear Prompt Iterator state.");
-                        }
-                    } catch (e) {
-                        alert("LeafFlow: Error clearing Prompt Iterator state: " + e);
-                    }
+            id: "LeafFlow.ResetPromptIteratorNow",
+            name: "🍃 🔄 Prompt Iterator: 2. Active Queue State",
+            type: "hidden",
+            defaultValue: "",
+            tooltip: "Immediately empties all active prompt queues and resets iterator state across all workflows.",
+            render: renderSettingButton("🔄 Reset All Queues", "⏳ Resetting...", "✅ State Reset!", async () => {
+                const resp = await api.fetchApi("/leafflow/prompt_iterator/clear", { method: "POST" });
+                const data = await resp.json();
+                if (data.status !== "ok") {
+                    throw new Error(data.message || "Failed to clear prompt iterator state");
+                }
+            })
+        });
+
+
+        // =========================================================================
+        // GRUPPE 3: 🍃 ⭐ Favorite Prompts
+        // =========================================================================
+
+        // 3.1 Favorites Folder Path
+        app.ui.settings.addSetting({
+            id: "LeafFlow.FavoritesFolder",
+            name: "🍃 ⭐ Favorites: 1. Save Folder Path",
+            type: "text",
+            defaultValue: "output/favorites",
+            tooltip: "Directory where favorite prompts and preview images are saved.",
+            onChange(value) {
+                const cleanPath = (value || "").trim();
+                api.fetchApi("/leafflow/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ favorites_folder: cleanPath })
+                }).catch(() => {});
+            }
+        });
+
+
+        // =========================================================================
+        // GRUPPE 4: 🍃 ⏸️ Queue & Workflow Control
+        // =========================================================================
+
+        // 4.1 Default Pause Queue State on Launch
+        app.ui.settings.addSetting({
+            id: "LeafFlow.DefaultPauseState",
+            name: "🍃 ⏸️ Queue Control: 1. Default State on Launch",
+            type: "combo",
+            options: ["Paused", "Running"],
+            defaultValue: "Paused",
+            tooltip: "Choose whether execution starts in Paused state or Running state on ComfyUI startup.",
+            onChange(value) {
+                api.fetchApi("/leafflow/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ default_pause_state: value })
+                }).catch(() => {});
+            }
+        });
+
+        // 4.2 Default Pause Queue Mode on Launch
+        app.ui.settings.addSetting({
+            id: "LeafFlow.DefaultPauseMode",
+            name: "🍃 ⏸️ Queue Control: 2. Default Pause Action",
+            type: "combo",
+            options: ["Finish Active Prompt", "Instant Resume Node"],
+            defaultValue: "Finish Active Prompt",
+            tooltip: "Choose default pause behavior when the pause button or hotkey is triggered.",
+            onChange(value) {
+                const modeKey = (value === "Instant Resume Node" || value === "Pause (Instant)") ? "instantly" : "after_finish";
+                api.fetchApi("/leafflow/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ default_pause_mode: modeKey })
+                }).catch(() => {});
+            }
+        });
+
+        // 4.3 Enable Persistent Queue (Auto-Recovery)
+        app.ui.settings.addSetting({
+            id: "LeafFlow.EnablePersistentQueue",
+            name: "🍃 ⏸️ Queue Control: 3. Persistent Queue (Auto-Recovery)",
+            type: "boolean",
+            defaultValue: true,
+            tooltip: "Automatically persists unfinished batch queue items to disk and restores them after server or browser crashes.",
+            onChange(value) {
+                api.fetchApi("/leafflow/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ enable_persistent_queue: value ? "true" : "false" })
+                }).catch(() => {});
+            }
+        });
+
+        // 4.4 Persistent Queue Restored Launch State
+        app.ui.settings.addSetting({
+            id: "LeafFlow.PersistentQueueRestoredState",
+            name: "🍃 ⏸️ Queue Control: 4. Recovery Launch State",
+            type: "combo",
+            options: ["Match Default", "Force Paused", "Force Running"],
+            defaultValue: "Match Default",
+            tooltip: "Override launch state when unfinished queue items are recovered on startup.",
+            onChange(value) {
+                api.fetchApi("/leafflow/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ persistent_queue_restored_state: value })
+                }).catch(() => {});
+            }
+        });
+
+        // 4.5 Enable System Tray Icon
+        app.ui.settings.addSetting({
+            id: "LeafFlow.EnableTrayIcon",
+            name: "🍃 ⏸️ Queue Control: 5. Enable System Tray Icon",
+            type: "boolean",
+            defaultValue: true,
+            tooltip: "Displays an OS system tray icon with real-time queue status colors and outside-browser queue controls.",
+            onChange(value) {
+                api.fetchApi("/leafflow/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ enable_tray_icon: value ? "true" : "false" })
+                }).catch(() => {});
+            }
+        });
+
+        // 4.6 Enable Pause Queue Toolbar Button
+        app.ui.settings.addSetting({
+            id: "LeafFlow.EnablePauseQueue",
+            name: "🍃 ⏸️ Queue Control: 6. Enable Top Toolbar Button",
+            type: "boolean",
+            defaultValue: true,
+            tooltip: "Displays the green/orange Pause & Continue button group in the top action bar.",
+            onChange(value) {
+                const group = document.querySelector(".pq-button-group");
+                if (group) {
+                    group.style.display = value ? "inline-flex" : "none";
                 }
             }
         });
 
-        // 17. Snapchat Login / Logout Action Button
-        let isSnapchatLoggedIn = false;
-        try {
-            const statusResp = await api.fetchApi("/leafflow/snapchat/status");
-            const statusData = await statusResp.json();
-            isSnapchatLoggedIn = !!statusData.logged_in;
-        } catch (e) {}
-
+        // 4.7 Toolbar Button Unpaused Color
         app.ui.settings.addSetting({
-            id: "LeafFlow.SnapchatAuthAction",
-            name: isSnapchatLoggedIn ? "🍃 LeafFlow: Snapchat Status (🟢 Logged In)" : "🍃 LeafFlow: Snapchat Status (🔴 Not Logged In)",
-            type: "button",
-            defaultValue: isSnapchatLoggedIn ? "🚪 Log out of Snapchat" : "🔐 Log in with Google / Browser",
-            tooltip: isSnapchatLoggedIn 
-                ? "Click to log out and clear saved Snapchat session cookies." 
-                : "Click to launch a browser window to log in to Snapchat with Google or credentials.",
-            attrs: {
-                onClick: async () => {
-                    try {
-                        const check = await api.fetchApi("/leafflow/snapchat/status");
-                        const currentStatus = await check.json();
-                        if (currentStatus.logged_in) {
-                            if (confirm("Are you sure you want to log out of Snapchat? This will clear saved session cookies.")) {
-                                const resp = await api.fetchApi("/leafflow/snapchat/logout", { method: "POST" });
-                                const res = await resp.json();
-                                alert(res.message || "Logged out of Snapchat.");
-                            }
-                        } else {
-                            alert("Launching browser window for Snapchat login...\nComplete your Google login in the browser window, then close it.");
-                            await api.fetchApi("/leafflow/snapchat/login", { method: "POST" });
-                        }
-                    } catch (e) {
-                        alert("LeafFlow: Error contacting Snapchat auth service: " + e);
-                    }
-                }
+            id: "LeafFlow.PauseButtonUnpausedColor",
+            name: "🍃 ⏸️ Queue Control: 7. Toolbar Button Unpaused Color",
+            type: "text",
+            defaultValue: "#059669",
+            tooltip: "Hex color code for the Pause toolbar button when execution is unpaused/running (default: #059669).",
+            onChange(value) {
+                document.documentElement.style.setProperty("--pq-unpaused-color", value || "#059669");
+            }
+        });
+
+        // 4.8 Toolbar Button Paused Color
+        app.ui.settings.addSetting({
+            id: "LeafFlow.PauseButtonPausedColor",
+            name: "🍃 ⏸️ Queue Control: 8. Toolbar Button Paused Color",
+            type: "text",
+            defaultValue: "#ea580c",
+            tooltip: "Hex color code for the Pause toolbar button when execution is paused (default: #ea580c).",
+            onChange(value) {
+                document.documentElement.style.setProperty("--pq-paused-color", value || "#ea580c");
+            }
+        });
+
+        // 4.9 Enable Assets / History Restore on Launch
+        app.ui.settings.addSetting({
+            id: "LeafFlow.EnableAssetsRestore",
+            name: "🍃 ⏸️ Queue Control: 9. Restore Assets on Launch",
+            type: "boolean",
+            defaultValue: true,
+            tooltip: "Automatically populates the Assets / History pane upon ComfyUI launch with your latest generated images.",
+            onChange(value) {
+                api.fetchApi("/leafflow/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ enable_assets_restore: value ? "true" : "false" })
+                }).catch(() => {});
+            }
+        });
+
+        // 4.10 Restored Assets Count
+        app.ui.settings.addSetting({
+            id: "LeafFlow.RestoreAssetsCount",
+            name: "🍃 ⏸️ Queue Control: 10. Restored Assets Count",
+            type: "number",
+            defaultValue: 64,
+            tooltip: "Number of newest images from the output folder to restore into the Assets / History pane on launch (default: 64).",
+            onChange(value) {
+                const count = parseInt(value, 10) || 64;
+                api.fetchApi("/leafflow/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ restore_assets_count: count })
+                }).catch(() => {});
             }
         });
     }

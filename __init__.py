@@ -294,3 +294,15 @@ async def save_settings(request):
         print(f"[LeafFlow] 🍃 Error saving settings to .env: {e}")
 
     return web.json_response({"status": "ok"})
+
+@routes.post("/leafflow/scrapes/clear")
+async def clear_scrapes_endpoint(request):
+    try:
+        failed_file = os.path.join(USER_DIR, "failed_scrapes.json")
+        with open(failed_file, "w", encoding="utf-8") as f:
+            f.write("{}")
+        return web.json_response({"status": "ok"})
+    except Exception as e:
+        print(f"[LeafFlow] 🍃 Error clearing scrapes cache: {e}")
+        return web.json_response({"status": "error", "message": str(e)}, status=500)
+
