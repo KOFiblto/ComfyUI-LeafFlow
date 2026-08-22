@@ -9,8 +9,14 @@ import folder_paths
 from PIL import Image, ImageOps
 import torch
 import numpy as np
+try:
+    from nodes import PreviewImage
+except Exception:
+    class PreviewImage:
+        def save_images(self, images, filename_prefix="ComfyUI", prompt=None, extra_pnginfo=None):
+            return {"ui": {"images": []}}
+
 from .image_loader import VisualImageLoader
-from nodes import PreviewImage
 
 FAV_DIR = os.path.join(folder_paths.get_output_directory(), "favorites")
 
