@@ -20,7 +20,7 @@ async function saveToFavorites(imgSrc, subcategory = "Default", custom_name = ""
         return;
     }
 
-    const favFolder = app.ui.settings.getSettingValue("LeafFlow.FavoritesFolder", "output/favorites");
+    const favFolder = app.ui.settings.getSettingValue("LeafFlow.3.1 ⭐ Favorites Save Folder Path") || app.ui.settings.getSettingValue("LeafFlow.FavoritesFolder", "output/favorites");
     try {
         const response = await api.fetchApi(`/leafflow/save_favorite`, {
             method: "POST",
@@ -68,7 +68,7 @@ async function copyImagePrompt(imgSrc) {
 
 async function promptForFavoriteDetails(defaultCategory = "", defaultName = "") {
     return new Promise((resolve) => {
-        const favFolder = app.ui.settings.getSettingValue("LeafFlow.FavoritesFolder", "output/favorites");
+        const favFolder = app.ui.settings.getSettingValue("LeafFlow.3.1 ⭐ Favorites Save Folder Path") || app.ui.settings.getSettingValue("LeafFlow.FavoritesFolder", "output/favorites");
         api.fetchApi(`/image_loader/get_images?folder=${encodeURIComponent(favFolder)}`)
            .then(r => r.json())
            .then(data => {
