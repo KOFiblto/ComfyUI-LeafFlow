@@ -102,7 +102,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 WEB_DIRECTORY = "./web"
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]
 
-from .nodes.utils import get_leafflow_user_dir
+from .nodes.utils import get_leafflow_user_dir, get_env_setting
 
 server = PromptServer.instance
 setup_queue_control_routes(server)
@@ -298,4 +298,86 @@ async def clear_scrapes_endpoint(request):
     except Exception as e:
         print(f"[LeafFlow] 🍃 Error clearing scrapes cache: {e}")
         return web.json_response({"status": "error", "message": str(e)}, status=500)
+
+@routes.get("/leafflow/debug/export")
+async def export_debug_profile(request):
+    try:
+        import platform
+        import json
+        from datetime import datetime, timezone
+        import torch
+
+        # Safe GPU / hardware information
+        cuda_avail = torch.cuda.is_available() if hasattr(torch, "cuda") else False
+        device_name = torch.cuda.get_device_name(0) if cuda_avail else "CPU"
+
+        # Check API key configuration status without revealing sensitive strings
+        civitai_key = os.getenv("CIVITAI_API_KEY", "")
+        tmdb_key = os.getenv("TMDB_API_KEY", "")
+        if os.path.exists(ENV_FILE):
+            try:
+                with open(ENV_FILE, "r", encoding="utf-8") as f:
+                    for line in f:
+                        if line.strip().startswith("CIVITAI_API_KEY=") and not civitai_key:
+                            civitai_key = line.split("=", 1)[1].strip()
+                        elif line.startswith("TMDB_API_KEY=") and not tmdb_key:
+                            tmdb_key = line.split("=", 1)[1].strip()
+            except Exception:
+                pass
+
+        # Calculate counts of local storage files safely
+        def safe_json_count(filename):
+            p = os.path.join(USER_DIR, filename)
+            if os.path.exists(p):
+                try:
+                    with open(p, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        return len(data) if isinstance(data, (list, dict)) else 0
+                except Exception:
+                    pass
+            return 0
+
+        debug_profile = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "package": "ComfyUI-LeafFlow",
+            "version": "2.1.0",
+            "system": {
+                "os": platform.system(),
+                "os_release": platform.release(),
+                "os_version": platform.version(),
+                "architecture": platform.machine(),
+                "python_version": sys.version.split()[0],
+                "torch_version": getattr(torch, "__version__", "unknown"),
+                "cuda_available": cuda_avail,
+                "device_name": device_name,
+            },
+            "registered_nodes_count": len(NODE_CLASS_MAPPINGS),
+            "settings": {
+                "enable_persistent_queue": get_env_setting("ENABLE_PERSISTENT_QUEUE", "true"),
+                "default_pause_state": get_env_setting("DEFAULT_PAUSE_STATE", "Paused"),
+                "default_pause_mode": get_env_setting("DEFAULT_PAUSE_MODE", "after_finish"),
+                "enable_civitai_scraping": get_env_setting("ENABLE_CIVITAI_SCRAPING", "true"),
+                "enable_tmdb_scraping": get_env_setting("ENABLE_TMDB_SCRAPING", "true"),
+                "enable_lora_usage": get_env_setting("ENABLE_LORA_USAGE", "true"),
+                "enable_tray_icon": get_env_setting("ENABLE_TRAY_ICON", "false"),
+                "enable_assets_restore": get_env_setting("ENABLE_ASSETS_RESTORE", "true"),
+                "restore_assets_count": get_env_setting("RESTORE_ASSETS_COUNT", "64"),
+                "clear_prompt_iterator_on_launch": get_env_setting("CLEAR_PROMPT_ITERATOR_ON_LAUNCH", "false"),
+                "persistent_queue_restored_state": get_env_setting("PERSISTENT_QUEUE_RESTORED_STATE", "Match Default"),
+                "civitai_api_key_configured": bool(civitai_key and civitai_key.strip()),
+                "tmdb_api_key_configured": bool(tmdb_key and tmdb_key.strip()),
+            },
+            "local_storage_stats": {
+                "tracked_loras": safe_json_count("lora_usage.json"),
+                "lora_cycle_states": safe_json_count("lora_loader_state.json"),
+                "image_prompts_cached": safe_json_count("image_prompts_cache.json"),
+                "failed_scrapes_cached": safe_json_count("failed_scrapes.json"),
+                "prompt_iterator_queues": safe_json_count("prompt_iterator_state.json"),
+                "persisted_queue_items": safe_json_count("persistent_queue.json"),
+            }
+        }
+        return web.json_response(debug_profile)
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
 

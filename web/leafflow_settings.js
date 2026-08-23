@@ -441,5 +441,43 @@ app.registerExtension({
                 }).catch(() => {});
             }
         });
+
+
+        // =========================================================================
+        // GRUPPE 7: 7 🩺 Diagnostics & Debug
+        // =========================================================================
+
+        // 7.1 Export Debug Profile Button
+        app.ui.settings.addSetting({
+            id: "LeafFlow.7 🩺 Diagnostics.01_ExportDebugProfile",
+            name: "Export Debug Profile",
+            type: "button",
+            defaultValue: "📥 Export Debug Profile",
+            tooltip: "Exports non-sensitive environment diagnostics (OS, Python, PyTorch, LeafFlow settings, local counts) as a JSON file to share when troubleshooting issues.",
+            attrs: {
+                onClick: async () => {
+                    const approved = confirm("🍃 ComfyUI-LeafFlow Diagnostics Export\n\nExport system diagnostics for troubleshooting?\n\nNOTE: Sensitive API keys, tokens, file paths, and private prompt texts are automatically stripped and NEVER exported.");
+                    if (!approved) return;
+
+                    try {
+                        const resp = await api.fetchApi("/leafflow/debug/export");
+                        const data = await resp.json();
+                        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `leafflow_debug_profile_${new Date().toISOString().slice(0, 10)}.json`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        alert("✅ Diagnostics profile exported successfully! You can attach the downloaded JSON file to your bug report or GitHub issue.");
+                    } catch (e) {
+                        console.error("[LeafFlow] 🍃 Error exporting debug profile:", e);
+                        alert("❌ Failed to export debug profile: " + e.message);
+                    }
+                }
+            }
+        });
     }
 });

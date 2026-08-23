@@ -21,9 +21,8 @@ Before opening a new issue:
 
 ## 🛠️ Contribution Workflow (Feature Branches & PRs)
 
-> [!CAUTION]
-> ### ⛔ NEVER PUSH DIRECTLY TO `main`!
-> Direct pushes to `main` are strictly prohibited. All developers and automated AI agents must work exclusively on feature or fix branches (`feature/...`, `fix/...`, `docs/...`) and open a Pull Request.
+### Branch and Pull Request Policy
+Direct pushes to the `main` branch are restricted. All changes, bug fixes, and new features must be developed on a dedicated feature or fix branch and merged via Pull Request.
 
 All development follows a **Feature Branch $\rightarrow$ Pull Request** workflow:
 

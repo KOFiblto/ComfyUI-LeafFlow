@@ -323,42 +323,58 @@ Splits an input text into two separate output strings (`text1` and `text2`) usin
 Configure options directly under ComfyUI Settings (⚙ gear icon):
 
 <details open>
-<summary><b>🍃 🖼️ Visual Loaders (Civitai & TMDB Duo)</b></summary>
+<summary><b>1 🖼️ Visual Loaders (Civitai & TMDB Duo)</b></summary>
 
-- **`🍃 🖼️ Visual Loaders: 1. Civitai API Key`** (`text`): Optional key for Civitai SHA256 model preview search (`Authorization: Bearer <key>`).
-- **`🍃 🖼️ Visual Loaders: 2. Enable Civitai Auto-Scraping`** (`boolean`, *Default: true*): Automatically download model preview images from Civitai via SHA256 file hashes. (Note: Local SHA256 hash searching always works).
-- **`🍃 🖼️ Visual Loaders: 3. TMDB Access Token`** (`text`): Optional key or v4 Read Access Token (`eyJ...`) for celebrity preview search.
-- **`🍃 🖼️ Visual Loaders: 4. Enable TMDB Auto-Scraping`** (`boolean`, *Default: false*): Automatically download celebrity preview images from TMDB.
-- **`🍃 🖼️ Visual Loaders: 5. Enable LoRA Usage Tracking`** (`boolean`, *Default: true*): Toggle LoRA usage counting and visual rank badges (🔥, Gold, Silver, Bronze) in the picker.
-- **`🍃 🖼️ Visual Loaders: 6. Failed Scrapes Cache`** (*Button: `🗑️ Reset Scrapes Cache`*): Clears failed scrape history so Civitai/TMDB can retry downloading missing preview images.
+- **`Civitai API Key`** (`text`): Optional key for Civitai SHA256 model preview search (`Authorization: Bearer <key>`).
+- **`Enable Civitai Auto-Scraping`** (`boolean`, *Default: true*): Automatically download model preview images from Civitai via SHA256 file hashes. (Note: Local SHA256 hash searching always works).
+- **`TMDB Access Token`** (`text`): Optional key or v4 Read Access Token (`eyJ...`) for celebrity preview search.
+- **`Enable TMDB Auto-Scraping`** (`boolean`, *Default: false*): Automatically download celebrity preview images from TMDB.
+- **`Enable LoRA Usage Tracking`** (`boolean`, *Default: true*): Toggle LoRA usage counting and visual rank badges (🔥, Gold, Silver, Bronze) in the picker.
+- **`Reset Failed Scrapes Cache`** (*Button: `🗑️ Reset Scrapes Cache`*): Clears failed scrape history so Civitai/TMDB can retry downloading missing preview images.
 </details>
 
 <details open>
-<summary><b>🍃 🔄 Prompt Queue Iterator</b></summary>
+<summary><b>2 🔄 Prompt Iterator</b></summary>
 
-- **`🍃 🔄 Prompt Iterator: 1. Clear State on Launch`** (`boolean`, *Default: false*): Privacy toggle to empty `prompt_iterator_state.json` on ComfyUI startup.
-- **`🍃 🔄 Prompt Iterator: 2. Active Queue State`** (*Button: `🔄 Reset All Queues`*): Immediately empties all active prompt queues and resets iterator state.
+- **`Clear State on Launch`** (`boolean`, *Default: false*): Privacy toggle to empty `prompt_iterator_state.json` on ComfyUI startup.
+- **`Reset All Queues`** (*Button: `🔄 Reset All Queues`*): Immediately empties all active prompt queues and resets iterator state.
 </details>
 
 <details open>
-<summary><b>🍃 ⭐ Favorite Prompts</b></summary>
+<summary><b>3 ⭐ Favorite Prompts</b></summary>
 
-- **`🍃 ⭐ Favorites: 1. Save Folder Path`** (`text`, *Default: `output/favorites`*): Path to store and load favorite prompts and preview images.
+- **`Favorites Folder Path`** (`text`, *Default: `output/favorites`*): Path to store and load favorite prompts and preview images.
 </details>
 
 <details open>
-<summary><b>🍃 ⏸️ Queue & Workflow Control</b></summary>
+<summary><b>4 ⏸️ Pause Controls</b></summary>
 
-- **`🍃 ⏸️ Queue Control: 1. Default State on Launch`** (`combo`, *Default: `Paused`*): Sets whether the queue starts `Paused` or `Running` on boot.
-- **`🍃 ⏸️ Queue Control: 2. Default Pause Action`** (`combo`, *Default: `Finish Active Prompt`*): Sets default pause behavior (`Finish Active Prompt` vs `Instant Resume Node`).
-- **`🍃 ⏸️ Queue Control: 3. Persistent Queue (Auto-Recovery)`** (`boolean`, *Default: true*): Automatically saves unfinished queue items and restores them after restart/crash.
-- **`🍃 ⏸️ Queue Control: 4. Recovery Launch State`** (`combo`, *Default: `Match Default`*): Override launch state when restored queue items are recovered on startup.
-- **`🍃 ⏸️ Queue Control: 5. Enable System Tray Icon`** (`boolean`, *Default: true*): Displays an OS system tray icon with real-time queue status colors and outside-browser controls.
-- **`🍃 ⏸️ Queue Control: 6. Enable Top Toolbar Button`** (`boolean`, *Default: true*): Toggle top action bar Pause & Continue button group ON/OFF.
-- **`🍃 ⏸️ Queue Control: 7. Toolbar Button Unpaused Color`** (`text`, *Default: `#059669`*): Hex color for the toolbar unpaused/running state.
-- **`🍃 ⏸️ Queue Control: 8. Toolbar Button Paused Color`** (`text`, *Default: `#ea580c`*): Hex color for the toolbar paused state.
-- **`🍃 ⏸️ Queue Control: 9. Restore Assets on Launch`** (`boolean`, *Default: true*): Automatically restores your latest generated images into the Assets / History pane on startup.
-- **`🍃 ⏸️ Queue Control: 10. Restored Assets Count`** (`number`, *Default: 64*): The number of newest images from the output folder to populate into the Assets pane.
+- **`Default State on Launch`** (`combo`, *Default: `Paused`*): Sets whether the queue starts `Paused` or `Running` on boot.
+- **`Default Pause Action`** (`combo`, *Default: `Finish Active Prompt`*): Sets default pause behavior (`Finish Active Prompt` vs `Instant Resume Node`).
+- **`Enable Top Toolbar Button`** (`boolean`, *Default: true*): Toggle top action bar Pause & Continue button group ON/OFF.
+- **`Toolbar Button Unpaused Color`** (`text`, *Default: `#059669`*): Hex color for the toolbar unpaused/running state.
+- **`Toolbar Button Paused Color`** (`text`, *Default: `#ea580c`*): Hex color for the toolbar paused state.
+- **`Enable System Tray Icon`** (`boolean`, *Default: false*): Displays an OS system tray icon with real-time queue status colors and outside-browser controls.
+</details>
+
+<details open>
+<summary><b>5 💾 Persistent Queue</b></summary>
+
+- **`Persistent Queue (Auto-Recovery)`** (`boolean`, *Default: true*): Automatically saves unfinished queue items and restores them after restart/crash.
+- **`Recovery Launch State`** (`combo`, *Default: `Match Default`*): Override launch state when restored queue items are recovered on startup (`Match Default`, `Force Paused`, `Force Running`).
+</details>
+
+<details open>
+<summary><b>6 🖼️ Assets & History Restore</b></summary>
+
+- **`Restore Assets on Launch`** (`boolean`, *Default: true*): Automatically restores your latest generated images into the Assets / History pane on startup.
+- **`Restored Assets Count`** (`number`, *Default: 64*): The number of newest images from the output folder to populate into the Assets pane.
+</details>
+
+<details open>
+<summary><b>7 🩺 Diagnostics & Debug</b></summary>
+
+- **`Export Debug Profile`** (*Button: `📥 Export Debug Profile`*): Exports non-sensitive system environment details (OS, Python, PyTorch, LeafFlow settings, local cache counts) to a JSON file to share when reporting bugs or requesting assistance. Sensitive API keys and tokens are never exported.
 </details>
 
 ---
