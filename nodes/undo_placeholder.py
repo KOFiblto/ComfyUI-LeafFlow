@@ -7,8 +7,9 @@ UTILS_CATEGORY = "🍃 LeafFlow/Utils"
 
 def get_pretty_names_for_folder(folder):
     all_loras = folder_paths.get_filename_list("loras")
-    raw_filter = os.path.normpath(folder).lower().replace("\\", "/")
-    raw_filter = raw_filter.rstrip("/* ")
+    raw_filter = ""
+    if folder and str(folder).strip():
+        raw_filter = os.path.normpath(str(folder).strip()).lower().replace("\\", "/").rstrip("/* ")
     
     pretty_names = set()
     for lora in all_loras:

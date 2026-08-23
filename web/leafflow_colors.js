@@ -23,9 +23,9 @@ const COLOR_MAP = {
     "LoraTextFinder": { color: "#d97706", bgcolor: "#b45309" },
     "PromptQueueIterator": { color: "#d97706", bgcolor: "#b45309" },
     "MultiTextReplacer": { color: "#d97706", bgcolor: "#b45309" },
+    "LeafFlowTextSplit": { color: "#d97706", bgcolor: "#b45309" },
     "LeafFlowDecision": { color: "#d97706", bgcolor: "#b45309" },
     "FlowControlDecision": { color: "#d97706", bgcolor: "#b45309" },
-    "SnapchatCameraSnapNode": { color: "#eab308", bgcolor: "#ca8a04" },
 
     // Previews (Violet)
     "PreviewLatentLive": { color: "#7c3aed", bgcolor: "#6d28d9" },

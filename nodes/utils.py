@@ -30,6 +30,22 @@ def get_leafflow_user_dir():
     os.makedirs(leafflow_dir, exist_ok=True)
     return leafflow_dir
 
+def get_env_setting(key, default_val):
+    """
+    Reads a key setting from ComfyUI/user/default/LeafFlow/.env safely.
+    """
+    user_dir = get_leafflow_user_dir()
+    env_file = os.path.join(user_dir, ".env")
+    if os.path.exists(env_file):
+        try:
+            with open(env_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.strip().startswith(f"{key}="):
+                        return line.strip().split("=", 1)[1].strip()
+        except Exception:
+            pass
+    return default_val
+
 def parse_pretty_name(filepath):
     if not filepath or filepath in ["[ NONE ]", "[ RANDOM ]"]:
         return ""

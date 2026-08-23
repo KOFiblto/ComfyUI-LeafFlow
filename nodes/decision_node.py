@@ -60,7 +60,10 @@ class LeafFlowDecision:
     def send_notification(self, title, message):
         try:
             if sys.platform == 'win32' or os.name == 'nt':
-                # Windows native PowerShell Toast Notification
+                # Windows native PowerShell Toast Notification with XML escaping
+                import xml.sax.saxutils
+                esc_title = xml.sax.saxutils.escape(str(title))
+                esc_msg = xml.sax.saxutils.escape(str(message))
                 ps_script = f"""
 $ErrorActionPreference = 'Stop'
 [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
@@ -70,8 +73,8 @@ $template = @"
 <toast>
     <visual>
         <binding template="ToastText02">
-            <text id="1">{title}</text>
-            <text id="2">{message}</text>
+            <text id="1">{esc_title}</text>
+            <text id="2">{esc_msg}</text>
         </binding>
     </visual>
 </toast>

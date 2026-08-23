@@ -283,13 +283,6 @@ async def save_settings(request):
         if clear_prompt_iterator_on_launch is not None:
             os.environ["CLEAR_PROMPT_ITERATOR_ON_LAUNCH"] = str(clear_prompt_iterator_on_launch)
 
-        failed_file = os.path.join(USER_DIR, "failed_scrapes.json")
-        try:
-            with open(failed_file, "w", encoding="utf-8") as f:
-                f.write("{}")
-        except Exception:
-            pass
-
     except Exception as e:
         print(f"[LeafFlow] 🍃 Error saving settings to .env: {e}")
 

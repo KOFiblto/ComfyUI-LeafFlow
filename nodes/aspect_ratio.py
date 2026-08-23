@@ -130,7 +130,13 @@ class TextAspectRatioFinder:
         else:
             found_ratio = default_aspect_ratio
 
-        w_part, h_part = map(float, found_ratio.split(":"))
+        try:
+            w_part, h_part = map(float, str(found_ratio).split(":"))
+            if w_part <= 0 or h_part <= 0:
+                raise ValueError("Dimensions must be positive")
+        except Exception:
+            w_part, h_part = 1.0, 1.0
+            found_ratio = "1:1"
         r = w_part / h_part
 
         total_pixels = effective_mp * 1024.0 * 1024.0
