@@ -54,5 +54,20 @@ class TestAutoWatcher(unittest.TestCase):
         self.assertFalse(has_image)
         self.assertEqual(img_tensor.shape, (1, 64, 64, 3))
 
+    def test_load_and_remove_image_with_delete_toggle(self):
+        img = Image.new("RGB", (64, 64), color="red")
+        img_path = os.path.join(self.temp_dir, "test_del.png")
+        img.save(img_path)
+
+        # 1. delete_image = False (default: file must remain on disk)
+        tensor = self.node.load_and_remove_image(img_path, delete_image=False)
+        self.assertEqual(tensor.shape, (1, 64, 64, 3))
+        self.assertTrue(os.path.exists(img_path), "File should not be deleted when delete_image=False")
+
+        # 2. delete_image = True (file must be removed from disk)
+        tensor2 = self.node.load_and_remove_image(img_path, delete_image=True)
+        self.assertEqual(tensor2.shape, (1, 64, 64, 3))
+        self.assertFalse(os.path.exists(img_path), "File should be deleted when delete_image=True")
+
 if __name__ == "__main__":
     unittest.main()

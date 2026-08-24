@@ -17,6 +17,7 @@ class LoadImageFromFolder:
                 "rescan_interval": ("INT", {"default": 2, "min": 1, "max": 60}),
                 "sort_by": (["date_modified", "date_created", "name"], {"default": "date_modified"}),
                 "regex_filter": ("STRING", {"default": ".*"}),
+                "delete_image": ("BOOLEAN", {"default": False, "tooltip": "If enabled, deletes the image file from disk after loading it. Default is False."}),
             }
         }
 
@@ -24,7 +25,7 @@ class LoadImageFromFolder:
     RETURN_NAMES = ("image", "has_image")
     FUNCTION = "watch"
     CATEGORY = "🍃 LeafFlow/Automation"
-    DESCRIPTION = "Loads an image from a folder, optionally waiting if the folder is empty."
+    DESCRIPTION = "Loads an image from a folder, optionally waiting if the folder is empty, with an optional toggle to delete the image after loading."
 
     @classmethod
     def IS_CHANGED(s, **kwargs):
@@ -35,16 +36,17 @@ class LoadImageFromFolder:
         # Returns a 1x1 0-tensor for no-image state
         return torch.zeros((1, 64, 64, 3), dtype=torch.float32)
 
-    def load_and_remove_image(self, filepath):
+    def load_and_remove_image(self, filepath, delete_image=False):
         with Image.open(filepath) as img:
             i = ImageOps.exif_transpose(img)
             image_array = np.array(i.convert("RGB")).astype(np.float32) / 255.0
             img_tensor = torch.from_numpy(image_array)[None,]
         
-        try:
-            os.remove(filepath)
-        except Exception as e:
-            print(f"[LeafFlow] Warning: Failed to remove processed file '{filepath}': {e}")
+        if delete_image:
+            try:
+                os.remove(filepath)
+            except Exception as e:
+                print(f"[LeafFlow] Warning: Failed to remove processed file '{filepath}': {e}")
             
         return img_tensor
 
@@ -86,7 +88,7 @@ class LoadImageFromFolder:
             
         return [x[0] for x in valid_files]
 
-    def watch(self, folder, wait_if_folder_is_empty, rescan_interval, sort_by, regex_filter):
+    def watch(self, folder, wait_if_folder_is_empty, rescan_interval, sort_by, regex_filter, delete_image=False, **kwargs):
         folder = sanitize_folder_path(folder, default_dir="input/watch")
         
         if wait_if_folder_is_empty:
@@ -99,7 +101,7 @@ class LoadImageFromFolder:
                         if files:
                             filepath = files[0] # Pick the first one based on sorting
                             try:
-                                img_tensor = self.load_and_remove_image(filepath)
+                                img_tensor = self.load_and_remove_image(filepath, delete_image=delete_image)
                                 return (img_tensor, True)
                             except Exception as e:
                                 print(f"[LeafFlow] Error processing {filepath}: {e}")
@@ -114,7 +116,7 @@ class LoadImageFromFolder:
                     if files:
                         filepath = files[0]
                         try:
-                            img_tensor = self.load_and_remove_image(filepath)
+                            img_tensor = self.load_and_remove_image(filepath, delete_image=delete_image)
                             return (img_tensor, True)
                         except Exception as e:
                             print(f"[LeafFlow] Error processing {filepath}: {e}")

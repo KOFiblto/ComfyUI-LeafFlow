@@ -20,7 +20,7 @@ async function saveToFavorites(imgSrc, subcategory = "Default", custom_name = ""
         return;
     }
 
-    const favFolder = app.ui.settings.getSettingValue("LeafFlow.3 ⭐ Favorite Prompts.01_FavoritesFolder") || app.ui.settings.getSettingValue("LeafFlow.FavoritesFolder", "output/favorites");
+    const favFolder = app.ui.settings.getSettingValue("LeafFlow.3. ⭐ Favorite Prompts.01_FavoritesFolder") || app.ui.settings.getSettingValue("LeafFlow.3 ⭐ Favorite Prompts.01_FavoritesFolder") || app.ui.settings.getSettingValue("LeafFlow.FavoritesFolder", "output/favorites");
     try {
         const response = await api.fetchApi(`/leafflow/save_favorite`, {
             method: "POST",

@@ -125,6 +125,7 @@ Monitors a folder for incoming images, loads the target image into a PyTorch ten
 - **`rescan_interval`** (`INT`): Polling frequency in seconds.
 - **`sort_by`** (`COMBO`): Sort by `date_modified`, `date_created`, or `name`.
 - **`regex_filter`** (`STRING`): Regex pattern to filter filenames.
+- **`delete_image`** (`BOOLEAN`, *Default: false*): If enabled, deletes the image file from disk after loading.
 
 #### Outputs
 - **`image`** (`IMAGE`): Loaded image tensor.

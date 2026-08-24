@@ -1,6 +1,62 @@
 import { app } from "/scripts/app.js";
 import { api } from "/scripts/api.js";
 
+// Inject CSS to ensure settings buttons look distinct, styled with an emerald theme, and never get text cut off
+if (typeof document !== "undefined") {
+    const styleId = "leafflow-settings-button-styles";
+    if (!document.getElementById(styleId)) {
+        const style = document.createElement("style");
+        style.id = styleId;
+        style.textContent = `
+            /* ComfyUI V2 Vue & LiteGraph Settings Button Styling */
+            button.leafflow-settings-btn,
+            tr:has([id*="LeafFlow"]) button,
+            tr:has([id*="leafflow"]) button,
+            div:has(> [id*="LeafFlow"]) button,
+            div:has(> [id*="leafflow"]) button,
+            [data-setting-id*="LeafFlow"] button,
+            div[class*="setting"]:has(span:contains("LeafFlow")) button {
+                background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+                border: 1px solid #10b981 !important;
+                color: #ffffff !important;
+                font-weight: 600 !important;
+                font-size: 12px !important;
+                padding: 6px 14px !important;
+                border-radius: 6px !important;
+                width: auto !important;
+                min-width: max-content !important;
+                max-width: none !important;
+                white-space: nowrap !important;
+                overflow: visible !important;
+                text-overflow: clip !important;
+                cursor: pointer !important;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+                transition: all 0.2s ease !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+            }
+
+            button.leafflow-settings-btn:hover,
+            tr:has([id*="LeafFlow"]) button:hover,
+            div:has(> [id*="LeafFlow"]) button:hover,
+            [data-setting-id*="LeafFlow"] button:hover {
+                background: linear-gradient(135deg, #047857 0%, #059669 100%) !important;
+                border-color: #34d399 !important;
+                color: #ffffff !important;
+                box-shadow: 0 0 10px rgba(16, 185, 129, 0.45) !important;
+                transform: translateY(-1px) !important;
+            }
+
+            button.leafflow-settings-btn:active,
+            tr:has([id*="LeafFlow"]) button:active {
+                transform: translateY(0) !important;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
 /**
  * Custom renderer for real, styled action buttons in ComfyUI Settings Modal.
  */
@@ -12,35 +68,37 @@ function renderSettingButton(label, workingText, successText, onClickHandler) {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.textContent = label;
-        btn.className = "p-button leafflow-custom-setting-btn";
+        btn.className = "p-button leafflow-settings-btn";
         btn.style.cssText = `
-            padding: 6px 14px;
-            background: #23272e;
-            color: #eceff4;
-            border: 1px solid #4c566a;
-            border-radius: 6px;
-            font-weight: bold;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            outline: none;
-            min-width: 140px;
-            text-align: center;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            padding: 6px 14px !important;
+            background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+            color: #ffffff !important;
+            border: 1px solid #10b981 !important;
+            border-radius: 6px !important;
+            font-weight: 600 !important;
+            font-size: 12px !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+            outline: none !important;
+            min-width: max-content !important;
+            width: auto !important;
+            white-space: nowrap !important;
+            text-align: center !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.4) !important;
         `;
 
         btn.onmouseover = () => {
             if (!btn.disabled) {
-                btn.style.background = "#2e7d32";
-                btn.style.borderColor = "#4caf50";
-                btn.style.color = "#ffffff";
+                btn.style.background = "#047857";
+                btn.style.borderColor = "#34d399";
+                btn.style.boxShadow = "0 0 10px rgba(16, 185, 129, 0.45)";
             }
         };
         btn.onmouseout = () => {
             if (!btn.disabled) {
-                btn.style.background = "#23272e";
-                btn.style.borderColor = "#4c566a";
-                btn.style.color = "#eceff4";
+                btn.style.background = "linear-gradient(135deg, #059669 0%, #047857 100%)";
+                btn.style.borderColor = "#10b981";
+                btn.style.boxShadow = "0 1px 3px rgba(0,0,0,0.4)";
             }
         };
 
@@ -66,9 +124,8 @@ function renderSettingButton(label, workingText, successText, onClickHandler) {
                 btn.textContent = label;
                 btn.disabled = false;
                 btn.style.opacity = "1";
-                btn.style.background = "#23272e";
-                btn.style.borderColor = "#4c566a";
-                btn.style.color = "#eceff4";
+                btn.style.background = "linear-gradient(135deg, #059669 0%, #047857 100%)";
+                btn.style.borderColor = "#10b981";
             }, 1800);
         };
 
@@ -81,12 +138,12 @@ app.registerExtension({
     name: "ComfyUI.LeafFlow.Settings",
     async setup() {
         // =========================================================================
-        // GRUPPE 1: 1 🖼️ Visual Loaders (Civitai & TMDB Duo)
+        // GRUPPE 1: 1. 🖼️ Visual Loaders (Civitai & TMDB Duo)
         // =========================================================================
 
         // 1.1 Civitai API Key
         app.ui.settings.addSetting({
-            id: "LeafFlow.1 🖼️ Visual Loaders.01_CivitaiApiKey",
+            id: "LeafFlow.1. 🖼️ Visual Loaders.01_CivitaiApiKey",
             name: "Civitai API Key",
             type: "text",
             defaultValue: "",
@@ -103,7 +160,7 @@ app.registerExtension({
 
         // 1.2 Enable Civitai Auto-Scraping Toggle (default: true)
         app.ui.settings.addSetting({
-            id: "LeafFlow.1 🖼️ Visual Loaders.02_EnableCivitaiScraping",
+            id: "LeafFlow.1. 🖼️ Visual Loaders.02_EnableCivitaiScraping",
             name: "Enable Civitai Auto-Scraping",
             type: "boolean",
             defaultValue: true,
@@ -119,7 +176,7 @@ app.registerExtension({
 
         // 1.3 TMDB Access Token
         app.ui.settings.addSetting({
-            id: "LeafFlow.1 🖼️ Visual Loaders.03_TMDBApiKey",
+            id: "LeafFlow.1. 🖼️ Visual Loaders.03_TMDBApiKey",
             name: "TMDB Access Token",
             type: "text",
             defaultValue: "",
@@ -136,7 +193,7 @@ app.registerExtension({
 
         // 1.4 Enable TMDB Auto-Scraping Toggle (default: false)
         app.ui.settings.addSetting({
-            id: "LeafFlow.1 🖼️ Visual Loaders.04_EnableTMDBScraping",
+            id: "LeafFlow.1. 🖼️ Visual Loaders.04_EnableTMDBScraping",
             name: "Enable TMDB Auto-Scraping",
             type: "boolean",
             defaultValue: false,
@@ -152,7 +209,7 @@ app.registerExtension({
 
         // 1.5 Enable LoRA Usage Tracking (default: true)
         app.ui.settings.addSetting({
-            id: "LeafFlow.1 🖼️ Visual Loaders.05_EnableLoraUsage",
+            id: "LeafFlow.1. 🖼️ Visual Loaders.05_EnableLoraUsage",
             name: "Enable LoRA Usage Tracking",
             type: "boolean",
             defaultValue: true,
@@ -168,12 +225,14 @@ app.registerExtension({
 
         // 1.6 Reset Scrapes Cache Button
         app.ui.settings.addSetting({
-            id: "LeafFlow.1 🖼️ Visual Loaders.06_ResetScrapesCache",
+            id: "LeafFlow.1. 🖼️ Visual Loaders.06_ResetScrapesCache",
             name: "Reset Failed Scrapes Cache",
             type: "button",
-            defaultValue: "🗑️ Reset Scrapes Cache",
+            defaultValue: "🗑️ Clear Scrapes Cache",
             tooltip: "Immediately clears failed_scrapes.json so Civitai and TMDB can retry downloading missing preview thumbnails on the next folder scan.",
             attrs: {
+                className: "leafflow-settings-btn",
+                class: "leafflow-settings-btn",
                 onClick: async () => {
                     try {
                         const resp = await api.fetchApi("/leafflow/scrapes/clear", { method: "POST" });
@@ -188,7 +247,7 @@ app.registerExtension({
                     }
                 }
             },
-            render: renderSettingButton("🗑️ Reset Scrapes Cache", "⏳ Clearing...", "✅ Cache Reset!", async () => {
+            render: renderSettingButton("🗑️ Clear Scrapes Cache", "⏳ Clearing...", "✅ Cache Reset!", async () => {
                 const resp = await api.fetchApi("/leafflow/scrapes/clear", { method: "POST" });
                 const data = await resp.json();
                 if (data.status !== "ok") {
@@ -199,12 +258,12 @@ app.registerExtension({
 
 
         // =========================================================================
-        // GRUPPE 2: 2 🔄 Prompt Queue Iterator
+        // GRUPPE 2: 2. 🔄 Prompt Queue Iterator
         // =========================================================================
 
         // 2.1 Clear Prompt Iterator State on Launch (default: false)
         app.ui.settings.addSetting({
-            id: "LeafFlow.2 🔄 Prompt Iterator.01_ClearOnLaunch",
+            id: "LeafFlow.2. 🔄 Prompt Iterator.01_ClearOnLaunch",
             name: "Clear State on Launch",
             type: "boolean",
             defaultValue: false,
@@ -220,12 +279,14 @@ app.registerExtension({
 
         // 2.2 Reset Prompt Iterator Queues Now
         app.ui.settings.addSetting({
-            id: "LeafFlow.2 🔄 Prompt Iterator.02_ResetActiveQueues",
+            id: "LeafFlow.2. 🔄 Prompt Iterator.02_ResetActiveQueues",
             name: "Reset Active Queues State",
             type: "button",
             defaultValue: "🔄 Reset All Queues",
             tooltip: "Immediately empties all active prompt queues and resets iterator state across all workflows.",
             attrs: {
+                className: "leafflow-settings-btn",
+                class: "leafflow-settings-btn",
                 onClick: async () => {
                     try {
                         const resp = await api.fetchApi("/leafflow/prompt_iterator/clear", { method: "POST" });
@@ -251,12 +312,12 @@ app.registerExtension({
 
 
         // =========================================================================
-        // GRUPPE 3: 3 ⭐ Favorite Prompts
+        // GRUPPE 3: 3. ⭐ Favorite Prompts
         // =========================================================================
 
         // 3.1 Favorites Folder Path
         app.ui.settings.addSetting({
-            id: "LeafFlow.3 ⭐ Favorite Prompts.01_FavoritesFolder",
+            id: "LeafFlow.3. ⭐ Favorite Prompts.01_FavoritesFolder",
             name: "Favorites Save Folder Path",
             type: "text",
             defaultValue: "output/favorites",
@@ -273,12 +334,12 @@ app.registerExtension({
 
 
         // =========================================================================
-        // GRUPPE 4: 4 ⏸️ Pause & Resume Controls
+        // GRUPPE 4: 4. ⏸️ Pause & Resume Controls
         // =========================================================================
 
         // 4.1 Default Pause Queue State on Launch
         app.ui.settings.addSetting({
-            id: "LeafFlow.4 ⏸️ Pause Controls.01_DefaultStateOnLaunch",
+            id: "LeafFlow.4. ⏸️ Pause Controls.01_DefaultStateOnLaunch",
             name: "Default State on Launch",
             type: "combo",
             options: ["Paused", "Running"],
@@ -295,7 +356,7 @@ app.registerExtension({
 
         // 4.2 Default Pause Queue Mode on Launch
         app.ui.settings.addSetting({
-            id: "LeafFlow.4 ⏸️ Pause Controls.02_DefaultPauseAction",
+            id: "LeafFlow.4. ⏸️ Pause Controls.02_DefaultPauseAction",
             name: "Default Pause Action",
             type: "combo",
             options: ["Finish Active Prompt", "Instant Resume Node"],
@@ -313,7 +374,7 @@ app.registerExtension({
 
         // 4.3 Enable Pause Queue Toolbar Button
         app.ui.settings.addSetting({
-            id: "LeafFlow.4 ⏸️ Pause Controls.03_EnableToolbarButton",
+            id: "LeafFlow.4. ⏸️ Pause Controls.03_EnableToolbarButton",
             name: "Enable Top Toolbar Button",
             type: "boolean",
             defaultValue: true,
@@ -328,7 +389,7 @@ app.registerExtension({
 
         // 4.4 Toolbar Button Unpaused Color
         app.ui.settings.addSetting({
-            id: "LeafFlow.4 ⏸️ Pause Controls.04_ToolbarButtonUnpausedColor",
+            id: "LeafFlow.4. ⏸️ Pause Controls.04_ToolbarButtonUnpausedColor",
             name: "Toolbar Button Unpaused Color",
             type: "text",
             defaultValue: "#059669",
@@ -340,7 +401,7 @@ app.registerExtension({
 
         // 4.5 Toolbar Button Paused Color
         app.ui.settings.addSetting({
-            id: "LeafFlow.4 ⏸️ Pause Controls.05_ToolbarButtonPausedColor",
+            id: "LeafFlow.4. ⏸️ Pause Controls.05_ToolbarButtonPausedColor",
             name: "Toolbar Button Paused Color",
             type: "text",
             defaultValue: "#ea580c",
@@ -352,7 +413,7 @@ app.registerExtension({
 
         // 4.6 Enable System Tray Icon
         app.ui.settings.addSetting({
-            id: "LeafFlow.4 ⏸️ Pause Controls.06_EnableTrayIcon",
+            id: "LeafFlow.4. ⏸️ Pause Controls.06_EnableTrayIcon",
             name: "Enable System Tray Icon",
             type: "boolean",
             defaultValue: true,
@@ -368,12 +429,12 @@ app.registerExtension({
 
 
         // =========================================================================
-        // GRUPPE 5: 5 💾 Persistent Queue (Auto-Recovery)
+        // GRUPPE 5: 5. 💾 Persistent Queue (Auto-Recovery)
         // =========================================================================
 
         // 5.1 Enable Persistent Queue (Auto-Recovery)
         app.ui.settings.addSetting({
-            id: "LeafFlow.5 💾 Persistent Queue.01_EnablePersistentQueue",
+            id: "LeafFlow.5. 💾 Persistent Queue.01_EnablePersistentQueue",
             name: "Enable Persistent Queue (Auto-Recovery)",
             type: "boolean",
             defaultValue: true,
@@ -389,7 +450,7 @@ app.registerExtension({
 
         // 5.2 Persistent Queue Restored Launch State
         app.ui.settings.addSetting({
-            id: "LeafFlow.5 💾 Persistent Queue.02_RecoveryLaunchState",
+            id: "LeafFlow.5. 💾 Persistent Queue.02_RecoveryLaunchState",
             name: "Recovery Launch State",
             type: "combo",
             options: ["Match Default", "Force Paused", "Force Running"],
@@ -406,12 +467,12 @@ app.registerExtension({
 
 
         // =========================================================================
-        // GRUPPE 6: 6 🖼️ Assets & History Restore
+        // GRUPPE 6: 6. 🖼️ Assets & History Restore
         // =========================================================================
 
         // 6.1 Enable Assets / History Restore on Launch
         app.ui.settings.addSetting({
-            id: "LeafFlow.6 🖼️ Assets Restore.01_RestoreAssetsOnLaunch",
+            id: "LeafFlow.6. 🖼️ Assets Restore.01_RestoreAssetsOnLaunch",
             name: "Restore Assets on Launch",
             type: "boolean",
             defaultValue: true,
@@ -427,7 +488,7 @@ app.registerExtension({
 
         // 6.2 Restored Assets Count
         app.ui.settings.addSetting({
-            id: "LeafFlow.6 🖼️ Assets Restore.02_RestoredAssetsCount",
+            id: "LeafFlow.6. 🖼️ Assets Restore.02_RestoredAssetsCount",
             name: "Restored Assets Count",
             type: "number",
             defaultValue: 64,
@@ -444,17 +505,19 @@ app.registerExtension({
 
 
         // =========================================================================
-        // GRUPPE 7: 7 🩺 Diagnostics & Debug
+        // GRUPPE 7: 7. 🩺 Diagnostics & Debug
         // =========================================================================
 
         // 7.1 Export Debug Profile Button
         app.ui.settings.addSetting({
-            id: "LeafFlow.7 🩺 Diagnostics.01_ExportDebugProfile",
+            id: "LeafFlow.7. 🩺 Diagnostics.01_ExportDebugProfile",
             name: "Export Debug Profile",
             type: "button",
             defaultValue: "📥 Export Debug Profile",
             tooltip: "Exports non-sensitive environment diagnostics (OS, Python, PyTorch, LeafFlow settings, local counts) as a JSON file to share when troubleshooting issues.",
             attrs: {
+                className: "leafflow-settings-btn",
+                class: "leafflow-settings-btn",
                 onClick: async () => {
                     const approved = confirm("🍃 ComfyUI-LeafFlow Diagnostics Export\n\nExport system diagnostics for troubleshooting?\n\nNOTE: Sensitive API keys, tokens, file paths, and private prompt texts are automatically stripped and NEVER exported.");
                     if (!approved) return;
@@ -477,7 +540,20 @@ app.registerExtension({
                         alert("❌ Failed to export debug profile: " + e.message);
                     }
                 }
-            }
+            },
+            render: renderSettingButton("📥 Export Debug Profile", "⏳ Exporting...", "✅ Exported!", async () => {
+                const resp = await api.fetchApi("/leafflow/debug/export");
+                const data = await resp.json();
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `leafflow_debug_profile_${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            })
         });
     }
 });
