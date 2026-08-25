@@ -42,42 +42,164 @@ function isCopyEnabled(settingKey) {
 }
 
 /**
+ * Client-side binary PNG chunk parser to extract prompt/parameters directly from ArrayBuffer.
+ */
+async function extractPromptFromImageUrl(imgSrc) {
+    try {
+        const resp = await fetch(imgSrc);
+        if (!resp.ok) return null;
+        const arrayBuffer = await resp.arrayBuffer();
+        const dataView = new DataView(arrayBuffer);
+
+        // Verify PNG magic header: 0x89504E47 0x0D0A1A0A
+        if (dataView.byteLength < 16) return null;
+        if (dataView.getUint32(0) !== 0x89504E47 || dataView.getUint32(4) !== 0x0D0A1A0A) {
+            return null;
+        }
+
+        let offset = 8;
+        const textDecoder = new TextDecoder("utf-8");
+        const metadata = {};
+
+        while (offset < dataView.byteLength - 8) {
+            const length = dataView.getUint32(offset);
+            const type = String.fromCharCode(
+                dataView.getUint8(offset + 4),
+                dataView.getUint8(offset + 5),
+                dataView.getUint8(offset + 6),
+                dataView.getUint8(offset + 7)
+            );
+
+            if (type === "tEXt" || type === "iTXt") {
+                const chunkData = new Uint8Array(arrayBuffer, offset + 8, length);
+                let nullIndex = 0;
+                while (nullIndex < chunkData.length && chunkData[nullIndex] !== 0) nullIndex++;
+                const keyword = textDecoder.decode(chunkData.subarray(0, nullIndex));
+
+                let textValue = "";
+                if (type === "tEXt") {
+                    textValue = textDecoder.decode(chunkData.subarray(nullIndex + 1));
+                } else if (type === "iTXt") {
+                    const compFlag = chunkData[nullIndex + 1];
+                    let textStart = nullIndex + 3;
+                    while (textStart < chunkData.length && chunkData[textStart] !== 0) textStart++;
+                    textStart++;
+                    while (textStart < chunkData.length && chunkData[textStart] !== 0) textStart++;
+                    textStart++;
+                    if (compFlag === 0) {
+                        textValue = textDecoder.decode(chunkData.subarray(textStart));
+                    }
+                }
+                if (keyword && textValue) {
+                    metadata[keyword.toLowerCase()] = textValue;
+                }
+            }
+            offset += 12 + length;
+        }
+
+        // 1. Check A1111 / WebUI / Forge / Civitai parameters
+        if (metadata["parameters"]) {
+            const lines = metadata["parameters"].split("\n");
+            const pos = [];
+            for (const line of lines) {
+                if (line.trim().startsWith("Negative prompt:") || line.trim().startsWith("Steps:")) break;
+                pos.push(line);
+            }
+            const res = pos.join("\n").trim();
+            if (res) return res;
+        }
+
+        // 2. Check native ComfyUI prompt graph JSON
+        if (metadata["prompt"]) {
+            try {
+                const promptData = JSON.parse(metadata["prompt"]);
+                const positiveNodeIds = new Set();
+                for (const [nid, ndata] of Object.entries(promptData)) {
+                    const ctype = ndata.class_type || "";
+                    const inputs = ndata.inputs || {};
+                    if (ctype.includes("Sampler") || ctype.includes("KSampler")) {
+                        if (Array.isArray(inputs.positive) && inputs.positive.length > 0) {
+                            positiveNodeIds.add(String(inputs.positive[0]));
+                        }
+                    }
+                }
+                const texts = [];
+                for (const nid of positiveNodeIds) {
+                    const ndata = promptData[nid] || {};
+                    const inputs = ndata.inputs || {};
+                    const t = inputs.text || inputs.prompt;
+                    if (typeof t === "string" && t.trim()) texts.push(t.trim());
+                }
+                if (texts.length) return texts.join("\n");
+
+                // Fallback: search all text / prompt nodes
+                for (const [nid, ndata] of Object.entries(promptData)) {
+                    const ctype = ndata.class_type || "";
+                    const inputs = ndata.inputs || {};
+                    if (ctype.includes("CLIPTextEncode") || ctype.includes("Text") || ctype.includes("Prompt")) {
+                        const t = inputs.text || inputs.prompt;
+                        if (typeof t === "string" && t.trim().length > 1) return t.trim();
+                    }
+                }
+            } catch (_) {}
+        }
+    } catch (e) {
+        console.warn("[LeafFlow] Direct PNG metadata extraction failed:", e);
+    }
+    return null;
+}
+
+/**
  * Helper to fetch image metadata and extract the positive prompt text.
  */
 async function copyImagePrompt(imgSrc) {
     if (!imgSrc) return false;
+    let promptText = null;
+
+    // 1. Try client-side direct binary extraction first
     try {
-        let url = new URL(imgSrc, window.location.origin);
-        let filename = url.searchParams.get("filename");
-        let type = url.searchParams.get("type") || "output";
-        let subfolder = url.searchParams.get("subfolder") || "";
+        promptText = await extractPromptFromImageUrl(imgSrc);
+    } catch (_) {}
 
-        if (!filename) {
-            const parts = url.pathname.split("/");
-            filename = parts[parts.length - 1];
-        }
+    // 2. Fallback to server endpoint
+    if (!promptText) {
+        try {
+            let url = new URL(imgSrc, window.location.origin);
+            let filename = url.searchParams.get("filename");
+            let type = url.searchParams.get("type") || "output";
+            let subfolder = url.searchParams.get("subfolder") || "";
 
-        if (!filename) return false;
-
-        const promptUrl = `/leafflow/view_image_prompt?filename=${encodeURIComponent(filename)}&type=${encodeURIComponent(type)}&subfolder=${encodeURIComponent(subfolder)}`;
-        const response = await api.fetchApi(promptUrl);
-        if (response.ok) {
-            const data = await response.json();
-            if (data && data.prompt) {
-                const copied = await copyToClipboard(data.prompt);
-                if (copied && app.extensionManager?.toast?.add) {
-                    app.extensionManager.toast.add({
-                        severity: "success",
-                        summary: "📋 Prompt Copied",
-                        detail: data.prompt.length > 80 ? data.prompt.slice(0, 80) + "..." : data.prompt,
-                        life: 3000
-                    });
-                }
-                return copied;
+            if (!filename) {
+                const parts = url.pathname.split("/");
+                filename = decodeURIComponent(parts[parts.length - 1]);
             }
+
+            if (filename) {
+                const promptUrl = `/leafflow/get_image_prompt?filename=${encodeURIComponent(filename)}&type=${encodeURIComponent(type)}&subfolder=${encodeURIComponent(subfolder)}`;
+                const response = await api.fetchApi(promptUrl);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && data.prompt) {
+                        promptText = data.prompt;
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn("[LeafFlow] Direct prompt fetch failed:", e);
         }
-    } catch (e) {
-        console.warn("[LeafFlow] Direct prompt fetch failed:", e);
+    }
+
+    if (promptText) {
+        const copied = await copyToClipboard(promptText);
+        if (copied && app.extensionManager?.toast?.add) {
+            app.extensionManager.toast.add({
+                severity: "success",
+                summary: "📋 Prompt Copied",
+                detail: promptText.length > 80 ? promptText.slice(0, 80) + "..." : promptText,
+                life: 3000
+            });
+        }
+        return copied;
     }
     return false;
 }
