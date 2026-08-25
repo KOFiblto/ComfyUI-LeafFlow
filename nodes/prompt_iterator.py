@@ -4,6 +4,8 @@ import json
 import random
 import time
 import hashlib
+import platform
+import subprocess
 from aiohttp import web
 from server import PromptServer
 import folder_paths
@@ -37,21 +39,28 @@ def load_state():
     if os.path.exists(STATE_FILE):
         try:
             with open(STATE_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            pass
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+        except Exception as e:
+            print(f"[LeafFlow] 🍃 Warning reading prompt iterator state: {e}")
     return {}
 
 def save_state(state):
     ensure_user_dir()
     try:
-        # Auto-prune abandoned state keys if count exceeds 50 entries
-        if len(state) > 50:
-            excess_keys = list(state.keys())[:-50]
+        # Auto-prune abandoned state keys if count exceeds 100 entries
+        if len(state) > 100:
+            excess_keys = list(state.keys())[:-100]
             for k in excess_keys:
                 del state[k]
-        with open(STATE_FILE, "w", encoding="utf-8") as f:
+        tmp_file = STATE_FILE + ".tmp"
+        with open(tmp_file, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=4, ensure_ascii=False)
+        if os.path.exists(STATE_FILE):
+            os.replace(tmp_file, STATE_FILE)
+        else:
+            os.rename(tmp_file, STATE_FILE)
     except Exception as e:
         print(f"[LeafFlow] 🍃 Error saving prompt iterator state: {e}")
 
@@ -59,7 +68,7 @@ def clear_state():
     ensure_user_dir()
     try:
         with open(STATE_FILE, "w", encoding="utf-8") as f:
-            json.dump({}, f)
+            json.dump({}, f, indent=4)
         print("[LeafFlow] 🍃 Prompt iterator state cleared.")
         return True
     except Exception as e:
@@ -70,14 +79,63 @@ def clear_state():
 if is_clear_prompt_iterator_on_launch():
     clear_state()
 
-# Register clear endpoint
+# Register API endpoints
 try:
     routes = PromptServer.instance.routes
+
+    @routes.post("/leafflow/prompt_iterator/reset_node")
+    async def reset_prompt_iterator_node(request):
+        try:
+            data = await request.json()
+            node_id = str(data.get("node_id", ""))
+            state = load_state()
+            matched = False
+            for k in list(state.keys()):
+                if node_id == "all" or k.startswith(f"node_{node_id}_") or k == f"node_{node_id}":
+                    if isinstance(state[k], dict):
+                        state[k]["index"] = 0
+                    else:
+                        state[k] = {"index": 0, "total": 0}
+                    matched = True
+            save_state(state)
+            if node_id and node_id != "all":
+                try:
+                    PromptServer.instance.send_sync("leafflow_prompt_iterator_progress", {
+                        "node_id": node_id,
+                        "current_run": 0,
+                        "total_runs": 0,
+                        "status_text": "Reset (0 / --)"
+                    })
+                except Exception:
+                    pass
+            return web.json_response({"status": "ok", "reset": matched})
+        except Exception as e:
+            return web.json_response({"status": "error", "message": str(e)}, status=500)
+
     @routes.post("/leafflow/prompt_iterator/clear")
     @routes.post("/flow_control/prompt_iterator/clear")
     async def clear_prompt_iterator_endpoint(request):
         success = clear_state()
         return web.json_response({"status": "ok" if success else "error"})
+
+    @routes.post("/leafflow/prompt_iterator/open_file")
+    async def open_prompt_iterator_file(request):
+        ensure_user_dir()
+        if not os.path.exists(STATE_FILE):
+            save_state({})
+        try:
+            sys_name = platform.system()
+            if sys_name == "Windows":
+                os.startfile(STATE_FILE)
+            elif sys_name == "Darwin":
+                subprocess.Popen(["open", STATE_FILE])
+            else:
+                subprocess.Popen(["xdg-open", STATE_FILE])
+            return web.json_response({"status": "ok", "path": STATE_FILE})
+        except Exception as e:
+            print(f"[LeafFlow] 🍃 Error opening state file: {e}")
+            return web.json_response({"status": "error", "message": str(e)}, status=500)
+
 except Exception:
     pass
 
@@ -102,11 +160,11 @@ class PromptQueueIterator:
         return {
             "required": {
                 "pop_mode": ([
-                    "Pop Top & Delete",
-                    "Cycle / Loop",
-                    "Random (Delete)",
-                    "Random (Keep)"
-                ], {"default": "Pop Top & Delete"}),
+                    "Sequential (Loop on End)",
+                    "Sequential (Stop on End)",
+                    "Random (Keep)",
+                    "Random (Cycle)"
+                ], {"default": "Sequential (Loop on End)"}),
                 "separator": ([
                     ">1 Empty Line",
                     "Newline",
@@ -126,15 +184,16 @@ class PromptQueueIterator:
     RETURN_NAMES = ("prompt", "remaining_text", "remaining_count")
     FUNCTION = "process_queue"
     CATEGORY = "🍃 LeafFlow/Utils"
-    DESCRIPTION = "Parses multiline prompt text blocks, popping/selecting prompts per batch queue iteration with live UI text updates."
+    DESCRIPTION = "Deterministically iterates over multiline prompt text blocks per queue run with live progress display and index controls."
 
     @classmethod
     def IS_CHANGED(cls, **kwargs):
+        # Force re-execution so each queue batch item advances the pointer
         return time.time()
 
     def process_queue(
         self,
-        pop_mode="Pop Top & Delete",
+        pop_mode="Sequential (Loop on End)",
         separator=">1 Empty Line",
         text="",
         prompt=None,
@@ -148,56 +207,74 @@ class PromptQueueIterator:
             return ("", "", 0)
 
         original_blocks = parse_prompt_blocks(text_str, separator)
-        if not original_blocks:
+        total_count = len(original_blocks)
+        if total_count == 0:
             return ("", "", 0)
 
-        text_hash = hashlib.sha256(text_str.encode('utf-8')).hexdigest()[:16]
-        state_key = f"node_{unique_id}_{text_hash}_{separator}_{pop_mode}"
+        # Calculate stable hash of the complete input text
+        text_hash = hashlib.sha256(text_str.strip().encode('utf-8')).hexdigest()[:16]
+        state_key = f"node_{unique_id}_{text_hash}"
         
+        # Load state fresh from disk (no stale memory cache)
         state = load_state()
-        cached_list = state.get(state_key)
+        node_state = state.get(state_key)
 
-        if cached_list is None or len(cached_list) == 0:
-            prompt_blocks = list(original_blocks)
-        else:
-            prompt_blocks = list(cached_list)
+        current_index = 0
+        if isinstance(node_state, dict):
+            current_index = int(node_state.get("index", 0))
+        elif isinstance(node_state, int):
+            current_index = node_state
 
-        selected_prompt = ""
-        
-        if pop_mode == "Pop Top & Delete":
-            selected_prompt = prompt_blocks.pop(0)
-            if len(prompt_blocks) > 0:
-                state[state_key] = prompt_blocks
+        # Select prompt based on mode and calculate next index
+        if pop_mode in ["Sequential (Loop on End)", "Cycle / Loop", "Pop Top & Delete"]:
+            idx = current_index % total_count
+            selected_prompt = original_blocks[idx]
+            next_index = (current_index + 1) % total_count
+            display_run = idx + 1
+        elif pop_mode in ["Sequential (Stop on End)"]:
+            if current_index >= total_count:
+                idx = total_count - 1
+                selected_prompt = original_blocks[idx]
+                next_index = total_count
+                display_run = total_count
             else:
-                if state_key in state:
-                    del state[state_key]
-            save_state(state)
-        elif pop_mode == "Cycle / Loop":
-            selected_prompt = prompt_blocks.pop(0)
-            prompt_blocks.append(selected_prompt)
-            state[state_key] = prompt_blocks
-            save_state(state)
-        elif pop_mode == "Random (Delete)":
-            idx = random.randint(0, len(prompt_blocks) - 1)
-            selected_prompt = prompt_blocks.pop(idx)
-            if len(prompt_blocks) > 0:
-                state[state_key] = prompt_blocks
-            else:
-                if state_key in state:
-                    del state[state_key]
-            save_state(state)
-        else: # "Random (Keep)"
-            idx = random.randint(0, len(prompt_blocks) - 1)
-            selected_prompt = prompt_blocks[idx]
+                idx = current_index
+                selected_prompt = original_blocks[idx]
+                next_index = current_index + 1
+                display_run = idx + 1
+        elif pop_mode in ["Random (Keep)", "Random (Delete)"]:
+            idx = random.randint(0, total_count - 1)
+            selected_prompt = original_blocks[idx]
+            next_index = current_index + 1
+            display_run = (current_index % total_count) + 1
+        else: # Default fallback
+            idx = current_index % total_count
+            selected_prompt = original_blocks[idx]
+            next_index = (current_index + 1) % total_count
+            display_run = idx + 1
 
-        remaining_count = len(prompt_blocks)
+        # Calculate remaining items
+        remaining_count = max(0, total_count - display_run)
         join_delim = "\n" if separator == "Newline" else ("\n\n\n" if separator == ">2 Empty Lines" else "\n\n")
-        remaining_text = join_delim.join(prompt_blocks) if prompt_blocks else ""
+        remaining_text = join_delim.join(original_blocks[display_run:]) if display_run < total_count else ""
 
+        # Update and save state to disk
+        state[state_key] = {
+            "index": next_index,
+            "total": total_count,
+            "last_run": display_run,
+            "last_updated": int(time.time()),
+            "preview": selected_prompt[:60].replace('\n', ' ')
+        }
+        save_state(state)
+
+        # Send live progress update to UI
         try:
-            PromptServer.instance.send_sync("leafflow_update_prompt_iterator", {
+            PromptServer.instance.send_sync("leafflow_prompt_iterator_progress", {
                 "node_id": str(unique_id),
-                "remaining_text": remaining_text
+                "current_run": display_run,
+                "total_runs": total_count,
+                "status_text": f"Run {display_run} / {total_count}"
             })
         except Exception:
             pass
