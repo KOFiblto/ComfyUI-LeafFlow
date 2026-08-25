@@ -57,6 +57,26 @@ if (typeof document !== "undefined") {
     }
 }
 
+// Global Non-Fatal Warning & Toast Notification Listener
+try {
+    api.addEventListener("leafflow_toast", (e) => {
+        const data = e.detail || {};
+        const title = data.title || "LeafFlow Notice";
+        const message = data.message || "";
+        const type = data.type || "warn";
+        if (app.extensionManager?.toast?.add) {
+            app.extensionManager.toast.add({
+                severity: type === "error" ? "error" : "warn",
+                summary: `🍃 ${title}`,
+                detail: message,
+                life: 6000
+            });
+        } else if (app.ui?.dialog) {
+            console.warn(`[LeafFlow] ${title}: ${message}`);
+        }
+    });
+} catch (_) {}
+
 /**
  * Custom renderer for real, styled action buttons in ComfyUI Settings Modal.
  */

@@ -143,7 +143,18 @@ class TextAspectRatioFinder:
             else:
                 raise ValueError(f"Cannot parse aspect ratio: {found_ratio}")
         except Exception as e:
-            print(f"[LeafFlow] Warning: Aspect ratio '{found_ratio}' is invalid. Falling back to '1:1'. ({e})")
+            err_msg = f"Aspect ratio '{found_ratio}' is invalid. Falling back to '1:1'."
+            print(f"[LeafFlow] Warning: {err_msg} ({e})")
+            try:
+                from server import PromptServer
+                if hasattr(PromptServer, "instance") and PromptServer.instance:
+                    PromptServer.instance.send_sync("leafflow_toast", {
+                        "title": "Aspect Ratio Warning",
+                        "message": err_msg,
+                        "type": "warn"
+                    })
+            except Exception:
+                pass
             w_part, h_part = 1.0, 1.0
             found_ratio = "1:1"
 

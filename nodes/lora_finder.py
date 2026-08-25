@@ -30,7 +30,7 @@ class TextLoraFinder:
                 "find_amount": ("INT", {"default": 1, "min": 1, "max": 20, "step": 1}),
                 "strength_model": ("FLOAT", {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01}),
                 "strength_clip": ("FLOAT", {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01}),
-                "output_format": (LORA_OUTPUT_FORMAT_CHOICES, {"default": "Parsed Name", "advanced": True}),
+                "output_format": (LORA_OUTPUT_FORMAT_CHOICES, {"default": "Filename", "advanced": True}),
             },
             "optional": {
                 "text": ("STRING", {"forceInput": True}),
@@ -54,7 +54,7 @@ class TextLoraFinder:
         find_amount=1,
         strength_model=1.0,
         strength_clip=1.0,
-        output_format="Parsed Name",
+        output_format="Filename",
         text=None,
         start_from=None,
         prompt=None,

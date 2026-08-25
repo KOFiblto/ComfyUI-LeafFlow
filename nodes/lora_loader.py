@@ -522,7 +522,7 @@ class VisualLoraLoader(FolderLoraLoaderPretty):
                 "sort_folders_by": (["Name (A-Z)", "Name (Z-A)", "Total Usage (High to Low)", "Average Usage (High to Low)", "Total LoRAs (Most First)"], {"default": "Name (A-Z)", "advanced": True}),
                 "folder_position": (["Folders First", "Root LoRAs First"], {"default": "Folders First", "advanced": True}),
                 "content_alignment": (["Left Aligned", "Right Aligned"], {"default": "Left Aligned", "advanced": True}),
-                "output_format": (LORA_OUTPUT_FORMAT_CHOICES, {"default": "Parsed Name", "advanced": True}),
+                "output_format": (LORA_OUTPUT_FORMAT_CHOICES, {"default": "Filename", "advanced": True}),
                 "custom_regex": ("STRING", {"default": "", "advanced": True}),
             },
             "hidden": {
@@ -544,7 +544,7 @@ class VisualLoraLoader(FolderLoraLoaderPretty):
             return time.time()
         return ""
 
-    def load_lora(self, model, clip, folder, strength_model, strength_clip, display_mode="Scrollable", sort_loras_by="Name (A-Z)", sort_folders_by="Name (A-Z)", folder_position="Folders First", content_alignment="Left Aligned", output_format="Parsed Name", custom_regex="", output_name=None, _selected_lora="[]", _selection_mode="All", _scrape_on_new="true", unique_id="default", **kwargs):
+    def load_lora(self, model, clip, folder, strength_model, strength_clip, display_mode="Scrollable", sort_loras_by="Name (A-Z)", sort_folders_by="Name (A-Z)", folder_position="Folders First", content_alignment="Left Aligned", output_format="Filename", custom_regex="", output_name=None, _selected_lora="[]", _selection_mode="All", _scrape_on_new="true", unique_id="default", **kwargs):
         active_format = output_name if output_name is not None else output_format
         active_lora = _selected_lora if _selected_lora else "[]"
         if active_lora == "[ NONE ]" or active_lora == "[]" or not active_lora:
