@@ -138,8 +138,17 @@ app.registerExtension({
     name: "ComfyUI.LeafFlow.Settings",
     async setup() {
         // =========================================================================
-        // GRUPPE 1: 1. 🖼️ Visual Loaders (Civitai & TMDB Duo)
+        // GRUPPE 1: 1. 🖼️ Visual Loaders
         // =========================================================================
+
+        // 1.0 Custom Node Colors Toggle
+        app.ui.settings.addSetting({
+            id: "LeafFlow.1. 🖼️ Visual Loaders.00_EnableCustomColors",
+            name: "Enable Custom LeafFlow Node Colors",
+            type: "boolean",
+            defaultValue: true,
+            tooltip: "Applies a fresh Leaf Green color theme to LeafFlow nodes on the canvas. When disabled, nodes use default ComfyUI colors.",
+        });
 
         // 1.1 Civitai API Key
         app.ui.settings.addSetting({
@@ -312,24 +321,25 @@ app.registerExtension({
 
 
         // =========================================================================
-        // GRUPPE 3: 3. ⭐ Favorite Prompts
+        // GRUPPE 3: 3. 📋 Prompt Actions
         // =========================================================================
 
-        // 3.1 Favorites Folder Path
+        // 3.1 Show "Copy Prompt" Button on Image Overlays
         app.ui.settings.addSetting({
-            id: "LeafFlow.3. ⭐ Favorite Prompts.01_FavoritesFolder",
-            name: "Favorites Save Folder Path",
-            type: "text",
-            defaultValue: "output/favorites",
-            tooltip: "Directory path where saved favorite prompts and preview images are stored.",
-            onChange(value) {
-                const cleanPath = (value || "").trim();
-                api.fetchApi("/leafflow/settings", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ favorites_folder: cleanPath })
-                }).catch(() => {});
-            }
+            id: "LeafFlow.3. 📋 Prompt Actions.01_EnableAssetsCopyPromptButton",
+            name: "Show \"Copy Prompt\" Button on Images",
+            type: "boolean",
+            defaultValue: true,
+            tooltip: "Shows the 📋 'Copy Prompt' overlay action button when hovering over generated images in the Assets / History pane and preview nodes.",
+        });
+
+        // 3.2 Show Right-Click "Copy Prompt" Menu Action
+        app.ui.settings.addSetting({
+            id: "LeafFlow.3. 📋 Prompt Actions.02_EnableContextMenuCopyPrompt",
+            name: "Show Right-Click \"Copy Prompt\" Menu Action",
+            type: "boolean",
+            defaultValue: true,
+            tooltip: "Adds '📋 Copy Prompt' to node right-click context menus.",
         });
 
 
@@ -392,10 +402,10 @@ app.registerExtension({
             id: "LeafFlow.4. ⏸️ Pause Controls.04_ToolbarButtonUnpausedColor",
             name: "Toolbar Button Unpaused Color",
             type: "text",
-            defaultValue: "#059669",
-            tooltip: "Hex color code for the Pause toolbar button when execution is unpaused/running (default: #059669).",
+            defaultValue: "#16a34a",
+            tooltip: "Hex color code for the Pause toolbar button when execution is unpaused/running (default: #16a34a).",
             onChange(value) {
-                document.documentElement.style.setProperty("--pq-unpaused-color", value || "#059669");
+                document.documentElement.style.setProperty("--pq-unpaused-color", value || "#16a34a");
             }
         });
 
@@ -416,7 +426,7 @@ app.registerExtension({
             id: "LeafFlow.4. ⏸️ Pause Controls.06_EnableTrayIcon",
             name: "Enable System Tray Icon",
             type: "boolean",
-            defaultValue: true,
+            defaultValue: false,
             tooltip: "Displays an OS system tray icon with real-time queue status colors and outside-browser queue controls.",
             onChange(value) {
                 api.fetchApi("/leafflow/settings", {

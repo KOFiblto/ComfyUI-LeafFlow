@@ -36,7 +36,6 @@ from .nodes.auto_watcher import LoadImageFromFolder
 from .nodes.load_recent import LoadRecentOutputs
 from .nodes.preview_latent import PreviewLatentLiveNode
 from .nodes.decision_node import LeafFlowDecision
-from .nodes.favorite_prompts import FavoritePromptLoader, SaveFavoritePreview
 from .nodes.aspect_ratio import TextAspectRatioFinder, AspectRatioFinder, PreviewImageSizeAspectRatio
 from .nodes.lora_finder import TextLoraFinder, LoraTextFinder
 from .nodes.prompt_iterator import PromptQueueIterator
@@ -55,8 +54,6 @@ NODE_CLASS_MAPPINGS = {
     "LoadRecentOutputs": LoadRecentOutputs,
     "PreviewLatentLive": PreviewLatentLiveNode,
     "LeafFlowDecision": LeafFlowDecision,
-    "FavoritePromptLoader": FavoritePromptLoader,
-    "SaveFavoritePreview": SaveFavoritePreview,
     "TextAspectRatioFinder": TextAspectRatioFinder,
     "PreviewImageSizeAspectRatio": PreviewImageSizeAspectRatio,
     "TextLoraFinder": TextLoraFinder,
@@ -87,8 +84,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "PreviewLatentLive": "🍃 👁️ Live Latent Preview",
     "LeafFlowDecision": "🍃 ⏸️ LeafFlow Decision",
     "FlowControlDecision": "🍃 ⏸️ LeafFlow Decision",
-    "FavoritePromptLoader": "🍃 ⭐ Favorite Prompts",
-    "SaveFavoritePreview": "🍃 💾 Save Favorite Preview",
     "TextAspectRatioFinder": "🍃 📐 Text Aspect Ratio Finder",
     "AspectRatioFinder": "🍃 📐 Text Aspect Ratio Finder",
     "PreviewImageSizeAspectRatio": "🍃 📐 Preview Image Size & Aspect Ratio",
@@ -107,13 +102,19 @@ from .nodes.utils import get_leafflow_user_dir, get_env_setting
 server = PromptServer.instance
 setup_queue_control_routes(server)
 
+try:
+    from .prompt_bookmarks.api import register_routes as register_prompt_bookmarks_routes
+    register_prompt_bookmarks_routes()
+except Exception as e:
+    pass
+
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 USER_DIR = get_leafflow_user_dir()
 ENV_FILE = os.path.join(USER_DIR, ".env")
 
 routes = server.routes
 
-print("[ComfyUI-LeafFlow] 🍃 Loaded 16 nodes & visual endpoints successfully.")
+print("[ComfyUI-LeafFlow] 🍃 Loaded 14 nodes & visual endpoints successfully.")
 
 @routes.get("/leafflow/settings")
 @routes.get("/flow_control/settings")

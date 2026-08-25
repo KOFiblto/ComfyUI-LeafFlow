@@ -42,41 +42,34 @@ Loads a LoRA using formatted pretty names (e.g. `Ana De Armas V1` instead of `kr
 - **`model`** (`MODEL`): Input model.
 - **`clip`** (`CLIP`): Input CLIP.
 - **`folder`** (`STRING`): Subfolder filter.
-- **`lora_name`** (`COMBO`): Dropdown listing formatted pretty names.
+- **`lora_name`** (`COMBO`): Dropdown listing formatted LoRA names.
 - **`strength_model`** (`FLOAT`): Model weight strength.
 - **`strength_clip`** (`FLOAT`): CLIP weight strength.
-- **`output_format`** (`COMBO`, *Advanced*): Choose output format (`Parsed Name`, `Filename`, `Filename without extension`, `Relative Path`, `Full Path`, `Custom Regex`).
-- **`custom_regex`** (`STRING`, *Advanced*): Pattern used when `output_format` is `Custom Regex`.
 
 #### Outputs
 - **`MODEL`**: Patched model.
 - **`CLIP`**: Patched CLIP.
-- **`lora_name`** (`STRING`): Formatted name or filename of the loaded LoRA.
+- **`lora_name`** (`STRING`): Selected LoRA name.
 </details>
 
 <details>
 <summary><b>🍃 🖼️ Visual LoRA Loader</b> (<code>VisualLoraLoader</code> / alias <code>FolderLoraLoaderVisualPrettyV2</code>)</summary>
 
 #### Overview
-Visual thumbnail LoRA browser with search, multi-selection, ranking badges (🔥, 🥇 Gold, 🥈 Silver, 🥉 Bronze), and automated Civitai SHA256 & TMDB preview image fetching.
+Visual thumbnail browser for LoRAs with Civitai SHA256 search & TMDB auto-scraping, popularity rank badges (🔥), and multi-selection support.
 
 #### Inputs & Widgets
 - **`model`** (`MODEL`): Input model.
 - **`clip`** (`CLIP`): Input CLIP.
-- **`folder`** (`STRING`): Folder filter.
+- **`folder`** (`STRING`): Subfolder filter.
 - **`strength_model`** (`FLOAT`): Model strength.
 - **`strength_clip`** (`FLOAT`): CLIP strength.
-- **`display_mode`** (`COMBO`, *Advanced*): Choose between `Scrollable` (fixed height) or `Show All` (auto-expanding node card).
-- **`sort_loras_by`** (`COMBO`, *Advanced*): Sort LoRAs inside folders (`Name (A-Z)`, `Name (Z-A)`, `Usage (High to Low)`, `Usage (Low to High)`, `Date Modified (Newest First)`, `Date Modified (Oldest First)`).
-- **`sort_folders_by`** (`COMBO`, *Advanced*): Sort folder sections order (`Name (A-Z)`, `Name (Z-A)`, `Total Usage (High to Low)`, `Average Usage (High to Low)`, `Total LoRAs (Most First)`).
-- **`folder_position`** (`COMBO`, *Advanced*): Layout position of root LoRAs vs folders (`Folders First` vs `Root LoRAs First`).
-- **`content_alignment`** (`COMBO`, *Advanced*): Align tiles and folder headers to the left or right (`Left Aligned` vs `Right Aligned`).
-- **`output_format`** (`COMBO`, *Advanced*): Choose output format (`Parsed Name`, `Filename`, `Filename without extension`, `Relative Path`, `Full Path`, `Custom Regex`).
-- **`custom_regex`** (`STRING`, *Advanced*): Pattern used when `output_format` is `Custom Regex`.
+- **`display_mode`** (`COMBO`, *Advanced*): `Scrollable` vs `Show All`.
+- **`sort_loras_by`** (`COMBO`, *Advanced*): Sort by `Name (A-Z)`, `Name (Z-A)`, `Date Modified (Newest First)`, `Date Modified (Oldest First)`, or `Usage (Most Used First)`.
 
 #### Outputs
-- **`MODEL`**: Sequentially patched model with all active LoRAs loaded.
-- **`CLIP`**: Sequentially patched CLIP with all active LoRAs loaded.
+- **`MODEL`**: Patched model.
+- **`CLIP`**: Patched CLIP.
 - **`lora_name`** (`STRING`): Comma-separated list of active LoRA names.
 </details>
 
@@ -117,7 +110,7 @@ Execution anchor node that undoes placing content into a placeholder slot by sca
 <summary><b>🍃 📂 Load Image From Folder</b> (<code>LoadImageFromFolder</code>)</summary>
 
 #### Overview
-Monitors a folder for incoming images, loads the target image into a PyTorch tensor, and removes processed files.
+Monitors a folder for incoming images, loads the target image into a PyTorch tensor, with an optional toggle to delete the image after loading.
 
 #### Inputs & Widgets
 - **`folder`** (`STRING`): Watch directory path (default `input/watch`).
@@ -136,7 +129,7 @@ Monitors a folder for incoming images, loads the target image into a PyTorch ten
 <summary><b>🍃 ⏱️ Recent Outputs</b> (<code>LoadRecentOutputs</code>)</summary>
 
 #### Overview
-Chronologically cycles through recently generated output images from ComfyUI's output directory.
+Loads the N newest images from an output directory with step-through index selection.
 
 #### Inputs & Widgets
 - **`output_folder`** (`STRING`): Target output directory.
@@ -174,34 +167,6 @@ Pauses workflow execution at a specific step and displays an inline UI popup wit
 </details>
 
 <details>
-<summary><b>🍃 ⭐ Favorite Prompts</b> (<code>FavoritePromptLoader</code>)</summary>
-
-#### Overview
-Visually browse saved favorite images and prompts from your favorites folder.
-
-#### Inputs & Widgets
-- **`display_mode`** (`COMBO`, *Advanced*): `Scrollable` vs `Show All`.
-- **`sort_images_by`** (`COMBO`, *Advanced*): `Name (A-Z)`, `Name (Z-A)`, `Date Modified (Newest First)`, `Date Modified (Oldest First)`.
-
-#### Outputs
-- **`IMAGE`**: Favorite image tensor.
-- **`positive_prompt`** (`STRING`): Favorited prompt text.
-- **`MASK`**: Mask tensor.
-- **`width`** (`INT`): Image width.
-- **`height`** (`INT`): Image height.
-</details>
-
-<details>
-<summary><b>🍃 💾 Save Favorite Preview</b> (<code>SaveFavoritePreview</code>)</summary>
-
-#### Overview
-Preview image node equipped with a native "Save Active to Favorites" button widget.
-
-#### Inputs & Outputs
-- **`images`** (`IMAGE`): Input images to preview and save.
-</details>
-
-<details>
 <summary><b>🍃 📐 Text Aspect Ratio Finder</b> (<code>TextAspectRatioFinder</code> / alias <code>AspectRatioFinder</code>)</summary>
 
 #### Overview
@@ -218,103 +183,100 @@ Parses input text for aspect ratios (e.g. `16:9`, `2.35:1`), syntax-checks them,
 - **`text`** (`STRING`, *Optional Input*): Input text to search.
 
 #### Outputs
-- **`width`** (`INT`): Calculated width.
-- **`height`** (`INT`): Calculated height.
-- **`aspect_ratio`** (`STRING`): Matched ratio string.
+- **`width`** (`INT`): Computed width in pixels.
+- **`height`** (`INT`): Computed height in pixels.
+- **`aspect_ratio`** (`STRING`): Detected or fallback aspect ratio string.
+- **`cleaned_text`** (`STRING`): Input text with the aspect ratio token stripped.
 </details>
 
 <details>
 <summary><b>🍃 📐 Preview Image Size & Aspect Ratio</b> (<code>PreviewImageSizeAspectRatio</code>)</summary>
 
 #### Overview
-Visual display node that draws a scaled outline box preview of the image aspect ratio and dimension summary (`W x H`).
+Computes image dimensions and aspect ratio from an input image tensor and formats the result for previewing.
 
 #### Inputs & Widgets
-- **`width`** (`INT`, *Optional Input*): Image width in pixels.
-- **`height`** (`INT`, *Optional Input*): Image height in pixels.
-- **`aspect_ratio`** (`STRING`, *Optional Input*): Aspect ratio string (e.g. `16:9` or `2:3`).
-- **`ratio_float`** (`FLOAT`, *Optional Input*): Aspect ratio float value (e.g. `1.777`).
+- **`image`** (`IMAGE`): Input image tensor.
 
 #### Outputs
-- *(None - Visual Display Node Only)*
+- **`width`** (`INT`): Image width.
+- **`height`** (`INT`): Image height.
+- **`aspect_ratio`** (`STRING`): Closest matched aspect ratio string.
 </details>
 
 <details>
 <summary><b>🍃 🔎 Text LoRA Finder & Loader</b> (<code>TextLoraFinder</code> / alias <code>LoraTextFinder</code>)</summary>
 
 #### Overview
-Scans text prompts for LoRA names or custom patterns, automatically loads matched LoRAs into MODEL and CLIP, and outputs the formatted LoRA list.
+Scans input prompt text for `<lora:name:strength>` tags or names matching a folder on disk, dynamically applies them, and returns patched models along with sanitized prompt text.
 
 #### Inputs & Widgets
 - **`model`** (`MODEL`): Input model.
 - **`clip`** (`CLIP`): Input CLIP.
-- **`folder`** (`STRING`): LoRA folder filter.
-- **`search_for`** (`COMBO`): Search by `Parsed Name`, `Filename`, `Filename without extension`, or `Custom Regex`.
-- **`custom_regex`** (`STRING`, *Advanced*): Pattern for custom regex search mode or output formatting.
-- **`search_mode`** (`COMBO`): `First match (Front)` vs `Last match (Back)` match priority.
-- **`find_amount`** (`INT`): Maximum number of LoRAs to find and load.
-- **`strength_model`** (`FLOAT`): Model strength.
-- **`strength_clip`** (`FLOAT`): CLIP strength.
-- **`output_format`** (`COMBO`, *Advanced*): Output format (`Parsed Name`, `Filename`, `Filename without extension`, `Relative Path`, `Full Path`, `Custom Regex`).
-- **`text`** (`STRING`, *Optional Input*): Text string to scan.
+- **`folder`** (`STRING`): Subfolder to search for LoRA files.
+- **`fallback_strength_model`** (`FLOAT`): Default model strength if omitted in prompt tag.
+- **`fallback_strength_clip`** (`FLOAT`): Default CLIP strength if omitted in prompt tag.
+- **`clean_prompt`** (`BOOLEAN`): Strips matched `<lora:...>` tags from output text.
+- **`text`** (`STRING`, *Optional Input*): Input prompt text.
 
 #### Outputs
-- **`MODEL`**: Model patched with matched LoRAs.
-- **`CLIP`**: CLIP patched with matched LoRAs.
-- **`loras`** (`STRING`): Comma-separated list of loaded LoRA names.
+- **`MODEL`**: Patched model.
+- **`CLIP`**: Patched CLIP.
+- **`text`** (`STRING`): Cleaned prompt text.
+- **`lora_name`** (`STRING`): Comma-separated list of loaded LoRAs.
 </details>
 
 <details>
 <summary><b>🍃 🔄 Prompt Queue Iterator</b> (<code>PromptQueueIterator</code>)</summary>
 
 #### Overview
-Parses multiline prompt text blocks, popping/selecting prompts per batch queue iteration with persistent queue state saved to disk across restarts.
+Parses multiline prompts or batch text blocks separated by double newlines (`\n\n`), automatically popping the top prompt per queue iteration and keeping remaining prompts in memory.
 
 #### Inputs & Widgets
-- **`pop_mode`** (`COMBO`): `Pop Top & Delete`, `Cycle / Loop`, `Random (Delete)`, `Random (Keep)`.
-- **`separator`** (`COMBO`): `>1 Empty Line`, `Newline`, `>2 Empty Lines`.
-- **`text`** (`STRING`, *Multiline Input*): Multiline text input.
+- **`prompts`** (`STRING`, Multiline): Queue of prompt blocks.
+- **`mode`** (`COMBO`): `Double Newline (\n\n)` vs `Single Line (\n)`.
+- **`delete_after_queue`** (`BOOLEAN`): Pop executed block from widget text.
 
 #### Outputs
-- **`prompt`** (`STRING`): Current popped prompt for the batch step.
-- **`remaining_text`** (`STRING`): Remaining multiline prompt text.
-- **`remaining_count`** (`INT`): Count of remaining prompts.
+- **`active_prompt`** (`STRING`): The current prompt block for this run.
+- **`remaining_prompts`** (`STRING`): The queue of remaining prompts.
+- **`remaining_count`** (`INT`): Count of remaining items in queue.
 </details>
 
 <details>
 <summary><b>🍃 🔤 Multi Text Replacer</b> (<code>MultiTextReplacer</code>)</summary>
 
 #### Overview
-Searches input text for multiple search targets specified in a comma-separated list or regex pattern and replaces all matches with a replacement string in a single-pass loop-safe execution.
+Performs multiple text replacements in a single step using comma-separated or newline-separated find/replace lists, with support for exact phrases and regex matching.
 
 #### Inputs & Widgets
-- **`find`** (`STRING`): Search targets list (e.g. `%celeb%, %model%, %character%` or `"18 year old", "teen"`).
-- **`replace`** (`STRING`): Replacement string.
-- **`case_sensitive`** (`BOOLEAN`, *Advanced*): Case sensitivity toggle.
-- **`search_mode`** (`COMBO`, *Advanced*): `Comma Separated List` vs `Regex Pattern`.
-- **`text`** (`STRING`, *Optional Input*): Text string to process.
+- **`text`** (`STRING`, Multiline): Input text to modify.
+- **`find_text`** (`STRING`, Multiline): Search terms (comma-separated or lines).
+- **`replace_text`** (`STRING`, Multiline): Replacement terms.
+- **`case_sensitive`** (`BOOLEAN`): Toggle case-sensitive matching.
+- **`use_regex`** (`BOOLEAN`): Treat find patterns as regular expressions.
 
 #### Outputs
-- **`text`** (`STRING`): Text after replacements.
-- **`replaced_count`** (`INT`): Total replacements executed.
+- **`text`** (`STRING`): Modified text.
 </details>
 
 <details>
 <summary><b>🍃 ✂️ Text Split</b> (<code>LeafFlowTextSplit</code>)</summary>
 
 #### Overview
-Splits an input text into two separate output strings (`text1` and `text2`) using either a literal character sequence or a Regular Expression pattern, with support for forward (from start) and backward (from end) splitting.
+Splits text into two parts at a specified delimiter. Supports forward (from start) and backward (from end) search, as well as regular expressions.
 
 #### Inputs & Widgets
-- **`text`** (`STRING`, *Multiline*): Input text to split.
-- **`split_by`** (`STRING`): Character sequence (e.g. `--`) or Regex pattern to split on.
-- **`use_regex`** (`BOOLEAN`, *Default: false*): Interpret `split_by` as a regular expression.
-- **`split_direction`** (`COMBO`, *Advanced*, *Default: forward*): Choose between `forward (first occurrence from start)` or `backward (last occurrence from end)`.
-- **`strip_whitespace`** (`BOOLEAN`, *Advanced*, *Default: false*): Automatically trims leading and trailing whitespace from `text1` and `text2`.
+- **`text`** (`STRING`, Multiline): Input text to split.
+- **`delimiter`** (`STRING`): Character or string to split on (e.g. `,`, `---`, `\n`).
+- **`search_from`** (`COMBO`): `Forward (First Match)` vs `Backward (Last Match)`.
+- **`use_regex`** (`BOOLEAN`): Treat delimiter as a regular expression pattern.
+- **`strip_whitespace`** (`BOOLEAN`): Trims surrounding whitespace from output strings.
 
 #### Outputs
-- **`text1`** (`STRING`): The text portion before the split delimiter.
-- **`text2`** (`STRING`): The text portion after the split delimiter.
+- **`left_text`** (`STRING`): Text before the split delimiter.
+- **`right_text`** (`STRING`): Text after the split delimiter.
+- **`delimiter_found`** (`BOOLEAN`): True if delimiter was found, False otherwise.
 </details>
 
 ---
@@ -324,56 +286,58 @@ Splits an input text into two separate output strings (`text1` and `text2`) usin
 Configure options directly under ComfyUI Settings (⚙ gear icon):
 
 <details open>
-<summary><b>1 🖼️ Visual Loaders (Civitai & TMDB Duo)</b></summary>
+<summary><b>1. 🖼️ Visual Loaders (Civitai & TMDB Duo)</b></summary>
 
+- **`Enable Custom LeafFlow Node Colors`** (`boolean`, *Default: true*): Applies a vibrant Leaf Green color theme to LeafFlow nodes on the canvas. When disabled, nodes use default ComfyUI colors.
 - **`Civitai API Key`** (`text`): Optional key for Civitai SHA256 model preview search (`Authorization: Bearer <key>`).
 - **`Enable Civitai Auto-Scraping`** (`boolean`, *Default: true*): Automatically download model preview images from Civitai via SHA256 file hashes. (Note: Local SHA256 hash searching always works).
 - **`TMDB Access Token`** (`text`): Optional key or v4 Read Access Token (`eyJ...`) for celebrity preview search.
 - **`Enable TMDB Auto-Scraping`** (`boolean`, *Default: false*): Automatically download celebrity preview images from TMDB.
 - **`Enable LoRA Usage Tracking`** (`boolean`, *Default: true*): Toggle LoRA usage counting and visual rank badges (🔥, Gold, Silver, Bronze) in the picker.
-- **`Reset Failed Scrapes Cache`** (*Button: `🗑️ Reset Scrapes Cache`*): Clears failed scrape history so Civitai/TMDB can retry downloading missing preview images.
+- **`Reset Failed Scrapes Cache`** (*Button: `🗑️ Clear Scrapes Cache`*): Clears failed scrape history so Civitai/TMDB can retry downloading missing preview images.
 </details>
 
 <details open>
-<summary><b>2 🔄 Prompt Iterator</b></summary>
+<summary><b>2. 🔄 Prompt Iterator</b></summary>
 
 - **`Clear State on Launch`** (`boolean`, *Default: false*): Privacy toggle to empty `prompt_iterator_state.json` on ComfyUI startup.
 - **`Reset All Queues`** (*Button: `🔄 Reset All Queues`*): Immediately empties all active prompt queues and resets iterator state.
 </details>
 
 <details open>
-<summary><b>3 ⭐ Favorite Prompts</b></summary>
+<summary><b>3. 📋 Prompt Actions</b></summary>
 
-- **`Favorites Folder Path`** (`text`, *Default: `output/favorites`*): Path to store and load favorite prompts and preview images.
+- **`Show "Copy Prompt" Button on Images`** (`boolean`, *Default: true*): Shows the 📋 "Copy Prompt" overlay action button when hovering over generated images in the Assets / History pane and preview nodes.
+- **`Show Right-Click "Copy Prompt" Menu Action`** (`boolean`, *Default: true*): Adds "📋 Copy Prompt" to node right-click context menus.
 </details>
 
 <details open>
-<summary><b>4 ⏸️ Pause Controls</b></summary>
+<summary><b>4. ⏸️ Pause Controls</b></summary>
 
 - **`Default State on Launch`** (`combo`, *Default: `Paused`*): Sets whether the queue starts `Paused` or `Running` on boot.
 - **`Default Pause Action`** (`combo`, *Default: `Finish Active Prompt`*): Sets default pause behavior (`Finish Active Prompt` vs `Instant Resume Node`).
 - **`Enable Top Toolbar Button`** (`boolean`, *Default: true*): Toggle top action bar Pause & Continue button group ON/OFF.
-- **`Toolbar Button Unpaused Color`** (`text`, *Default: `#059669`*): Hex color for the toolbar unpaused/running state.
+- **`Toolbar Button Unpaused Color`** (`text`, *Default: `#16a34a`*): Hex color for the toolbar unpaused/running state.
 - **`Toolbar Button Paused Color`** (`text`, *Default: `#ea580c`*): Hex color for the toolbar paused state.
 - **`Enable System Tray Icon`** (`boolean`, *Default: false*): Displays an OS system tray icon with real-time queue status colors and outside-browser controls.
 </details>
 
 <details open>
-<summary><b>5 💾 Persistent Queue</b></summary>
+<summary><b>5. 💾 Persistent Queue</b></summary>
 
 - **`Persistent Queue (Auto-Recovery)`** (`boolean`, *Default: true*): Automatically saves unfinished queue items and restores them after restart/crash.
 - **`Recovery Launch State`** (`combo`, *Default: `Match Default`*): Override launch state when restored queue items are recovered on startup (`Match Default`, `Force Paused`, `Force Running`).
 </details>
 
 <details open>
-<summary><b>6 🖼️ Assets & History Restore</b></summary>
+<summary><b>6. 🖼️ Assets & History Restore</b></summary>
 
 - **`Restore Assets on Launch`** (`boolean`, *Default: true*): Automatically restores your latest generated images into the Assets / History pane on startup.
 - **`Restored Assets Count`** (`number`, *Default: 64*): The number of newest images from the output folder to populate into the Assets pane.
 </details>
 
 <details open>
-<summary><b>7 🩺 Diagnostics & Debug</b></summary>
+<summary><b>7. 🩺 Diagnostics & Debug</b></summary>
 
 - **`Export Debug Profile`** (*Button: `📥 Export Debug Profile`*): Exports non-sensitive system environment details (OS, Python, PyTorch, LeafFlow settings, local cache counts) to a JSON file to share when reporting bugs or requesting assistance. Sensitive API keys and tokens are never exported.
 </details>

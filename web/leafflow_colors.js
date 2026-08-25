@@ -1,42 +1,51 @@
 import { app } from "/scripts/app.js";
 
+// Vibrant Leaf Green palette matching the 🍃 emoji
+const LEAF_GREEN = { color: "#16a34a", bgcolor: "#14532d" };
+const LEAF_LIGHT = { color: "#22c55e", bgcolor: "#166534" };
+const LEAF_EMERALD = { color: "#059669", bgcolor: "#064e3b" };
+
 const COLOR_MAP = {
-    // Loaders (Emerald green)
-    "VisualLoraLoader": { color: "#059669", bgcolor: "#047857" },
-    "FolderLoraLoader": { color: "#059669", bgcolor: "#047857" },
-    "FolderLoraLoaderPretty": { color: "#059669", bgcolor: "#047857" },
-    "FolderLoraLoaderVisualPrettyV2": { color: "#059669", bgcolor: "#047857" },
-    "VisualImageLoader": { color: "#059669", bgcolor: "#047857" },
-    "ImageLoaderVisualPrettyV2": { color: "#059669", bgcolor: "#047857" },
-    "LoadRecentOutputs": { color: "#059669", bgcolor: "#047857" },
-    "FavoritePromptLoader": { color: "#059669", bgcolor: "#047857" },
+    // Visual Loaders
+    "VisualLoraLoader": LEAF_GREEN,
+    "FolderLoraLoader": LEAF_GREEN,
+    "FolderLoraLoaderPretty": LEAF_GREEN,
+    "FolderLoraLoaderVisualPrettyV2": LEAF_GREEN,
+    "VisualImageLoader": LEAF_GREEN,
+    "ImageLoaderVisualPrettyV2": LEAF_GREEN,
+    "LoadRecentOutputs": LEAF_GREEN,
 
-    // Automation & Utilities (Amber)
-    "LoadImageFromFolder": { color: "#d97706", bgcolor: "#b45309" },
-    "AutoWatcherNode": { color: "#d97706", bgcolor: "#b45309" },
-    "BackToPlaceholder": { color: "#d97706", bgcolor: "#b45309" },
-    "UndoPlaceholder": { color: "#d97706", bgcolor: "#b45309" },
-    "TextAspectRatioFinder": { color: "#d97706", bgcolor: "#b45309" },
-    "AspectRatioFinder": { color: "#d97706", bgcolor: "#b45309" },
-    "PreviewImageSizeAspectRatio": { color: "#d97706", bgcolor: "#b45309" },
-    "TextLoraFinder": { color: "#d97706", bgcolor: "#b45309" },
-    "LoraTextFinder": { color: "#d97706", bgcolor: "#b45309" },
-    "PromptQueueIterator": { color: "#d97706", bgcolor: "#b45309" },
-    "MultiTextReplacer": { color: "#d97706", bgcolor: "#b45309" },
-    "LeafFlowTextSplit": { color: "#d97706", bgcolor: "#b45309" },
-    "LeafFlowDecision": { color: "#d97706", bgcolor: "#b45309" },
-    "FlowControlDecision": { color: "#d97706", bgcolor: "#b45309" },
+    // Automation, Flow & Utilities
+    "LoadImageFromFolder": LEAF_LIGHT,
+    "AutoWatcherNode": LEAF_LIGHT,
+    "BackToPlaceholder": LEAF_LIGHT,
+    "UndoPlaceholder": LEAF_LIGHT,
+    "TextAspectRatioFinder": LEAF_LIGHT,
+    "AspectRatioFinder": LEAF_LIGHT,
+    "PreviewImageSizeAspectRatio": LEAF_LIGHT,
+    "TextLoraFinder": LEAF_LIGHT,
+    "LoraTextFinder": LEAF_LIGHT,
+    "PromptQueueIterator": LEAF_LIGHT,
+    "MultiTextReplacer": LEAF_LIGHT,
+    "LeafFlowTextSplit": LEAF_LIGHT,
+    "LeafFlowDecision": LEAF_LIGHT,
+    "FlowControlDecision": LEAF_LIGHT,
 
-    // Previews (Violet)
-    "PreviewLatentLive": { color: "#7c3aed", bgcolor: "#6d28d9" },
-    "SaveFavoritePreview": { color: "#7c3aed", bgcolor: "#6d28d9" },
-    "PauseQueueNode": { color: "#059669", bgcolor: "#047857" },
-    "PersistentQueueNode": { color: "#059669", bgcolor: "#047857" }
+    // Queue & Previews
+    "PreviewLatentLive": LEAF_EMERALD,
+    "PauseQueueNode": LEAF_EMERALD,
+    "PersistentQueueNode": LEAF_EMERALD
 };
 
 app.registerExtension({
     name: "ComfyUI.LeafFlow.Colors",
     async nodeCreated(node) {
+        const enabled = app.ui.settings.getSettingValue(
+            "LeafFlow.1. 🖼️ Visual Loaders.00_EnableCustomColors",
+            true
+        );
+        if (!enabled) return;
+
         if (node && node.type && COLOR_MAP[node.type]) {
             const theme = COLOR_MAP[node.type];
             node.color = theme.color;
