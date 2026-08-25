@@ -50,6 +50,9 @@ class TextAspectRatioFinder:
             },
             "optional": {
                 "text": ("STRING", {"forceInput": True}),
+            },
+            "hidden": {
+                "unique_id": "UNIQUE_ID",
             }
         }
 
@@ -68,7 +71,9 @@ class TextAspectRatioFinder:
         multiple_of=8,
         min_mp=0.1,
         max_mp=16.0,
-        text=None
+        text=None,
+        unique_id=None,
+        **kwargs
     ):
         text_str = str(text) if text is not None else ""
 
@@ -148,10 +153,11 @@ class TextAspectRatioFinder:
             try:
                 from server import PromptServer
                 if hasattr(PromptServer, "instance") and PromptServer.instance:
-                    PromptServer.instance.send_sync("leafflow_toast", {
+                    PromptServer.instance.send_sync("leafflow_node_error_state", {
+                        "node_id": str(unique_id or ""),
                         "title": "Aspect Ratio Warning",
                         "message": err_msg,
-                        "type": "warn"
+                        "fallback": "1:1"
                     })
             except Exception:
                 pass

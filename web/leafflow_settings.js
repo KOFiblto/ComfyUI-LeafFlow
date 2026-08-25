@@ -57,8 +57,32 @@ if (typeof document !== "undefined") {
     }
 }
 
-// Global Non-Fatal Warning & Toast Notification Listener
+// Global Non-Fatal Warning & Native Node Error Highlighter
 try {
+    api.addEventListener("leafflow_node_error_state", (e) => {
+        const { node_id, title, message, fallback } = e.detail || {};
+        if (node_id && app.graph) {
+            const targetNode = app.graph.getNodeById(Number(node_id)) || app.graph.getNodeById(String(node_id));
+            if (targetNode) {
+                targetNode.has_errors = true;
+                targetNode.bgcolor = "#7f1d1d";
+                targetNode.color = "#ef4444";
+                targetNode.setDirtyCanvas(true, true);
+                if (typeof targetNode.onExecutionError === "function") {
+                    targetNode.onExecutionError(message);
+                }
+            }
+        }
+        if (app.extensionManager?.toast?.add) {
+            app.extensionManager.toast.add({
+                severity: "warn",
+                summary: `🍃 ${title || "LeafFlow"}`,
+                detail: `${message} (Auto-resolved with ${fallback})`,
+                life: 6000
+            });
+        }
+    });
+
     api.addEventListener("leafflow_toast", (e) => {
         const data = e.detail || {};
         const title = data.title || "LeafFlow Notice";
