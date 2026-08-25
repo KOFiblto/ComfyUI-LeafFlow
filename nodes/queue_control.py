@@ -445,7 +445,8 @@ class PowerControlManager:
             cmd = [sys.executable] + sys.argv
             cwd = os.getcwd()
             if sys.platform.startswith("win"):
-                subprocess.Popen(cmd, cwd=cwd, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS)
+                creationflags = subprocess.CREATE_NEW_CONSOLE if hasattr(subprocess, "CREATE_NEW_CONSOLE") else 0
+                subprocess.Popen(cmd, cwd=cwd, creationflags=creationflags)
             else:
                 subprocess.Popen(cmd, cwd=cwd, start_new_session=True)
             time.sleep(0.4)
