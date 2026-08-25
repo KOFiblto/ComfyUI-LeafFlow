@@ -98,6 +98,99 @@ routes = server.routes
 
 print("[ComfyUI-LeafFlow] 🍃 Loaded 13 nodes & visual endpoints successfully.")
 
+@routes.get("/leafflow/view_image_prompt")
+async def view_image_prompt_endpoint(request):
+    try:
+        import folder_paths
+        from PIL import Image
+        import json
+
+        filename = request.query.get("filename")
+        subfolder = request.query.get("subfolder", "")
+        folder_type = request.query.get("type", "output")
+
+        if not filename:
+            return web.json_response({"error": "Missing filename"}, status=400)
+
+        if folder_type == "input":
+            base_dir = folder_paths.get_input_directory()
+        elif folder_type == "temp":
+            base_dir = folder_paths.get_temp_directory()
+        else:
+            base_dir = folder_paths.get_output_directory()
+
+        if subfolder:
+            filepath = os.path.join(base_dir, subfolder, filename)
+        else:
+            filepath = os.path.join(base_dir, filename)
+
+        if not os.path.exists(filepath):
+            return web.json_response({"error": "File not found"}, status=404)
+
+        prompt_text = ""
+        workflow_json = None
+        raw_prompt_json = None
+
+        with Image.open(filepath) as img:
+            info = img.info or {}
+            if "prompt" in info:
+                try:
+                    raw_prompt_json = json.loads(info["prompt"]) if isinstance(info["prompt"], str) else info["prompt"]
+                except Exception:
+                    pass
+
+            if "workflow" in info:
+                try:
+                    workflow_json = json.loads(info["workflow"]) if isinstance(info["workflow"], str) else info["workflow"]
+                except Exception:
+                    pass
+
+            if isinstance(raw_prompt_json, dict):
+                positive_node_ids = set()
+                for nid, ndata in raw_prompt_json.items():
+                    ctype = ndata.get("class_type", "")
+                    inputs = ndata.get("inputs", {})
+                    if "Sampler" in ctype or "KSampler" in ctype:
+                        pos_link = inputs.get("positive")
+                        if isinstance(pos_link, list) and len(pos_link) > 0:
+                            positive_node_ids.add(str(pos_link[0]))
+
+                candidates = []
+                for nid in positive_node_ids:
+                    ndata = raw_prompt_json.get(nid, {})
+                    inputs = ndata.get("inputs", {})
+                    if "text" in inputs and isinstance(inputs["text"], str) and inputs["text"].strip():
+                        candidates.append(inputs["text"].strip())
+                    elif "prompt" in inputs and isinstance(inputs["prompt"], str) and inputs["prompt"].strip():
+                        candidates.append(inputs["prompt"].strip())
+
+                if candidates:
+                    prompt_text = "\n".join(candidates)
+                else:
+                    all_texts = []
+                    for nid, ndata in raw_prompt_json.items():
+                        ctype = ndata.get("class_type", "")
+                        inputs = ndata.get("inputs", {})
+                        if "CLIPTextEncode" in ctype or "Text" in ctype or "Prompt" in ctype:
+                            txt = inputs.get("text") or inputs.get("prompt")
+                            if isinstance(txt, str) and txt.strip() and len(txt.strip()) > 1:
+                                all_texts.append(txt.strip())
+                    if all_texts:
+                        prompt_text = all_texts[0]
+
+            if not prompt_text and "parameters" in info:
+                params = info["parameters"]
+                if isinstance(params, str):
+                    prompt_text = params.split("\nNegative prompt:")[0].split("\nSteps:")[0].strip()
+
+        return web.json_response({
+            "prompt": prompt_text,
+            "filename": filename,
+            "has_workflow": bool(workflow_json)
+        })
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
 @routes.get("/leafflow/settings")
 @routes.get("/flow_control/settings")
 async def get_settings(request):

@@ -10,51 +10,27 @@ let currentPowerState = {
     is_paused: false
 };
 
+let activePopup = null;
+
 function injectStyles() {
     if (document.getElementById(STYLE_ID)) return;
     const style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent = `
-        /* Power Sidebar Button */
-        .leafflow-power-sidebar-btn {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 6px;
-            transition: all 0.2s ease;
-            color: var(--descrip-text, #9ca3af);
-            background: transparent;
-            border: none;
-            outline: none;
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        .leafflow-power-sidebar-btn:hover {
-            color: var(--fg-color, #f4f4f5);
-            background: rgba(255, 255, 255, 0.08);
-        }
-
-        /* Power Sidebar Armed Red Warning State */
-        .leafflow-power-btn-armed,
+        /* Power Sidebar Button Armed Red Warning State */
+        .comfy-power-btn.leafflow-power-btn-armed,
+        .side-bar-button.leafflow-power-btn-armed,
         .side-bar-button:has(.leafflow-power-icon-armed),
-        button[aria-label*="Power"]:has(.leafflow-power-icon-armed),
-        button[data-testid="leafflow-power-tab-button"].leafflow-power-btn-armed,
-        .leafflow-power-sidebar-btn.leafflow-power-btn-armed {
+        button[aria-label*="Power"].leafflow-power-btn-armed {
             background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%) !important;
             color: #ffffff !important;
             border: 1px solid #f87171 !important;
-            border-radius: 6px !important;
             box-shadow: 0 0 14px rgba(239, 68, 68, 0.8) !important;
             animation: leafflow-power-pulse 1.8s infinite ease-in-out !important;
         }
 
         .leafflow-power-btn-armed svg,
         .leafflow-power-btn-armed .side-bar-button-icon,
-        .leafflow-power-btn-armed i,
         .leafflow-power-btn-armed span {
             color: #ffffff !important;
             stroke: #ffffff !important;
@@ -66,7 +42,93 @@ function injectStyles() {
             100% { box-shadow: 0 0 6px rgba(239, 68, 68, 0.5); transform: scale(1); }
         }
 
-        /* Power Dialog Modal */
+        /* Power Side Popup Menu (like Help Center popup) */
+        .leafflow-power-popup {
+            position: fixed;
+            z-index: 10005;
+            min-width: 250px;
+            max-width: 320px;
+            background: var(--comfy-menu-bg, #18181b);
+            border: 1px solid var(--border-color, #27272a);
+            border-radius: 12px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+            padding: 8px;
+            color: var(--fg-color, #f4f4f5);
+            font-family: inherit;
+            animation: leafflow-popup-fade 0.15s ease-out;
+        }
+
+        @keyframes leafflow-popup-fade {
+            from { opacity: 0; transform: translateX(-6px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .leafflow-power-popup .help-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: var(--fg-color, #f4f4f5);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        .leafflow-power-popup .help-menu-item:hover {
+            background: var(--comfy-menu-secondary-bg, rgba(255, 255, 255, 0.08));
+        }
+
+        .leafflow-power-popup .help-menu-item.danger-item:hover {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+        }
+
+        .leafflow-power-popup .help-menu-item.armed-cancel-item {
+            background: rgba(239, 68, 68, 0.85);
+            color: #ffffff;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .leafflow-power-popup .help-menu-item.armed-cancel-item:hover {
+            background: #dc2626;
+        }
+
+        .leafflow-power-popup .help-menu-icon-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+            color: var(--descrip-text, #a1a1aa);
+        }
+
+        .leafflow-power-popup .help-menu-item:hover .help-menu-icon-container {
+            color: var(--fg-color, #f4f4f5);
+        }
+
+        .leafflow-power-popup .menu-label {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .leafflow-power-popup .menu-divider {
+            height: 1px;
+            background: var(--border-color, #27272a);
+            margin: 4px 0;
+            width: 100%;
+        }
+
+        /* Power Confirm Modal */
         .leafflow-power-modal {
             display: flex;
             flex-direction: column;
@@ -79,71 +141,6 @@ function injectStyles() {
             border-radius: 12px;
             font-family: inherit;
         }
-
-        .leafflow-power-status-box {
-            padding: 10px 14px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .leafflow-power-status-armed {
-            background: rgba(239, 68, 68, 0.2);
-            border: 1px solid rgba(239, 68, 68, 0.5);
-            color: #f87171;
-            animation: leafflow-power-pulse 2s infinite ease-in-out;
-        }
-
-        .leafflow-power-menu-btn {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 14px;
-            border-radius: 8px;
-            border: 1px solid #3f3f46;
-            background: #27272a;
-            color: #f4f4f5;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            text-align: left;
-            width: 100%;
-        }
-
-        .leafflow-power-menu-btn:hover {
-            background: #3f3f46;
-            border-color: #71717a;
-            transform: translateY(-1px);
-        }
-
-        .leafflow-power-menu-btn.btn-restart:hover {
-            background: rgba(59, 130, 246, 0.25);
-            border-color: #60a5fa;
-            color: #93c5fd;
-        }
-
-        .leafflow-power-menu-btn.btn-shutdown:hover {
-            background: rgba(239, 68, 68, 0.25);
-            border-color: #f87171;
-            color: #fca5a5;
-        }
-
-        .leafflow-power-menu-btn.btn-cancel {
-            background: rgba(239, 68, 68, 0.85);
-            border-color: #ef4444;
-            color: #ffffff;
-            justify-content: center;
-            margin-top: 4px;
-        }
-
-        .leafflow-power-menu-btn.btn-cancel:hover {
-            background: #dc2626;
-            box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
-        }
     `;
     document.head.appendChild(style);
 }
@@ -154,7 +151,7 @@ function getPowerIconSvg(size = 18) {
 
 function updateSidebarButtonVisuals() {
     const isArmed = Boolean(currentPowerState.pending_action);
-    const btns = document.querySelectorAll('[aria-label*="Power"], .side-bar-button:has(.pi-power), [data-testid="leafflow-power-tab-button"], .leafflow-power-sidebar-btn');
+    const btns = document.querySelectorAll('.comfy-power-btn, [aria-label*="Power"], .side-bar-button:has(.pi-power)');
     btns.forEach(btn => {
         if (isArmed) {
             btn.classList.add("leafflow-power-btn-armed");
@@ -165,7 +162,7 @@ function updateSidebarButtonVisuals() {
             btn.classList.remove("leafflow-power-btn-armed");
             const icon = btn.querySelector(".side-bar-button-icon, i, svg");
             if (icon) icon.classList.remove("leafflow-power-icon-armed");
-            btn.setAttribute("title", "ComfyUI Power Control (Restart / Shutdown)");
+            btn.setAttribute("title", "Power (Restart / Shutdown)");
         }
     });
 }
@@ -188,7 +185,7 @@ function openConfirmModal(title, message, onConfirm, isDanger = false) {
     overlay.style.display = "flex";
     overlay.style.alignItems = "center";
     overlay.style.justifyContent = "center";
-    overlay.style.zIndex = "10005";
+    overlay.style.zIndex = "10010";
     overlay.style.backdropFilter = "blur(3px)";
 
     const modal = document.createElement("div");
@@ -252,54 +249,52 @@ function openConfirmModal(title, message, onConfirm, isDanger = false) {
     document.body.appendChild(overlay);
 }
 
-function showPowerMenu() {
-    const overlay = document.createElement("div");
-    overlay.style.position = "fixed";
-    overlay.style.inset = "0";
-    overlay.style.backgroundColor = "rgba(0,0,0,0.65)";
-    overlay.style.display = "flex";
-    overlay.style.alignItems = "center";
-    overlay.style.justifyContent = "center";
-    overlay.style.zIndex = "10000";
-    overlay.onclick = (e) => {
-        if (e.target === overlay) overlay.remove();
-    };
+function closePowerPopup() {
+    if (activePopup) {
+        activePopup.remove();
+        activePopup = null;
+    }
+}
 
-    const modal = document.createElement("div");
-    modal.className = "leafflow-power-modal";
-
-    const titleRow = document.createElement("div");
-    titleRow.style.display = "flex";
-    titleRow.style.alignItems = "center";
-    titleRow.style.justifyContent = "space-between";
-    titleRow.innerHTML = `<span style="font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px;">${getPowerIconSvg(18)} ComfyUI Power Control</span>`;
-
-    const closeBtn = document.createElement("button");
-    closeBtn.textContent = "✕";
-    closeBtn.style.background = "transparent";
-    closeBtn.style.border = "none";
-    closeBtn.style.color = "#a1a1aa";
-    closeBtn.style.fontSize = "16px";
-    closeBtn.style.cursor = "pointer";
-    closeBtn.onclick = () => overlay.remove();
-    titleRow.appendChild(closeBtn);
-    modal.appendChild(titleRow);
-
-    // Status display ONLY when armed (removed green idle box)
-    if (currentPowerState.pending_action) {
-        const statusBox = document.createElement("div");
-        statusBox.className = "leafflow-power-status-box leafflow-power-status-armed";
-        statusBox.innerHTML = `<span>⚠️ <b>Armed Action:</b> Scheduled to <b>${currentPowerState.pending_action.toUpperCase()}</b> as soon as the queue finishes (idle state).</span>`;
-        modal.appendChild(statusBox);
+function showPowerSidePopup(anchorElement) {
+    if (activePopup) {
+        closePowerPopup();
+        return;
     }
 
-    // Cancel / Disarm Button if currently armed
+    const popup = document.createElement("div");
+    popup.className = "help-center-popup sidebar-left leafflow-power-popup";
+    popup.setAttribute("data-testid", "power-popup");
+
+    const rect = anchorElement.getBoundingClientRect();
+    popup.style.left = `${Math.round(rect.right + 8)}px`;
+    popup.style.bottom = `${Math.max(12, Math.round(window.innerHeight - rect.bottom))}px`;
+
+    const menu = document.createElement("div");
+    menu.className = "help-center-menu flex flex-col items-start gap-1";
+    menu.setAttribute("role", "menu");
+    menu.setAttribute("aria-label", "Power Menu");
+
+    const wrap = document.createElement("div");
+    wrap.className = "w-full";
+
+    const nav = document.createElement("nav");
+    nav.className = "flex w-full flex-col gap-1";
+    nav.setAttribute("role", "menubar");
+
+    // Cancel Armed Action Button (if armed)
     if (currentPowerState.pending_action) {
-        const cancelArmedBtn = document.createElement("button");
-        cancelArmedBtn.className = "leafflow-power-menu-btn btn-cancel";
-        cancelArmedBtn.innerHTML = `<span>🛑 <b>Cancel Scheduled ${currentPowerState.pending_action.toUpperCase()}</b></span>`;
-        cancelArmedBtn.onclick = async () => {
-            overlay.remove();
+        const cancelBtn = document.createElement("button");
+        cancelBtn.type = "button";
+        cancelBtn.className = "help-menu-item armed-cancel-item";
+        cancelBtn.setAttribute("role", "menuitem");
+        cancelBtn.innerHTML = `
+            <div class="help-menu-icon-container"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg></div>
+            <span class="menu-label">Cancel ${currentPowerState.pending_action.toUpperCase()}</span>
+        `;
+        cancelBtn.onclick = async (e) => {
+            e.stopPropagation();
+            closePowerPopup();
             await api.fetchApi("/leafflow/power/arm", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -311,19 +306,25 @@ function showPowerMenu() {
                     severity: "info",
                     summary: "🍃 LeafFlow Power",
                     detail: "Scheduled power action has been cancelled.",
-                    life: 4000
+                    life: 3000
                 });
             }
         };
-        modal.appendChild(cancelArmedBtn);
+        nav.appendChild(cancelBtn);
     }
 
-    // 1. Restart Immediate
-    const btnRestartNow = document.createElement("button");
-    btnRestartNow.className = "leafflow-power-menu-btn btn-restart";
-    btnRestartNow.innerHTML = `<span style="font-size:18px;">🔄</span> <div><div style="font-weight:600;">Restart Server (Immediate)</div><div style="font-size:11px;color:#a1a1aa;">Restarts the ComfyUI process right now.</div></div>`;
-    btnRestartNow.onclick = () => {
-        overlay.remove();
+    // 1. Restart Server (Immediate)
+    const restartItem = document.createElement("button");
+    restartItem.type = "button";
+    restartItem.className = "help-menu-item";
+    restartItem.setAttribute("role", "menuitem");
+    restartItem.innerHTML = `
+        <div class="help-menu-icon-container"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg></div>
+        <span class="menu-label">Restart Server (Immediate)</span>
+    `;
+    restartItem.onclick = (e) => {
+        e.stopPropagation();
+        closePowerPopup();
         openConfirmModal(
             "Restart ComfyUI Immediately?",
             "Are you sure you want to restart ComfyUI immediately? Any active prompt generation will be interrupted.",
@@ -342,14 +343,20 @@ function showPowerMenu() {
             true
         );
     };
-    modal.appendChild(btnRestartNow);
+    nav.appendChild(restartItem);
 
-    // 2. Shutdown Immediate
-    const btnShutdownNow = document.createElement("button");
-    btnShutdownNow.className = "leafflow-power-menu-btn btn-shutdown";
-    btnShutdownNow.innerHTML = `<span style="font-size:18px;">🛑</span> <div><div style="font-weight:600;">Shutdown Server (Immediate)</div><div style="font-size:11px;color:#a1a1aa;">Completely terminates the ComfyUI server process.</div></div>`;
-    btnShutdownNow.onclick = () => {
-        overlay.remove();
+    // 2. Shutdown Server (Immediate)
+    const shutdownItem = document.createElement("button");
+    shutdownItem.type = "button";
+    shutdownItem.className = "help-menu-item danger-item";
+    shutdownItem.setAttribute("role", "menuitem");
+    shutdownItem.innerHTML = `
+        <div class="help-menu-icon-container"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg></div>
+        <span class="menu-label">Shutdown Server (Immediate)</span>
+    `;
+    shutdownItem.onclick = (e) => {
+        e.stopPropagation();
+        closePowerPopup();
         openConfirmModal(
             "Shutdown ComfyUI Server?",
             "Are you sure you want to SHUT DOWN the ComfyUI server immediately? The process will exit.",
@@ -367,14 +374,25 @@ function showPowerMenu() {
             true
         );
     };
-    modal.appendChild(btnShutdownNow);
+    nav.appendChild(shutdownItem);
+
+    // Divider
+    const divider = document.createElement("div");
+    divider.className = "menu-divider";
+    nav.appendChild(divider);
 
     // 3. Restart After Queue Finish
-    const btnRestartQueue = document.createElement("button");
-    btnRestartQueue.className = "leafflow-power-menu-btn";
-    btnRestartQueue.innerHTML = `<span style="font-size:18px;">⏳</span> <div><div style="font-weight:600;">Restart After Queue Finish</div><div style="font-size:11px;color:#a1a1aa;">Waits until all queued prompts finish and system is idle. (Ignored if paused)</div></div>`;
-    btnRestartQueue.onclick = () => {
-        overlay.remove();
+    const restartQueueItem = document.createElement("button");
+    restartQueueItem.type = "button";
+    restartQueueItem.className = "help-menu-item";
+    restartQueueItem.setAttribute("role", "menuitem");
+    restartQueueItem.innerHTML = `
+        <div class="help-menu-icon-container"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
+        <span class="menu-label">Restart After Queue Finish</span>
+    `;
+    restartQueueItem.onclick = (e) => {
+        e.stopPropagation();
+        closePowerPopup();
         openConfirmModal(
             "Schedule Restart After Queue Finish?",
             "ComfyUI will wait until all remaining prompts in the queue finish and the system returns to idle before restarting. (Note: If queue is paused, it will not restart).",
@@ -396,14 +414,20 @@ function showPowerMenu() {
             }
         );
     };
-    modal.appendChild(btnRestartQueue);
+    nav.appendChild(restartQueueItem);
 
     // 4. Shutdown After Queue Finish
-    const btnShutdownQueue = document.createElement("button");
-    btnShutdownQueue.className = "leafflow-power-menu-btn";
-    btnShutdownQueue.innerHTML = `<span style="font-size:18px;">🌙</span> <div><div style="font-weight:600;">Shutdown After Queue Finish</div><div style="font-size:11px;color:#a1a1aa;">Waits until all queued prompts complete and system is idle, then shuts down.</div></div>`;
-    btnShutdownQueue.onclick = () => {
-        overlay.remove();
+    const shutdownQueueItem = document.createElement("button");
+    shutdownQueueItem.type = "button";
+    shutdownQueueItem.className = "help-menu-item";
+    shutdownQueueItem.setAttribute("role", "menuitem");
+    shutdownQueueItem.innerHTML = `
+        <div class="help-menu-icon-container"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg></div>
+        <span class="menu-label">Shutdown After Queue Finish</span>
+    `;
+    shutdownQueueItem.onclick = (e) => {
+        e.stopPropagation();
+        closePowerPopup();
         openConfirmModal(
             "Schedule Shutdown After Queue Finish?",
             "ComfyUI will wait until all queued prompts complete and the system returns to idle before shutting down completely.",
@@ -425,34 +449,70 @@ function showPowerMenu() {
             }
         );
     };
-    modal.appendChild(btnShutdownQueue);
+    nav.appendChild(shutdownQueueItem);
 
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
+    wrap.appendChild(nav);
+    menu.appendChild(wrap);
+    popup.appendChild(menu);
+    document.body.appendChild(popup);
+    activePopup = popup;
+
+    // Close on click outside or escape
+    const outsideListener = (e) => {
+        if (popup && !popup.contains(e.target) && !anchorElement.contains(e.target)) {
+            closePowerPopup();
+            document.removeEventListener("pointerdown", outsideListener);
+            document.removeEventListener("keydown", keyListener);
+        }
+    };
+    const keyListener = (e) => {
+        if (e.key === "Escape") {
+            closePowerPopup();
+            document.removeEventListener("pointerdown", outsideListener);
+            document.removeEventListener("keydown", keyListener);
+        }
+    };
+    setTimeout(() => {
+        document.addEventListener("pointerdown", outsideListener);
+        document.addEventListener("keydown", keyListener);
+    }, 10);
 }
 
 function attachBottomSidebarButton() {
-    if (document.getElementById("leafflow-power-bottom-btn")) return;
     const bottomGroup = document.querySelector(".sidebar-item-group.mt-auto, .side-bar .mt-auto, [data-testid='bottom-sidebar']");
     if (!bottomGroup) return;
 
-    const btnWrapper = document.createElement("div");
-    btnWrapper.id = "leafflow-power-bottom-btn";
-    btnWrapper.className = "comfy-menu-button-wrapper flex shrink-0 cursor-pointer flex-col items-center justify-center p-2 transition-colors";
-    btnWrapper.setAttribute("title", "ComfyUI Power Control (Restart / Shutdown)");
+    if (document.getElementById("leafflow-power-bottom-btn")) {
+        updateSidebarButtonVisuals();
+        return;
+    }
 
     const btn = document.createElement("button");
-    btn.className = "leafflow-power-sidebar-btn";
-    btn.innerHTML = `${getPowerIconSvg(20)}`;
+    btn.id = "leafflow-power-bottom-btn";
+    btn.type = "button";
+    btn.className = "relative inline-flex items-center justify-center gap-2 touch-manipulation whitespace-nowrap appearance-none font-medium font-inter transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([width]):not([height])]:size-4 [&_svg]:shrink-0 bg-transparent text-muted-foreground hover:bg-secondary-background-hover h-8 rounded-lg p-2 text-xs side-bar-button cursor-pointer border-none comfy-power-btn";
+    btn.setAttribute("aria-label", "Power");
+    btn.setAttribute("data-testid", "power-button");
+    btn.setAttribute("data-pd-tooltip", "true");
+    btn.setAttribute("title", "Power (Restart / Shutdown)");
+
+    btn.innerHTML = `
+        <div class="side-bar-button-content flex flex-col items-center gap-2">
+            <div class="sidebar-icon-wrapper relative">
+                ${getPowerIconSvg(18)}
+            </div>
+            <span class="side-bar-button-label line-clamp-2 w-max max-w-[calc(var(--sidebar-width)-var(--sidebar-padding))] text-center text-2xs wrap-break-word whitespace-normal">Power</span>
+        </div>
+    `;
+
     btn.onclick = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        showPowerMenu();
+        showPowerSidePopup(btn);
     };
 
-    btnWrapper.appendChild(btn);
-    // Insert at the top of the bottom group (above Help Center / Settings)
-    bottomGroup.insertBefore(btnWrapper, bottomGroup.firstChild);
+    // Insert at the top of the bottom group (above Help Center)
+    bottomGroup.insertBefore(btn, bottomGroup.firstChild);
     updateSidebarButtonVisuals();
 }
 
@@ -462,33 +522,19 @@ app.registerExtension({
         injectStyles();
         await fetchPowerStatus();
 
-        // 1. Try bottom placement in sidebar
+        // 1. Attach native button in bottom sidebar
         attachBottomSidebarButton();
         const observer = new MutationObserver(() => attachBottomSidebarButton());
         observer.observe(document.body, { childList: true, subtree: true });
 
-        // 2. Also register standard sidebar tab if bottom container isn't ready
-        if (app.extensionManager?.registerSidebarTab) {
-            app.extensionManager.registerSidebarTab({
-                id: "leafflow-power",
-                icon: "pi pi-power",
-                title: "Power",
-                tooltip: "ComfyUI Power Control (Restart / Shutdown)",
-                type: "custom",
-                render: (element) => {
-                    element.innerHTML = `<div style="padding:16px;color:#d4d4d8;font-size:13px;">Opening Power Menu...</div>`;
-                    showPowerMenu();
-                }
-            });
-        }
-
+        // 2. Fallback listener on any matching button
         setTimeout(() => {
-            const btns = document.querySelectorAll('[aria-label*="Power"], .side-bar-button:has(.pi-power), [data-testid="leafflow-power-tab-button"]');
-            btns.forEach(btn => {
-                btn.addEventListener("click", (e) => {
+            const btns = document.querySelectorAll('.comfy-power-btn, [aria-label*="Power"], .side-bar-button:has(.pi-power)');
+            btns.forEach(b => {
+                b.addEventListener("click", (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    showPowerMenu();
+                    showPowerSidePopup(b);
                 }, true);
             });
             updateSidebarButtonVisuals();

@@ -33,6 +33,14 @@ async function copyToClipboard(text) {
     }
 }
 
+function isCopyEnabled(settingKey) {
+    try {
+        const val = app.extensionManager?.setting?.get?.(settingKey) ?? app.ui?.settings?.getSettingValue?.(settingKey);
+        if (val !== undefined && val !== null) return Boolean(val);
+    } catch (_) {}
+    return true;
+}
+
 /**
  * Helper to fetch image metadata and extract the positive prompt text.
  */
@@ -44,15 +52,28 @@ async function copyImagePrompt(imgSrc) {
         let type = url.searchParams.get("type") || "output";
         let subfolder = url.searchParams.get("subfolder") || "";
 
+        if (!filename) {
+            const parts = url.pathname.split("/");
+            filename = parts[parts.length - 1];
+        }
+
         if (!filename) return false;
 
-        // Try extracting via LeafFlow /view_image_prompt endpoint if available or direct PNG extraction
         const promptUrl = `/leafflow/view_image_prompt?filename=${encodeURIComponent(filename)}&type=${encodeURIComponent(type)}&subfolder=${encodeURIComponent(subfolder)}`;
         const response = await api.fetchApi(promptUrl);
         if (response.ok) {
             const data = await response.json();
             if (data && data.prompt) {
-                return await copyToClipboard(data.prompt);
+                const copied = await copyToClipboard(data.prompt);
+                if (copied && app.extensionManager?.toast?.add) {
+                    app.extensionManager.toast.add({
+                        severity: "success",
+                        summary: "📋 Prompt Copied",
+                        detail: data.prompt.length > 80 ? data.prompt.slice(0, 80) + "..." : data.prompt,
+                        life: 3000
+                    });
+                }
+                return copied;
             }
         }
     } catch (e) {
@@ -61,7 +82,7 @@ async function copyImagePrompt(imgSrc) {
     return false;
 }
 
-// 1. Hook into Node Context Menu (Right Click on Image Nodes)
+// 1. Hook into Node Context Menu (Right Click)
 app.registerExtension({
     name: "ComfyUI.LeafFlow.CopyPrompt",
 
@@ -70,59 +91,52 @@ app.registerExtension({
         nodeType.prototype.getExtraMenuOptions = function (_, options) {
             if (origGetExtraMenuOptions) origGetExtraMenuOptions.apply(this, arguments);
 
-            const enabled = app.ui.settings.getSettingValue(
-                "LeafFlow.3. 📋 Prompt Actions.02_EnableContextMenuCopyPrompt",
-                true
-            );
-            if (!enabled) return;
+            if (!isCopyEnabled("LeafFlow.3 - 📋 Prompt Actions.02_EnableContextMenuCopyPrompt")) return;
 
-            if (this.imgs && this.imgs.length > 0) {
+            const imgs = this.imgs || this.images || (this.widgets && this.widgets.filter(w => w.type === "image" || w.name === "image"));
+            if (imgs && imgs.length > 0) {
                 options.push({
                     content: "📋 Copy Prompt",
                     callback: async () => {
-                        const img = this.imgs[this.imageIndex || 0];
-                        if (!img || !img.src) return;
-                        const success = await copyImagePrompt(img.src);
-                        if (success) {
-                            alert("Prompt copied to clipboard!");
-                        } else {
-                            alert("LeafFlow: Could not extract positive prompt from this image.");
+                        const img = imgs[this.imageIndex || 0];
+                        const src = typeof img === "string" ? img : (img?.src || img?.value);
+                        if (!src) return;
+                        const success = await copyImagePrompt(src);
+                        if (!success) {
+                            if (app.extensionManager?.toast?.add) {
+                                app.extensionManager.toast.add({
+                                    severity: "warn",
+                                    summary: "LeafFlow Copy Prompt",
+                                    detail: "Could not extract positive prompt from this image.",
+                                    life: 3000
+                                });
+                            } else {
+                                alert("LeafFlow: Could not extract positive prompt from this image.");
+                            }
                         }
                     },
                 });
             }
         };
-    },
+    }
 });
 
-// 2. Hook into Standard Top Hover Action Bar over Image Cards in Assets Pane & Canvas Previews
+// 2. Hook into Hover Action Bar over Image Cards in Assets Pane & Canvas Previews
 function injectHoverCopyAction(overlayBar) {
     if (!overlayBar || overlayBar.querySelector(".leafflow-hover-copy")) return;
 
-    const enabled = app.ui.settings.getSettingValue(
-        "LeafFlow.3. 📋 Prompt Actions.01_EnableAssetsCopyPromptButton",
-        true
-    );
-    if (!enabled) return;
+    if (!isCopyEnabled("LeafFlow.3 - 📋 Prompt Actions.01_EnableAssetsCopyPromptButton")) return;
 
-    // Locate the white icon group container (div.flex.shrink-0) inside the overlay
     const iconGroup =
         overlayBar.querySelector(".flex.shrink-0") ||
         overlayBar.querySelector('button[aria-label="Zoom in"]')?.parentElement ||
         overlayBar;
 
-    // Locate parent image card or asset item container
     const parentCard = overlayBar.closest(
-        "div[data-virtual-grid-item], .asset-card, [data-node-id], .lg-node, div.relative"
+        "div[data-virtual-grid-item], .asset-card, [data-node-id], .lg-node, div.relative, [data-testid='asset-card']"
     );
     const img = parentCard ? parentCard.querySelector("img") : overlayBar.parentElement?.querySelector("img");
     if (!img || !img.src) return;
-
-    // Find the 'More options' button (3-dots ellipsis) to insert before it
-    const moreBtn =
-        iconGroup.querySelector('button[aria-label="More options"]') ||
-        iconGroup.querySelector('button[aria-label="More"]') ||
-        iconGroup.lastElementChild;
 
     const copyBtn = document.createElement("button");
     copyBtn.className =
@@ -145,6 +159,11 @@ function injectHoverCopyAction(overlayBar) {
         }
     };
 
+    const moreBtn =
+        iconGroup.querySelector('button[aria-label="More options"]') ||
+        iconGroup.querySelector('button[aria-label="More"]') ||
+        iconGroup.lastElementChild;
+
     if (moreBtn && moreBtn.parentElement === iconGroup) {
         iconGroup.insertBefore(copyBtn, moreBtn);
     } else {
@@ -152,14 +171,14 @@ function injectHoverCopyAction(overlayBar) {
     }
 }
 
-// Observe DOM mutations to attach the copy button whenever a hover overlay bar appears
+// Observe DOM mutations to attach the copy button whenever hover overlay bar appears
 const observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
         if (mutation.type === "childList") {
             mutation.addedNodes.forEach((node) => {
                 if (node.nodeType === Node.ELEMENT_NODE) {
                     const selectors =
-                        '.absolute.top-2, .absolute.top-1, .asset-card-overlay, [data-testid="asset-card-actions"]';
+                        '.absolute.top-2, .absolute.top-1, .asset-card-overlay, [data-testid="asset-card-actions"], div.relative:has(img) .flex.shrink-0';
                     if (node.matches?.(selectors)) {
                         injectHoverCopyAction(node);
                     } else if (node.querySelectorAll) {
