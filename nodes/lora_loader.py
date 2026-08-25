@@ -443,7 +443,7 @@ class FolderLoraLoaderPretty(FolderLoraLoader):
                 "lora_name": (["[ NONE ]"], {}),
                 "strength_model": ("FLOAT", {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01}),
                 "strength_clip": ("FLOAT", {"default": 1.0, "min": -100.0, "max": 100.0, "step": 0.01}),
-                "output_format": (LORA_OUTPUT_FORMAT_CHOICES, {"default": "Parsed Name", "advanced": True}),
+                "output_format": (LORA_OUTPUT_FORMAT_CHOICES, {"default": "Filename", "advanced": True}),
                 "custom_regex": ("STRING", {"default": "", "advanced": True}),
             },
             "hidden": {
@@ -455,7 +455,7 @@ class FolderLoraLoaderPretty(FolderLoraLoader):
     RETURN_NAMES = ("MODEL", "CLIP", "lora_name")
     DESCRIPTION = "LoRA Loader filtered by folder directory with formatted pretty names."
 
-    def load_lora(self, model, clip, folder, lora_name, strength_model, strength_clip, output_format="Parsed Name", custom_regex="", output_name=None, _selected_lora="[ NONE ]"):
+    def load_lora(self, model, clip, folder, lora_name, strength_model, strength_clip, output_format="Filename", custom_regex="", output_name=None, _selected_lora="[ NONE ]"):
         active_format = output_name if output_name is not None else output_format
         active_lora = lora_name if lora_name != "[ NONE ]" else _selected_lora
         if active_lora == "[ NONE ]" or not active_lora:

@@ -191,6 +191,23 @@ visualStyles.textContent = `
         gap: 8px;
         padding: 4px 2px;
     }
+    .right-aligned-mode .lora-folder-grid {
+        direction: rtl;
+    }
+    .right-aligned-mode .lora-tile {
+        direction: ltr;
+    }
+    .right-aligned-mode .lora-folder-header {
+        flex-direction: row-reverse;
+    }
+    .right-aligned-mode .lora-folder-toggle {
+        margin-right: 0;
+        margin-left: 8px;
+    }
+    .right-aligned-mode .lora-folder-count {
+        margin-right: 0;
+        margin-left: 10px;
+    }
     .lora-folder-container.collapsed .lora-folder-grid {
         display: none !important;
     }

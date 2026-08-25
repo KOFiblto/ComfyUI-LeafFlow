@@ -134,16 +134,48 @@ function renderSettingButton(label, workingText, successText, onClickHandler) {
     };
 }
 
+/**
+ * Automatic Settings Migration:
+ * Seamlessly copies over existing user settings from older LeafFlow setting ID formats
+ * so users never lose their saved API keys, tokens, or preferences.
+ */
+function migrateSavedSettings() {
+    try {
+        if (typeof localStorage === "undefined") return;
+        const keysToMigrate = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && (k.includes("LeafFlow.") || k.includes("leafflow."))) {
+                keysToMigrate.push(k);
+            }
+        }
+        for (const oldKey of keysToMigrate) {
+            const val = localStorage.getItem(oldKey);
+            if (val === null) continue;
+            // Convert dot-numbered formats like "LeafFlow.1. 🖼️..." -> "LeafFlow.1 - 🖼️..."
+            const newKey = oldKey.replace(/LeafFlow\.(\d+)\.\s+/g, "LeafFlow.$1 - ");
+            if (newKey !== oldKey && localStorage.getItem(newKey) === null) {
+                localStorage.setItem(newKey, val);
+            }
+        }
+    } catch (e) {
+        console.warn("[LeafFlow] Settings migration skipped:", e);
+    }
+}
+migrateSavedSettings();
+
 app.registerExtension({
     name: "ComfyUI.LeafFlow.Settings",
     async setup() {
+        migrateSavedSettings();
+
         // =========================================================================
-        // GRUPPE 1: 1. 🖼️ Visual Loaders
+        // GRUPPE 1: 1 - 🖼️ Visual Loaders
         // =========================================================================
 
         // 1.0 Custom Node Colors Toggle
         app.ui.settings.addSetting({
-            id: "LeafFlow.1. 🖼️ Visual Loaders.00_EnableCustomColors",
+            id: "LeafFlow.1 - 🖼️ Visual Loaders.00_EnableCustomColors",
             name: "Enable Custom LeafFlow Node Colors",
             type: "boolean",
             defaultValue: true,
@@ -152,7 +184,7 @@ app.registerExtension({
 
         // 1.1 Civitai API Key
         app.ui.settings.addSetting({
-            id: "LeafFlow.1. 🖼️ Visual Loaders.01_CivitaiApiKey",
+            id: "LeafFlow.1 - 🖼️ Visual Loaders.01_CivitaiApiKey",
             name: "Civitai API Key",
             type: "text",
             defaultValue: "",
@@ -169,7 +201,7 @@ app.registerExtension({
 
         // 1.2 Enable Civitai Auto-Scraping Toggle (default: true)
         app.ui.settings.addSetting({
-            id: "LeafFlow.1. 🖼️ Visual Loaders.02_EnableCivitaiScraping",
+            id: "LeafFlow.1 - 🖼️ Visual Loaders.02_EnableCivitaiScraping",
             name: "Enable Civitai Auto-Scraping",
             type: "boolean",
             defaultValue: true,
@@ -185,7 +217,7 @@ app.registerExtension({
 
         // 1.3 TMDB Access Token
         app.ui.settings.addSetting({
-            id: "LeafFlow.1. 🖼️ Visual Loaders.03_TMDBApiKey",
+            id: "LeafFlow.1 - 🖼️ Visual Loaders.03_TMDBApiKey",
             name: "TMDB Access Token",
             type: "text",
             defaultValue: "",
@@ -202,7 +234,7 @@ app.registerExtension({
 
         // 1.4 Enable TMDB Auto-Scraping Toggle (default: false)
         app.ui.settings.addSetting({
-            id: "LeafFlow.1. 🖼️ Visual Loaders.04_EnableTMDBScraping",
+            id: "LeafFlow.1 - 🖼️ Visual Loaders.04_EnableTMDBScraping",
             name: "Enable TMDB Auto-Scraping",
             type: "boolean",
             defaultValue: false,
@@ -218,7 +250,7 @@ app.registerExtension({
 
         // 1.5 Enable LoRA Usage Tracking (default: true)
         app.ui.settings.addSetting({
-            id: "LeafFlow.1. 🖼️ Visual Loaders.05_EnableLoraUsage",
+            id: "LeafFlow.1 - 🖼️ Visual Loaders.05_EnableLoraUsage",
             name: "Enable LoRA Usage Tracking",
             type: "boolean",
             defaultValue: true,
@@ -234,7 +266,7 @@ app.registerExtension({
 
         // 1.6 Reset Scrapes Cache Button
         app.ui.settings.addSetting({
-            id: "LeafFlow.1. 🖼️ Visual Loaders.06_ResetScrapesCache",
+            id: "LeafFlow.1 - 🖼️ Visual Loaders.06_ResetScrapesCache",
             name: "Reset Failed Scrapes Cache",
             type: "button",
             defaultValue: "🗑️ Clear Scrapes Cache",
@@ -267,12 +299,12 @@ app.registerExtension({
 
 
         // =========================================================================
-        // GRUPPE 2: 2. 🔄 Prompt Queue Iterator
+        // GRUPPE 2: 2 - 🔄 Prompt Queue Iterator
         // =========================================================================
 
         // 2.1 Clear Prompt Iterator State on Launch (default: false)
         app.ui.settings.addSetting({
-            id: "LeafFlow.2. 🔄 Prompt Iterator.01_ClearOnLaunch",
+            id: "LeafFlow.2 - 🔄 Prompt Iterator.01_ClearOnLaunch",
             name: "Clear State on Launch",
             type: "boolean",
             defaultValue: false,
@@ -288,7 +320,7 @@ app.registerExtension({
 
         // 2.2 Reset Prompt Iterator Queues Now
         app.ui.settings.addSetting({
-            id: "LeafFlow.2. 🔄 Prompt Iterator.02_ResetActiveQueues",
+            id: "LeafFlow.2 - 🔄 Prompt Iterator.02_ResetActiveQueues",
             name: "Reset Active Queues State",
             type: "button",
             defaultValue: "🔄 Reset All Queues",
@@ -321,12 +353,12 @@ app.registerExtension({
 
 
         // =========================================================================
-        // GRUPPE 3: 3. 📋 Prompt Actions
+        // GRUPPE 3: 3 - 📋 Prompt Actions
         // =========================================================================
 
         // 3.1 Show "Copy Prompt" Button on Image Overlays
         app.ui.settings.addSetting({
-            id: "LeafFlow.3. 📋 Prompt Actions.01_EnableAssetsCopyPromptButton",
+            id: "LeafFlow.3 - 📋 Prompt Actions.01_EnableAssetsCopyPromptButton",
             name: "Show \"Copy Prompt\" Button on Images",
             type: "boolean",
             defaultValue: true,
@@ -335,7 +367,7 @@ app.registerExtension({
 
         // 3.2 Show Right-Click "Copy Prompt" Menu Action
         app.ui.settings.addSetting({
-            id: "LeafFlow.3. 📋 Prompt Actions.02_EnableContextMenuCopyPrompt",
+            id: "LeafFlow.3 - 📋 Prompt Actions.02_EnableContextMenuCopyPrompt",
             name: "Show Right-Click \"Copy Prompt\" Menu Action",
             type: "boolean",
             defaultValue: true,
@@ -344,12 +376,12 @@ app.registerExtension({
 
 
         // =========================================================================
-        // GRUPPE 4: 4. ⏸️ Pause & Resume Controls
+        // GRUPPE 4: 4 - ⏸️ Pause & Resume Controls
         // =========================================================================
 
         // 4.1 Default Pause Queue State on Launch
         app.ui.settings.addSetting({
-            id: "LeafFlow.4. ⏸️ Pause Controls.01_DefaultStateOnLaunch",
+            id: "LeafFlow.4 - ⏸️ Pause Controls.01_DefaultStateOnLaunch",
             name: "Default State on Launch",
             type: "combo",
             options: ["Paused", "Running"],
@@ -366,7 +398,7 @@ app.registerExtension({
 
         // 4.2 Default Pause Queue Mode on Launch
         app.ui.settings.addSetting({
-            id: "LeafFlow.4. ⏸️ Pause Controls.02_DefaultPauseAction",
+            id: "LeafFlow.4 - ⏸️ Pause Controls.02_DefaultPauseAction",
             name: "Default Pause Action",
             type: "combo",
             options: ["Finish Active Prompt", "Instant Resume Node"],
@@ -384,7 +416,7 @@ app.registerExtension({
 
         // 4.3 Enable Pause Queue Toolbar Button
         app.ui.settings.addSetting({
-            id: "LeafFlow.4. ⏸️ Pause Controls.03_EnableToolbarButton",
+            id: "LeafFlow.4 - ⏸️ Pause Controls.03_EnableToolbarButton",
             name: "Enable Top Toolbar Button",
             type: "boolean",
             defaultValue: true,
@@ -399,7 +431,7 @@ app.registerExtension({
 
         // 4.4 Toolbar Button Unpaused Color
         app.ui.settings.addSetting({
-            id: "LeafFlow.4. ⏸️ Pause Controls.04_ToolbarButtonUnpausedColor",
+            id: "LeafFlow.4 - ⏸️ Pause Controls.04_ToolbarButtonUnpausedColor",
             name: "Toolbar Button Unpaused Color",
             type: "text",
             defaultValue: "#16a34a",
@@ -411,7 +443,7 @@ app.registerExtension({
 
         // 4.5 Toolbar Button Paused Color
         app.ui.settings.addSetting({
-            id: "LeafFlow.4. ⏸️ Pause Controls.05_ToolbarButtonPausedColor",
+            id: "LeafFlow.4 - ⏸️ Pause Controls.05_ToolbarButtonPausedColor",
             name: "Toolbar Button Paused Color",
             type: "text",
             defaultValue: "#ea580c",
@@ -423,7 +455,7 @@ app.registerExtension({
 
         // 4.6 Enable System Tray Icon
         app.ui.settings.addSetting({
-            id: "LeafFlow.4. ⏸️ Pause Controls.06_EnableTrayIcon",
+            id: "LeafFlow.4 - ⏸️ Pause Controls.06_EnableTrayIcon",
             name: "Enable System Tray Icon",
             type: "boolean",
             defaultValue: false,
@@ -439,12 +471,12 @@ app.registerExtension({
 
 
         // =========================================================================
-        // GRUPPE 5: 5. 💾 Persistent Queue (Auto-Recovery)
+        // GRUPPE 5: 5 - 💾 Persistent Queue (Auto-Recovery)
         // =========================================================================
 
         // 5.1 Enable Persistent Queue (Auto-Recovery)
         app.ui.settings.addSetting({
-            id: "LeafFlow.5. 💾 Persistent Queue.01_EnablePersistentQueue",
+            id: "LeafFlow.5 - 💾 Persistent Queue.01_EnablePersistentQueue",
             name: "Enable Persistent Queue (Auto-Recovery)",
             type: "boolean",
             defaultValue: true,
@@ -460,7 +492,7 @@ app.registerExtension({
 
         // 5.2 Persistent Queue Restored Launch State
         app.ui.settings.addSetting({
-            id: "LeafFlow.5. 💾 Persistent Queue.02_RecoveryLaunchState",
+            id: "LeafFlow.5 - 💾 Persistent Queue.02_RecoveryLaunchState",
             name: "Recovery Launch State",
             type: "combo",
             options: ["Match Default", "Force Paused", "Force Running"],
@@ -477,12 +509,12 @@ app.registerExtension({
 
 
         // =========================================================================
-        // GRUPPE 6: 6. 🖼️ Assets & History Restore
+        // GRUPPE 6: 6 - 🖼️ Assets & History Restore
         // =========================================================================
 
         // 6.1 Enable Assets / History Restore on Launch
         app.ui.settings.addSetting({
-            id: "LeafFlow.6. 🖼️ Assets Restore.01_RestoreAssetsOnLaunch",
+            id: "LeafFlow.6 - 🖼️ Assets Restore.01_RestoreAssetsOnLaunch",
             name: "Restore Assets on Launch",
             type: "boolean",
             defaultValue: true,
@@ -498,7 +530,7 @@ app.registerExtension({
 
         // 6.2 Restored Assets Count
         app.ui.settings.addSetting({
-            id: "LeafFlow.6. 🖼️ Assets Restore.02_RestoredAssetsCount",
+            id: "LeafFlow.6 - 🖼️ Assets Restore.02_RestoredAssetsCount",
             name: "Restored Assets Count",
             type: "number",
             defaultValue: 64,
@@ -515,12 +547,12 @@ app.registerExtension({
 
 
         // =========================================================================
-        // GRUPPE 7: 7. 🩺 Diagnostics & Debug
+        // GRUPPE 7: 7 - 🩺 Diagnostics & Debug
         // =========================================================================
 
         // 7.1 Export Debug Profile Button
         app.ui.settings.addSetting({
-            id: "LeafFlow.7. 🩺 Diagnostics.01_ExportDebugProfile",
+            id: "LeafFlow.7 - 🩺 Diagnostics.01_ExportDebugProfile",
             name: "Export Debug Profile",
             type: "button",
             defaultValue: "📥 Export Debug Profile",

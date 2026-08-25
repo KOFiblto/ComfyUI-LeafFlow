@@ -20,10 +20,9 @@ class TextAspectRatioFinder:
                     "step": 0.1,
                     "display": "number"
                 }),
-                "default_aspect_ratio": ([
-                    "1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"
-                ], {
-                    "default": "1:1"
+                "default_aspect_ratio": ("STRING", {
+                    "default": "1:1",
+                    "multiline": False
                 }),
                 "multiple_of": ("INT", {
                     "default": 8,
@@ -130,13 +129,24 @@ class TextAspectRatioFinder:
         else:
             found_ratio = default_aspect_ratio
 
+        # Parse found_ratio and validate. If corrupted/invalid, fall back to "1:1"
         try:
-            w_part, h_part = map(float, str(found_ratio).split(":"))
-            if w_part <= 0 or h_part <= 0:
-                raise ValueError("Dimensions must be positive")
-        except Exception:
+            m_ratio = re.match(r'^(\d+(?:\.\d+)?)\s*[:xX/]\s*(\d+(?:\.\d+)?)$', str(found_ratio or "").strip())
+            if m_ratio:
+                w_part = float(m_ratio.group(1))
+                h_part = float(m_ratio.group(2))
+                if w_part <= 0 or h_part <= 0:
+                    raise ValueError("Dimensions must be positive")
+                w_str = str(int(w_part)) if w_part.is_integer() else str(w_part)
+                h_str = str(int(h_part)) if h_part.is_integer() else str(h_part)
+                found_ratio = f"{w_str}:{h_str}"
+            else:
+                raise ValueError(f"Cannot parse aspect ratio: {found_ratio}")
+        except Exception as e:
+            print(f"[LeafFlow] Warning: Aspect ratio '{found_ratio}' is invalid. Falling back to '1:1'. ({e})")
             w_part, h_part = 1.0, 1.0
             found_ratio = "1:1"
+
         r = w_part / h_part
 
         total_pixels = effective_mp * 1024.0 * 1024.0

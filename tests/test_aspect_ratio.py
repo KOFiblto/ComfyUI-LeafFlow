@@ -66,6 +66,29 @@ class TestAspectRatioNodes(unittest.TestCase):
         w2, h2, r2 = self.finder.find_aspect_ratio(text=None, default_aspect_ratio="1:1")
         self.assertEqual(r2, "1:1")
 
+    def test_custom_default_aspect_ratio(self):
+        w, h, ratio = self.finder.find_aspect_ratio(
+            text="No ratio mentioned",
+            default_aspect_ratio="5:4",
+            target_mp=1.0
+        )
+        self.assertEqual(ratio, "5:4")
+
+        w2, h2, ratio2 = self.finder.find_aspect_ratio(
+            text="No ratio mentioned",
+            default_aspect_ratio="30:1",
+            target_mp=1.0
+        )
+        self.assertEqual(ratio2, "30:1")
+
+    def test_corrupt_default_aspect_ratio_falls_back_to_1_1(self):
+        w, h, ratio = self.finder.find_aspect_ratio(
+            text="No ratio mentioned",
+            default_aspect_ratio="corrupted:invalid_ratio",
+            target_mp=1.0
+        )
+        self.assertEqual(ratio, "1:1")
+
     def test_preview_process(self):
         with patch("nodes.aspect_ratio.PromptServer.instance.send_sync") as mock_send:
             res = self.preview_node.process_preview(
