@@ -10,24 +10,18 @@ const COLOR_MAP = {
     "VisualLoraLoader": LEAF_GREEN,
     "FolderLoraLoader": LEAF_GREEN,
     "FolderLoraLoaderPretty": LEAF_GREEN,
-    "FolderLoraLoaderVisualPrettyV2": LEAF_GREEN,
     "VisualImageLoader": LEAF_GREEN,
-    "ImageLoaderVisualPrettyV2": LEAF_GREEN,
     "LoadRecentOutputs": LEAF_GREEN,
 
     // Automation, Flow & Utilities
     "LoadImageFromFolder": LEAF_LIGHT,
-    "AutoWatcherNode": LEAF_LIGHT,
     "TextAspectRatioFinder": LEAF_LIGHT,
-    "AspectRatioFinder": LEAF_LIGHT,
     "PreviewImageSizeAspectRatio": LEAF_LIGHT,
     "TextLoraFinder": LEAF_LIGHT,
-    "LoraTextFinder": LEAF_LIGHT,
     "PromptQueueIterator": LEAF_LIGHT,
     "MultiTextReplacer": LEAF_LIGHT,
     "LeafFlowTextSplit": LEAF_LIGHT,
     "LeafFlowDecision": LEAF_LIGHT,
-    "FlowControlDecision": LEAF_LIGHT,
 
     // Queue & Previews
     "PreviewLatentLive": LEAF_EMERALD,

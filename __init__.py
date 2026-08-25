@@ -43,7 +43,6 @@ from .nodes.text_split import LeafFlowTextSplit
 
 
 NODE_CLASS_MAPPINGS = {
-    # Standardized Class Names
     "FolderLoraLoader": FolderLoraLoader,
     "FolderLoraLoaderPretty": FolderLoraLoaderPretty,
     "VisualLoraLoader": VisualLoraLoader,
@@ -58,32 +57,20 @@ NODE_CLASS_MAPPINGS = {
     "PromptQueueIterator": PromptQueueIterator,
     "MultiTextReplacer": MultiTextReplacer,
     "LeafFlowTextSplit": LeafFlowTextSplit,
-
-    # Backward Compatibility Aliases
-    "FlowControlDecision": LeafFlowDecision,
-    "FolderLoraLoaderVisualPrettyV2": VisualLoraLoader,
-    "ImageLoaderVisualPrettyV2": VisualImageLoader,
-    "AspectRatioFinder": TextAspectRatioFinder,
-    "LoraTextFinder": TextLoraFinder,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "FolderLoraLoader": "🍃 📁 LoRA Loader (Folder)",
     "FolderLoraLoaderPretty": "🍃 ✨ LoRA Loader (Pretty)",
     "VisualLoraLoader": "🍃 🖼️ Visual LoRA Loader",
-    "FolderLoraLoaderVisualPrettyV2": "🍃 🖼️ Visual LoRA Loader",
     "VisualImageLoader": "🍃 📷 Visual Image Loader",
-    "ImageLoaderVisualPrettyV2": "🍃 📷 Visual Image Loader",
     "LoadImageFromFolder": "🍃 📂 Load Image From Folder",
     "LoadRecentOutputs": "🍃 ⏱️ Recent Outputs",
     "PreviewLatentLive": "🍃 👁️ Live Latent Preview",
     "LeafFlowDecision": "🍃 ⏸️ LeafFlow Decision",
-    "FlowControlDecision": "🍃 ⏸️ LeafFlow Decision",
     "TextAspectRatioFinder": "🍃 📐 Text Aspect Ratio Finder",
-    "AspectRatioFinder": "🍃 📐 Text Aspect Ratio Finder",
     "PreviewImageSizeAspectRatio": "🍃 📐 Preview Image Size & Aspect Ratio",
     "TextLoraFinder": "🍃 🔎 Text LoRA Finder & Loader",
-    "LoraTextFinder": "🍃 🔎 Text LoRA Finder & Loader",
     "PromptQueueIterator": "🍃 🔄 Prompt Queue Iterator",
     "MultiTextReplacer": "🍃 🔤 Multi Text Replacer",
     "LeafFlowTextSplit": "🍃 ✂️ Text Split"
