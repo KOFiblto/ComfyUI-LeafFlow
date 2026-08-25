@@ -360,13 +360,115 @@ class PersistentQueueManager:
         except Exception:
             pass
 
+class PowerControlManager:
+    def __init__(self, pause_manager):
+        self.pause_manager = pause_manager
+        self.pending_action = None  # None | "restart" | "shutdown"
+        self.armed_at = None
+        self.lock = threading.Lock()
+        self._executing = False
+        self._loop_thread = None
+
+    def start_watcher(self):
+        if self._loop_thread is None:
+            self._loop_thread = threading.Thread(target=self._watch_loop, daemon=True)
+            self._loop_thread.start()
+
+    def _watch_loop(self):
+        import time
+        while True:
+            time.sleep(1.0)
+            if self.pending_action:
+                self.check_and_execute()
+
+    def arm(self, action):
+        with self.lock:
+            if action in ["restart", "shutdown"]:
+                self.pending_action = action
+                import time
+                self.armed_at = time.time()
+                print(f"[LeafFlow Power] Armed action '{action}' after queue completion.")
+            else:
+                self.pending_action = None
+                self.armed_at = None
+                print("[LeafFlow Power] Cancelled armed queue power action.")
+        self.notify_clients()
+
+    def get_status(self):
+        with self.lock:
+            return {
+                "pending_action": self.pending_action,
+                "armed_at": self.armed_at,
+                "is_paused": getattr(self.pause_manager, "paused", False) or getattr(self.pause_manager, "is_waiting", False)
+            }
+
+    def notify_clients(self):
+        try:
+            PromptServer.instance.send_sync("leafflow_power_status", self.get_status())
+        except Exception:
+            pass
+
+    def check_and_execute(self):
+        with self.lock:
+            if not self.pending_action or self._executing:
+                return
+
+            # CRITICAL: If pause mode is active or waiting, DO NOT execute!
+            is_paused = getattr(self.pause_manager, "paused", False) or getattr(self.pause_manager, "is_waiting", False)
+            if is_paused:
+                return
+
+            server = PromptServer.instance
+            if not hasattr(server, "prompt_queue"):
+                return
+
+            queue = server.prompt_queue
+            tasks_remaining = queue.get_tasks_remaining()
+            currently_running = len(getattr(queue, "currently_running", {}))
+
+            if tasks_remaining == 0 and currently_running == 0:
+                action = self.pending_action
+                self._executing = True
+                self.pending_action = None
+                print(f"[LeafFlow Power] Queue is empty and idle. Executing '{action}' now...")
+
+                if action == "restart":
+                    self.execute_restart()
+                elif action == "shutdown":
+                    self.execute_shutdown()
+
+    def execute_restart(self):
+        def _run():
+            import subprocess, sys, os, time
+            print("[LeafFlow Power] Restarting ComfyUI server process...")
+            time.sleep(0.6)
+            cmd = [sys.executable] + sys.argv
+            cwd = os.getcwd()
+            if sys.platform.startswith("win"):
+                subprocess.Popen(cmd, cwd=cwd, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS)
+            else:
+                subprocess.Popen(cmd, cwd=cwd, start_new_session=True)
+            time.sleep(0.4)
+            os._exit(0)
+        threading.Thread(target=_run, daemon=True).start()
+
+    def execute_shutdown(self):
+        def _run():
+            import os, time
+            print("[LeafFlow Power] Shutting down ComfyUI server...")
+            time.sleep(0.6)
+            os._exit(0)
+        threading.Thread(target=_run, daemon=True).start()
+
 pause_manager = PauseQueueManager()
 persistent_manager = PersistentQueueManager()
 tray_manager = TrayIconManager(pause_manager)
+power_manager = PowerControlManager(pause_manager)
 
 def setup_queue_control_routes(server):
     pause_manager.patch_all()
     persistent_manager.patch_server()
+    power_manager.start_watcher()
 
     if is_tray_icon_enabled():
         tray_manager.start()
@@ -375,6 +477,30 @@ def setup_queue_control_routes(server):
         assets_restore_manager.restore_on_launch(server)
 
     routes = server.routes
+
+    @routes.get("/leafflow/power/status")
+    async def get_power_status(request):
+        return web.json_response(power_manager.get_status())
+
+    @routes.post("/leafflow/power/arm")
+    async def arm_power_action(request):
+        try:
+            data = await request.json()
+        except Exception:
+            data = {}
+        action = data.get("action")
+        power_manager.arm(action)
+        return web.json_response(power_manager.get_status())
+
+    @routes.post("/leafflow/power/restart")
+    async def trigger_restart(request):
+        power_manager.execute_restart()
+        return web.json_response({"status": "restarting"})
+
+    @routes.post("/leafflow/power/shutdown")
+    async def trigger_shutdown(request):
+        power_manager.execute_shutdown()
+        return web.json_response({"status": "shutting_down"})
 
     @routes.post("/leafflow/assets/restore")
     async def restore_assets_endpoint(request):
