@@ -59,7 +59,6 @@ ComfyUI-LeafFlow/
 │   ├── queue_control.py       # Pause Queue, Persistent Queue hooks, and server routes
 │   ├── text_replacer.py       # Multiline regex & list text replacer node
 │   ├── tray_icon.py           # OS system tray icon manager & status indicator
-│   ├── undo_placeholder.py    # Placeholder restoration utility node
 │   └── utils.py               # Shared path sanitization, string parsing, and formatting helpers
 ├── web/                       # Frontend extensions & static assets
 │   ├── leafflow_colors.js # Node theme colors (LiteGraph canvas & Vue V2)

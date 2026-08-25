@@ -18,8 +18,6 @@ const COLOR_MAP = {
     // Automation, Flow & Utilities
     "LoadImageFromFolder": LEAF_LIGHT,
     "AutoWatcherNode": LEAF_LIGHT,
-    "BackToPlaceholder": LEAF_LIGHT,
-    "UndoPlaceholder": LEAF_LIGHT,
     "TextAspectRatioFinder": LEAF_LIGHT,
     "AspectRatioFinder": LEAF_LIGHT,
     "PreviewImageSizeAspectRatio": LEAF_LIGHT,

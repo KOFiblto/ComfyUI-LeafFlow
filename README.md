@@ -92,21 +92,6 @@ Visual thumbnail browser for image folders with instant preview selection and EX
 </details>
 
 <details>
-<summary><b>🍃 ↩️ Back To Placeholder</b> (<code>BackToPlaceholder</code>)</summary>
-
-#### Overview
-Execution anchor node that undoes placing content into a placeholder slot by scanning text for LoRA pretty names matching a folder and restoring placeholder tokens (e.g. `%celeb%`).
-
-#### Inputs & Widgets
-- **`text`** (`STRING`, *Forced Input*): Input prompt text.
-- **`lora_folder`** (`STRING`): Target LoRA folder filter.
-- **`placeholder`** (`STRING`): Token to restore (default `%celeb%`).
-
-#### Outputs
-- **`text`** (`STRING`): Processed prompt text with restored placeholder tokens.
-</details>
-
-<details>
 <summary><b>🍃 📂 Load Image From Folder</b> (<code>LoadImageFromFolder</code>)</summary>
 
 #### Overview

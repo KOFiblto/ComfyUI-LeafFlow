@@ -31,7 +31,6 @@ from .nodes.lora_loader import (
     FolderLoraLoaderVisualPrettyV2
 )
 from .nodes.image_loader import VisualImageLoader, ImageLoaderVisualPrettyV2
-from .nodes.undo_placeholder import BackToPlaceholder
 from .nodes.auto_watcher import LoadImageFromFolder
 from .nodes.load_recent import LoadRecentOutputs
 from .nodes.preview_latent import PreviewLatentLiveNode
@@ -49,7 +48,6 @@ NODE_CLASS_MAPPINGS = {
     "FolderLoraLoaderPretty": FolderLoraLoaderPretty,
     "VisualLoraLoader": VisualLoraLoader,
     "VisualImageLoader": VisualImageLoader,
-    "BackToPlaceholder": BackToPlaceholder,
     "LoadImageFromFolder": LoadImageFromFolder,
     "LoadRecentOutputs": LoadRecentOutputs,
     "PreviewLatentLive": PreviewLatentLiveNode,
@@ -67,7 +65,6 @@ NODE_CLASS_MAPPINGS = {
     "ImageLoaderVisualPrettyV2": VisualImageLoader,
     "AspectRatioFinder": TextAspectRatioFinder,
     "LoraTextFinder": TextLoraFinder,
-    "UndoPlaceholder": BackToPlaceholder,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -77,8 +74,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "FolderLoraLoaderVisualPrettyV2": "🍃 🖼️ Visual LoRA Loader",
     "VisualImageLoader": "🍃 📷 Visual Image Loader",
     "ImageLoaderVisualPrettyV2": "🍃 📷 Visual Image Loader",
-    "BackToPlaceholder": "🍃 ↩️ Back To Placeholder",
-    "UndoPlaceholder": "🍃 ↩️ Back To Placeholder",
     "LoadImageFromFolder": "🍃 📂 Load Image From Folder",
     "LoadRecentOutputs": "🍃 ⏱️ Recent Outputs",
     "PreviewLatentLive": "🍃 👁️ Live Latent Preview",
@@ -114,7 +109,7 @@ ENV_FILE = os.path.join(USER_DIR, ".env")
 
 routes = server.routes
 
-print("[ComfyUI-LeafFlow] 🍃 Loaded 14 nodes & visual endpoints successfully.")
+print("[ComfyUI-LeafFlow] 🍃 Loaded 13 nodes & visual endpoints successfully.")
 
 @routes.get("/leafflow/settings")
 @routes.get("/flow_control/settings")
