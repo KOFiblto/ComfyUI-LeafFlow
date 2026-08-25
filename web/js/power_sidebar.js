@@ -17,7 +17,27 @@ function injectStyles() {
     const style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent = `
+        /* Power Sidebar Button Layout (Matching standard full-width sidebar button) */
+        #leafflow-power-bottom-btn {
+            width: 100% !important;
+            height: auto !important;
+            min-height: 48px !important;
+            padding: 6px 4px !important;
+            box-sizing: border-box !important;
+            border-radius: 8px !important;
+            align-self: stretch !important;
+        }
+
+        #leafflow-power-bottom-btn .side-bar-button-content {
+            width: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            gap: 4px !important;
+        }
+
         /* Power Sidebar Button Armed Red Warning State */
+        #leafflow-power-bottom-btn.leafflow-power-btn-armed,
         .comfy-power-btn.leafflow-power-btn-armed,
         .side-bar-button.leafflow-power-btn-armed,
         .side-bar-button:has(.leafflow-power-icon-armed),
@@ -151,7 +171,7 @@ function getPowerIconSvg(size = 18) {
 
 function updateSidebarButtonVisuals() {
     const isArmed = Boolean(currentPowerState.pending_action);
-    const btns = document.querySelectorAll('.comfy-power-btn, [aria-label*="Power"], .side-bar-button:has(.pi-power)');
+    const btns = document.querySelectorAll('#leafflow-power-bottom-btn, .comfy-power-btn, [aria-label*="Power"], .side-bar-button:has(.pi-power)');
     btns.forEach(btn => {
         if (isArmed) {
             btn.classList.add("leafflow-power-btn-armed");

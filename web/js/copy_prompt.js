@@ -121,22 +121,37 @@ app.registerExtension({
     }
 });
 
-// 2. Hook into Hover Action Bar over Image Cards in Assets Pane & Canvas Previews
+// 2. Hook into Hover Action Bar over Image Cards in Assets Pane & Canvas Previews ONLY (Strictly Exclude Queue)
 function injectHoverCopyAction(overlayBar) {
     if (!overlayBar || overlayBar.querySelector(".leafflow-hover-copy")) return;
 
     if (!isCopyEnabled("LeafFlow.3 - 📋 Prompt Actions.01_EnableAssetsCopyPromptButton")) return;
 
+    // STRICT EXCLUSION: Never inject inside queue job rows or queue panels
+    if (overlayBar.closest("[data-job-id], [data-testid*='queue'], .comfy-queue, .queue-item, .queue-list")) {
+        return;
+    }
+
     const iconGroup =
         overlayBar.querySelector(".flex.shrink-0") ||
         overlayBar.querySelector('button[aria-label="Zoom in"]')?.parentElement ||
+        overlayBar.querySelector('button[aria-label*="zoom" i]')?.parentElement ||
         overlayBar;
 
+    // Only inject if this is actually an asset card or image preview card (not tiny queue thumbnail)
     const parentCard = overlayBar.closest(
-        "div[data-virtual-grid-item], .asset-card, [data-node-id], .lg-node, div.relative, [data-testid='asset-card']"
+        "div[data-virtual-grid-item], .asset-card, [data-testid='asset-card'], [data-node-id], .lg-node, .comfy-image-preview"
     );
-    const img = parentCard ? parentCard.querySelector("img") : overlayBar.parentElement?.querySelector("img");
+    if (!parentCard) return;
+
+    // Exclude queue items
+    if (parentCard.closest("[data-job-id], [data-testid*='queue'], .comfy-queue")) return;
+
+    const img = parentCard.querySelector("img");
     if (!img || !img.src) return;
+
+    // Exclude small icon images
+    if (img.classList.contains("size-8") || img.closest(".size-8, .size-10, .h-12")) return;
 
     const copyBtn = document.createElement("button");
     copyBtn.className =
@@ -177,8 +192,11 @@ const observer = new MutationObserver((mutations) => {
         if (mutation.type === "childList") {
             mutation.addedNodes.forEach((node) => {
                 if (node.nodeType === Node.ELEMENT_NODE) {
+                    // Strictly skip queue subtree additions
+                    if (node.closest?.("[data-job-id], [data-testid*='queue'], .comfy-queue")) return;
+
                     const selectors =
-                        '.absolute.top-2, .absolute.top-1, .asset-card-overlay, [data-testid="asset-card-actions"], div.relative:has(img) .flex.shrink-0';
+                        '[data-testid="asset-card-actions"], .asset-card-overlay, .asset-item-overlay, div[data-virtual-grid-item] .absolute.top-2';
                     if (node.matches?.(selectors)) {
                         injectHoverCopyAction(node);
                     } else if (node.querySelectorAll) {
