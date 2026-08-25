@@ -442,13 +442,17 @@ class PowerControlManager:
             import subprocess, sys, os, time
             print("[LeafFlow Power] Restarting ComfyUI server process...")
             time.sleep(0.6)
-            cmd = [sys.executable] + sys.argv
+            cmd = [sys.executable]
+            if getattr(sys.flags, "no_user_site", 0):
+                cmd.append("-s")
+            cmd.extend(sys.argv)
             cwd = os.getcwd()
+            env = os.environ.copy()
             if sys.platform.startswith("win"):
                 creationflags = subprocess.CREATE_NEW_CONSOLE if hasattr(subprocess, "CREATE_NEW_CONSOLE") else 0
-                subprocess.Popen(cmd, cwd=cwd, creationflags=creationflags)
+                subprocess.Popen(cmd, cwd=cwd, env=env, creationflags=creationflags)
             else:
-                subprocess.Popen(cmd, cwd=cwd, start_new_session=True)
+                subprocess.Popen(cmd, cwd=cwd, env=env, start_new_session=True)
             time.sleep(0.4)
             os._exit(0)
         threading.Thread(target=_run, daemon=True).start()
