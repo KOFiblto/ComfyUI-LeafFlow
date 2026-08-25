@@ -418,6 +418,15 @@ app.registerExtension({
             tooltip: "Adds '📋 Copy Prompt' to node right-click context menus.",
         });
 
+        // 3.3 Show "Save to Prompt Bookmarks" Button on Images & Context Menu
+        app.ui.settings.addSetting({
+            id: "LeafFlow.3 - 📋 Prompt Actions.03_EnableSaveToPromptSaver",
+            name: "Show \"Save to Prompt Saver\" Action",
+            type: "boolean",
+            defaultValue: true,
+            tooltip: "Adds 🔖 'Save to Prompt Bookmarks' to image hover overlay bars and node context menus.",
+        });
+
 
         // =========================================================================
         // GRUPPE 4: 4 - ⏸️ Pause & Resume Controls

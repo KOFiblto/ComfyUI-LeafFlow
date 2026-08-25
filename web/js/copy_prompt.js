@@ -152,6 +152,63 @@ async function extractPromptFromImageUrl(imgSrc) {
 /**
  * Helper to fetch image metadata and extract the positive prompt text.
  */
+
+async function getImagePromptAndMeta(imgSrc) {
+    if (!imgSrc) return null;
+    let url = new URL(imgSrc, window.location.origin);
+    let filename = url.searchParams.get("filename");
+    let type = url.searchParams.get("type") || "output";
+    let subfolder = url.searchParams.get("subfolder") || "";
+
+    if (!filename) {
+        const parts = url.pathname.split("/");
+        filename = decodeURIComponent(parts[parts.length - 1]);
+    }
+
+    let promptText = null;
+    try {
+        promptText = await extractPromptFromImageUrl(imgSrc);
+    } catch (_) {}
+
+    if (!promptText && filename) {
+        try {
+            const promptUrl = `/leafflow/get_image_prompt?filename=${encodeURIComponent(filename)}&type=${encodeURIComponent(type)}&subfolder=${encodeURIComponent(subfolder)}`;
+            const response = await api.fetchApi(promptUrl);
+            if (response.ok) {
+                const data = await response.json();
+                if (data && data.prompt) promptText = data.prompt;
+            }
+        } catch (_) {}
+    }
+
+    return {
+        promptText: promptText || "",
+        filename: filename || "bookmark",
+        subfolder: subfolder || "",
+        type: type || "output"
+    };
+}
+
+async function saveImageToPromptBookmarks(imgSrc) {
+    const meta = await getImagePromptAndMeta(imgSrc);
+    if (!meta) return false;
+
+    const event = new CustomEvent("prompt-bookmarks-create", {
+        detail: {
+            name: meta.filename.replace(/\.[^/.]+$/, ""),
+            text: meta.promptText,
+            media: [{
+                filename: meta.filename,
+                subfolder: meta.subfolder,
+                type: meta.type,
+                media_type: "image"
+            }]
+        }
+    });
+    window.dispatchEvent(event);
+    return true;
+}
+
 async function copyImagePrompt(imgSrc) {
     if (!imgSrc) return false;
     let promptText = null;
@@ -238,6 +295,18 @@ app.registerExtension({
                         }
                     },
                 });
+
+                if (isCopyEnabled("LeafFlow.3 - 📋 Prompt Actions.03_EnableSaveToPromptSaver")) {
+                    options.push({
+                        content: "🔖 Bookmark in Prompt Saver",
+                        callback: async () => {
+                            const img = imgs[this.imageIndex || 0];
+                            const src = typeof img === "string" ? img : (img?.src || img?.value);
+                            if (!src) return;
+                            await saveImageToPromptBookmarks(src);
+                        },
+                    });
+                }
             }
         };
     }
@@ -305,6 +374,30 @@ function injectHoverCopyAction(overlayBar) {
         iconGroup.insertBefore(copyBtn, moreBtn);
     } else {
         iconGroup.appendChild(copyBtn);
+    }
+
+    if (isCopyEnabled("LeafFlow.3 - 📋 Prompt Actions.03_EnableSaveToPromptSaver") && !overlayBar.querySelector(".leafflow-hover-bookmark")) {
+        const bookmarkBtn = document.createElement("button");
+        bookmarkBtn.className =
+            "leafflow-hover-btn leafflow-hover-bookmark relative inline-flex items-center justify-center cursor-pointer touch-manipulation appearance-none border-none text-xs font-medium font-inter transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-white text-gray-700 hover:bg-gray-100 size-8 p-0 rounded-none pointer-events-auto border-r border-gray-200 shrink-0";
+        bookmarkBtn.title = "Save to Prompt Bookmarks";
+        bookmarkBtn.setAttribute("aria-label", "Save to Prompt Bookmarks");
+        bookmarkBtn.setAttribute("data-pd-tooltip", "true");
+        bookmarkBtn.innerHTML = "<span class='text-sm pointer-events-none'>🔖</span>";
+
+        bookmarkBtn.onclick = async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            await saveImageToPromptBookmarks(img.src);
+            bookmarkBtn.innerHTML = "<span class='text-sm pointer-events-none'>✅</span>";
+            setTimeout(() => (bookmarkBtn.innerHTML = "<span class='text-sm pointer-events-none'>🔖</span>"), 2000);
+        };
+
+        if (moreBtn && moreBtn.parentElement === iconGroup) {
+            iconGroup.insertBefore(bookmarkBtn, moreBtn);
+        } else {
+            iconGroup.appendChild(bookmarkBtn);
+        }
     }
 }
 
