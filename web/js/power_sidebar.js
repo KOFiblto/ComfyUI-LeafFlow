@@ -15,22 +15,49 @@ function injectStyles() {
     const style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent = `
+        /* Power Sidebar Button */
+        .leafflow-power-sidebar-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            color: var(--descrip-text, #9ca3af);
+            background: transparent;
+            border: none;
+            outline: none;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .leafflow-power-sidebar-btn:hover {
+            color: var(--fg-color, #f4f4f5);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
         /* Power Sidebar Armed Red Warning State */
         .leafflow-power-btn-armed,
         .side-bar-button:has(.leafflow-power-icon-armed),
         button[aria-label*="Power"]:has(.leafflow-power-icon-armed),
-        button[data-testid="leafflow-power-tab-button"].leafflow-power-btn-armed {
+        button[data-testid="leafflow-power-tab-button"].leafflow-power-btn-armed,
+        .leafflow-power-sidebar-btn.leafflow-power-btn-armed {
             background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%) !important;
             color: #ffffff !important;
             border: 1px solid #f87171 !important;
+            border-radius: 6px !important;
             box-shadow: 0 0 14px rgba(239, 68, 68, 0.8) !important;
             animation: leafflow-power-pulse 1.8s infinite ease-in-out !important;
         }
 
+        .leafflow-power-btn-armed svg,
         .leafflow-power-btn-armed .side-bar-button-icon,
         .leafflow-power-btn-armed i,
         .leafflow-power-btn-armed span {
             color: #ffffff !important;
+            stroke: #ffffff !important;
         }
 
         @keyframes leafflow-power-pulse {
@@ -61,12 +88,6 @@ function injectStyles() {
             display: flex;
             align-items: center;
             gap: 8px;
-        }
-
-        .leafflow-power-status-normal {
-            background: rgba(16, 185, 129, 0.15);
-            border: 1px solid rgba(16, 185, 129, 0.35);
-            color: #34d399;
         }
 
         .leafflow-power-status-armed {
@@ -127,18 +148,22 @@ function injectStyles() {
     document.head.appendChild(style);
 }
 
+function getPowerIconSvg(size = 18) {
+    return `<svg class="size-4.5" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>`;
+}
+
 function updateSidebarButtonVisuals() {
     const isArmed = Boolean(currentPowerState.pending_action);
-    const btns = document.querySelectorAll('[aria-label*="Power"], .side-bar-button:has(.pi-power), [data-testid="leafflow-power-tab-button"]');
+    const btns = document.querySelectorAll('[aria-label*="Power"], .side-bar-button:has(.pi-power), [data-testid="leafflow-power-tab-button"], .leafflow-power-sidebar-btn');
     btns.forEach(btn => {
         if (isArmed) {
             btn.classList.add("leafflow-power-btn-armed");
-            const icon = btn.querySelector(".side-bar-button-icon, i");
+            const icon = btn.querySelector(".side-bar-button-icon, i, svg");
             if (icon) icon.classList.add("leafflow-power-icon-armed");
             btn.setAttribute("title", `⚠️ ComfyUI Power: Armed to ${currentPowerState.pending_action.toUpperCase()} after queue finish! Click to cancel.`);
         } else {
             btn.classList.remove("leafflow-power-btn-armed");
-            const icon = btn.querySelector(".side-bar-button-icon, i");
+            const icon = btn.querySelector(".side-bar-button-icon, i, svg");
             if (icon) icon.classList.remove("leafflow-power-icon-armed");
             btn.setAttribute("title", "ComfyUI Power Control (Restart / Shutdown)");
         }
@@ -247,7 +272,7 @@ function showPowerMenu() {
     titleRow.style.display = "flex";
     titleRow.style.alignItems = "center";
     titleRow.style.justifyContent = "space-between";
-    titleRow.innerHTML = `<span style="font-size:16px;font-weight:700;">⚡ ComfyUI Power Control</span>`;
+    titleRow.innerHTML = `<span style="font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px;">${getPowerIconSvg(18)} ComfyUI Power Control</span>`;
 
     const closeBtn = document.createElement("button");
     closeBtn.textContent = "✕";
@@ -260,16 +285,13 @@ function showPowerMenu() {
     titleRow.appendChild(closeBtn);
     modal.appendChild(titleRow);
 
-    // Status display
-    const statusBox = document.createElement("div");
+    // Status display ONLY when armed (removed green idle box)
     if (currentPowerState.pending_action) {
+        const statusBox = document.createElement("div");
         statusBox.className = "leafflow-power-status-box leafflow-power-status-armed";
         statusBox.innerHTML = `<span>⚠️ <b>Armed Action:</b> Scheduled to <b>${currentPowerState.pending_action.toUpperCase()}</b> as soon as the queue finishes (idle state).</span>`;
-    } else {
-        statusBox.className = "leafflow-power-status-box leafflow-power-status-normal";
-        statusBox.innerHTML = `<span>🟢 <b>System Status:</b> Idle / Normal. No pending power actions.</span>`;
+        modal.appendChild(statusBox);
     }
-    modal.appendChild(statusBox);
 
     // Cancel / Disarm Button if currently armed
     if (currentPowerState.pending_action) {
@@ -379,7 +401,7 @@ function showPowerMenu() {
     // 4. Shutdown After Queue Finish
     const btnShutdownQueue = document.createElement("button");
     btnShutdownQueue.className = "leafflow-power-menu-btn";
-    btnShutdownQueue.innerHTML = `<span style="font-size:18px;">🌙</span> <div><div style="font-weight:600;">Shutdown After Queue Finish</div><div style="font-size:11px;color:#a1a1aa;">Waits until all queued prompts finish and system is idle, then shuts down.</div></div>`;
+    btnShutdownQueue.innerHTML = `<span style="font-size:18px;">🌙</span> <div><div style="font-weight:600;">Shutdown After Queue Finish</div><div style="font-size:11px;color:#a1a1aa;">Waits until all queued prompts complete and system is idle, then shuts down.</div></div>`;
     btnShutdownQueue.onclick = () => {
         overlay.remove();
         openConfirmModal(
@@ -409,12 +431,43 @@ function showPowerMenu() {
     document.body.appendChild(overlay);
 }
 
+function attachBottomSidebarButton() {
+    if (document.getElementById("leafflow-power-bottom-btn")) return;
+    const bottomGroup = document.querySelector(".sidebar-item-group.mt-auto, .side-bar .mt-auto, [data-testid='bottom-sidebar']");
+    if (!bottomGroup) return;
+
+    const btnWrapper = document.createElement("div");
+    btnWrapper.id = "leafflow-power-bottom-btn";
+    btnWrapper.className = "comfy-menu-button-wrapper flex shrink-0 cursor-pointer flex-col items-center justify-center p-2 transition-colors";
+    btnWrapper.setAttribute("title", "ComfyUI Power Control (Restart / Shutdown)");
+
+    const btn = document.createElement("button");
+    btn.className = "leafflow-power-sidebar-btn";
+    btn.innerHTML = `${getPowerIconSvg(20)}`;
+    btn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        showPowerMenu();
+    };
+
+    btnWrapper.appendChild(btn);
+    // Insert at the top of the bottom group (above Help Center / Settings)
+    bottomGroup.insertBefore(btnWrapper, bottomGroup.firstChild);
+    updateSidebarButtonVisuals();
+}
+
 app.registerExtension({
     name: EXTENSION_NAME,
     async setup() {
         injectStyles();
         await fetchPowerStatus();
 
+        // 1. Try bottom placement in sidebar
+        attachBottomSidebarButton();
+        const observer = new MutationObserver(() => attachBottomSidebarButton());
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        // 2. Also register standard sidebar tab if bottom container isn't ready
         if (app.extensionManager?.registerSidebarTab) {
             app.extensionManager.registerSidebarTab({
                 id: "leafflow-power",
