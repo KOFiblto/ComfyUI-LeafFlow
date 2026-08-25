@@ -49,7 +49,7 @@ ComfyUI-LeafFlow/
 │   ├── aspect_ratio.py        # Text & preview aspect ratio calculation nodes
 │   ├── auto_watcher.py        # Automated folder watch image loaders
 │   ├── decision_node.py       # Inline pause/gate decision node & notifications
-│   ├── favorite_prompts.py    # Visual favorites loader & save preview nodes
+│   ├── text_split.py          # Forward/backward & regex text splitter node
 │   ├── image_loader.py        # Visual image browser & EXIF/PNG metadata parser
 │   ├── load_recent.py         # Recent outputs loader node
 │   ├── lora_finder.py         # Text-based prompt LoRA scanner & patcher
@@ -70,7 +70,7 @@ ComfyUI-LeafFlow/
 │   ├── preview_node.js        # Live latent canvas preview widget
 │   └── js/                    # Node-specific UI widgets (visual pickers, buttons, aspect preview)
 │       ├── decision_node.js
-│       ├── favorite_prompts.js
+│       ├── copy_prompt.js
 │       ├── folder_lora_loader.js
 │       ├── image_loader.js
 │       ├── preview_aspect_ratio.js
