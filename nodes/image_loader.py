@@ -33,23 +33,68 @@ def extract_metadata_from_image(filepath):
     try:
         with Image.open(filepath) as img:
             width, height = img.size
-            if img.format == 'PNG':
-                parameters = img.info.get("parameters", "")
+            info = img.info or {}
+
+            # 1. ComfyUI native format (JSON string in img.info["prompt"])
+            prompt_str = info.get("prompt")
+            if prompt_str:
+                try:
+                    prompt_data = json.loads(prompt_str) if isinstance(prompt_str, str) else prompt_str
+                    if isinstance(prompt_data, dict):
+                        # Trace KSampler / SamplerCustom nodes to find positive conditioning link
+                        positive_node_ids = set()
+                        for nid, ndata in prompt_data.items():
+                            ctype = ndata.get("class_type", "")
+                            inputs = ndata.get("inputs", {})
+                            if "Sampler" in ctype or "KSampler" in ctype:
+                                pos_link = inputs.get("positive")
+                                if isinstance(pos_link, list) and len(pos_link) > 0:
+                                    positive_node_ids.add(str(pos_link[0]))
+
+                        texts = []
+                        for nid in positive_node_ids:
+                            ndata = prompt_data.get(nid, {})
+                            inputs = ndata.get("inputs", {})
+                            t = inputs.get("text") or inputs.get("prompt")
+                            if isinstance(t, str) and t.strip():
+                                texts.append(t.strip())
+
+                        if texts:
+                            positive_prompt = "\n".join(texts)
+                        else:
+                            # Fallback: scan all text / prompt nodes
+                            for nid, ndata in prompt_data.items():
+                                ctype = ndata.get("class_type", "")
+                                inputs = ndata.get("inputs", {})
+                                if "CLIPTextEncode" in ctype or "Text" in ctype or "Prompt" in ctype:
+                                    t = inputs.get("text") or inputs.get("prompt")
+                                    if isinstance(t, str) and t.strip() and len(t.strip()) > 1:
+                                        texts.append(t.strip())
+                            if texts:
+                                positive_prompt = texts[0]
+                except Exception:
+                    pass
+
+            # 2. A1111 / WebUI parameters
+            if not positive_prompt and "parameters" in info:
+                parameters = info.get("parameters", "")
                 if parameters:
                     positive_prompt = parse_positive_from_parameters(parameters)
-            else:
-                exif_data = img.info.get("exif")
+
+            # 3. EXIF UserComment
+            if not positive_prompt and "exif" in info:
+                exif_data = info.get("exif")
                 if exif_data:
-                    exif_dict = piexif.load(exif_data)
-                    user_comment = exif_dict.get("Exif", {}).get(piexif.ExifIFD.UserComment)
-                    if user_comment:
-                        try:
+                    try:
+                        exif_dict = piexif.load(exif_data)
+                        user_comment = exif_dict.get("Exif", {}).get(piexif.ExifIFD.UserComment)
+                        if user_comment:
                             parameters = piexif.helper.UserComment.load(user_comment)
                             if isinstance(parameters, bytes):
                                 parameters = parameters.decode('utf-8', errors='ignore')
                             positive_prompt = parse_positive_from_parameters(parameters)
-                        except Exception:
-                            pass
+                    except Exception:
+                        pass
     except Exception as e:
         print(f"[LeafFlow] Error extracting metadata: {e}")
     return positive_prompt, width, height
@@ -70,8 +115,7 @@ def save_prompts_cache(cache):
     except Exception as e:
         print(f"[LeafFlow] Failed to save prompts cache: {e}")
 
-server = PromptServer.instance
-routes = server.routes
+routes = PromptServer.instance.routes if hasattr(PromptServer, "instance") and PromptServer.instance is not None else web.RouteTableDef()
 
 @routes.get("/image_loader/get_images")
 async def get_images_endpoint(request):
