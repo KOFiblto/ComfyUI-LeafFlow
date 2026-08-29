@@ -193,8 +193,15 @@ class PersistentQueueManager:
             if os.path.exists(PERSISTENT_FILE):
                 try:
                     with open(PERSISTENT_FILE, "r", encoding="utf-8") as f:
-                        self.persistent_items = json.load(f)
-                        print(f"[PersistentQueue] Loaded {len(self.persistent_items)} saved queue item(s).")
+                        data = json.load(f)
+                        if isinstance(data, list):
+                            self.persistent_items = [
+                                x for x in data
+                                if isinstance(x, dict) and "prompt_id" in x and isinstance(x.get("item"), (list, tuple))
+                            ]
+                            print(f"[PersistentQueue] Loaded {len(self.persistent_items)} saved queue item(s).")
+                        else:
+                            self.persistent_items = []
                 except Exception as e:
                     print(f"[PersistentQueue] Error loading persistent queue file: {e}")
                     self.persistent_items = []
@@ -208,7 +215,7 @@ class PersistentQueueManager:
             try:
                 temp_file = PERSISTENT_FILE + ".tmp"
                 with open(temp_file, "w", encoding="utf-8") as f:
-                    json.dump(self.persistent_items, f, indent=2)
+                    json.dump(self.persistent_items, f, indent=2, default=str)
                 os.replace(temp_file, PERSISTENT_FILE)
             except Exception as e:
                 print(f"[PersistentQueue] Error saving persistent queue file: {e}")
@@ -222,26 +229,30 @@ class PersistentQueueManager:
                 prompt_id = item_list[1] if len(item_list) > 1 else None
                 if not prompt_id:
                     return
+                pid_str = str(prompt_id)
                 entry = {
-                    "prompt_id": prompt_id,
+                    "prompt_id": pid_str,
                     "item": item_list
                 }
                 with self.lock:
-                    self.persistent_items = [x for x in self.persistent_items if x.get("prompt_id") != prompt_id]
+                    self.persistent_items = [x for x in self.persistent_items if str(x.get("prompt_id")) != pid_str]
                     self.persistent_items.append(entry)
                 self.save_to_file()
-                print(f"[PersistentQueue] Persisted prompt {prompt_id} to disk.")
+                print(f"[PersistentQueue] Persisted prompt {pid_str} to disk.")
         except Exception as e:
             print(f"[PersistentQueue] Error formatting queue item for persistence: {e}")
 
     def remove_item(self, prompt_id):
+        if not prompt_id:
+            return
+        pid_str = str(prompt_id)
         with self.lock:
             initial_count = len(self.persistent_items)
-            self.persistent_items = [x for x in self.persistent_items if x.get("prompt_id") != prompt_id]
+            self.persistent_items = [x for x in self.persistent_items if str(x.get("prompt_id")) != pid_str]
             changed = len(self.persistent_items) != initial_count
         if changed and is_persistent_queue_enabled():
             self.save_to_file()
-            print(f"[PersistentQueue] Removed prompt {prompt_id} from disk.")
+            print(f"[PersistentQueue] Removed prompt {pid_str} from disk.")
 
     def wipe_all(self):
         with self.lock:
@@ -249,8 +260,6 @@ class PersistentQueueManager:
         if is_persistent_queue_enabled():
             self.save_to_file()
         print("[PersistentQueue] Cleared all saved queue items.")
-
-
 
     def patch_server(self):
         if self._patched:
@@ -261,6 +270,7 @@ class PersistentQueueManager:
 
         queue = server.prompt_queue
 
+        # 1. Patch queue.put
         original_put = queue.put
         def patched_put(item, *args, **kwargs):
             res = original_put(item, *args, **kwargs)
@@ -268,12 +278,34 @@ class PersistentQueueManager:
             return res
         queue.put = patched_put
 
+        # 2. Patch queue.task_done (Guaranteed cleanup on task completion / error / interrupt)
+        if hasattr(queue, "task_done"):
+            original_task_done = queue.task_done
+            def patched_task_done(item_id, history_result, status, process_item=None):
+                prompt_id = None
+                try:
+                    with queue.mutex:
+                        if item_id in queue.currently_running:
+                            running_item = queue.currently_running[item_id]
+                            if isinstance(running_item, (tuple, list)) and len(running_item) > 1:
+                                prompt_id = running_item[1]
+                except Exception:
+                    pass
+
+                res = original_task_done(item_id, history_result, status, process_item)
+
+                if prompt_id:
+                    self.remove_item(prompt_id)
+                return res
+            queue.task_done = patched_task_done
+
+        # 3. Patch queue.delete_queue_item
         if hasattr(queue, "delete_queue_item"):
             original_delete = queue.delete_queue_item
             def patched_delete(fn, *args, **kwargs):
                 try:
                     with queue.mutex:
-                        to_delete = [item[1] for item in queue.queue if fn(item)]
+                        to_delete = [item[1] for item in queue.queue if fn(item) and len(item) > 1]
                         for pid in to_delete:
                             self.remove_item(pid)
                 except Exception:
@@ -281,6 +313,7 @@ class PersistentQueueManager:
                 return original_delete(fn, *args, **kwargs)
             queue.delete_queue_item = patched_delete
 
+        # 4. Patch queue.wipe_queue
         if hasattr(queue, "wipe_queue"):
             original_wipe = queue.wipe_queue
             def patched_wipe(*args, **kwargs):
@@ -288,18 +321,17 @@ class PersistentQueueManager:
                 return original_wipe(*args, **kwargs)
             queue.wipe_queue = patched_wipe
 
+        # 5. Redundant websocket event hooks
         original_send_sync = server.send_sync
         def patched_send_sync(event, data, sid=None):
             try:
-                if event == "executing" and isinstance(data, dict):
-                    node = data.get("node")
-                    prompt_id = data.get("prompt_id")
-                    if node is None and prompt_id:
-                        self.remove_item(prompt_id)
-                elif event == "execution_interrupted" and isinstance(data, dict):
+                if isinstance(data, dict):
                     prompt_id = data.get("prompt_id")
                     if prompt_id:
-                        self.remove_item(prompt_id)
+                        if event == "executing" and data.get("node") is None:
+                            self.remove_item(prompt_id)
+                        elif event in ("execution_interrupted", "execution_error"):
+                            self.remove_item(prompt_id)
             except Exception:
                 pass
             return original_send_sync(event, data, sid)
@@ -311,7 +343,7 @@ class PersistentQueueManager:
     def restore_queue(self, active_client_id=None):
         if self.has_claimed_once:
             return
-            
+
         if not is_persistent_queue_enabled():
             print("[PersistentQueue] Auto-recovery is disabled in settings.")
             self.has_claimed_once = True
@@ -330,20 +362,43 @@ class PersistentQueueManager:
 
         print(f"[PersistentQueue] Restoring {len(self.persistent_items)} saved queue item(s) to client '{active_client_id}'...")
         self.is_restoring = True
+        max_number = 0
+        restored_count = 0
         try:
+            history = server.prompt_queue.get_history() if hasattr(server.prompt_queue, "get_history") else {}
             for entry in list(self.persistent_items):
                 try:
-                    item_list = list(entry["item"])
+                    pid = entry.get("prompt_id")
+                    # If this prompt is already in history, it finished previously - drop it
+                    if pid and pid in history:
+                        self.remove_item(pid)
+                        continue
+
+                    item_list = list(entry.get("item", []))
+                    if len(item_list) < 3 or not item_list[1] or not isinstance(item_list[2], dict):
+                        # Malformed entry, drop from disk
+                        if pid:
+                            self.remove_item(pid)
+                        continue
+
                     if active_client_id and len(item_list) > 3 and isinstance(item_list[3], dict):
                         item_list[3]["client_id"] = active_client_id
-                    
+
+                    if isinstance(item_list[0], (int, float)):
+                        max_number = max(max_number, int(item_list[0]))
+
                     server.prompt_queue.put(tuple(item_list))
+                    restored_count += 1
                 except Exception as e:
                     print(f"[PersistentQueue] Error restoring prompt {entry.get('prompt_id')}: {e}")
         finally:
             self.is_restoring = False
             self.has_claimed_once = True
-            
+
+            # Keep server sequence counter above restored items to avoid priority collisions
+            if hasattr(server, "number") and isinstance(server.number, (int, float)):
+                server.number = max(server.number, max_number + 1)
+
         # Sync the updated client_id to the persistent file
         if active_client_id:
             with self.lock:
@@ -352,9 +407,11 @@ class PersistentQueueManager:
                         if isinstance(entry["item"][3], dict):
                             entry["item"][3]["client_id"] = active_client_id
                 self.save_to_file()
-                
-        # Force a UI sync so the client sees the newly injected items
+
+        # Broadcast updated queue state to client UI
         try:
+            if hasattr(server, "queue_updated"):
+                server.queue_updated()
             if hasattr(server, "get_queue_status"):
                 server.send_sync("status", {"status": server.get_queue_status()})
         except Exception:

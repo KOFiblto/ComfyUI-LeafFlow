@@ -9,7 +9,9 @@ app.registerExtension({
                 const rgthree = await import("/extensions/rgthree-comfy/common/prompt_service.js");
                 if (rgthree && rgthree.SERVICE) {
                     const queue = await api.getQueue();
-                    const allItems = [...(queue.Running || []), ...(queue.Pending || [])];
+                    const running = queue.queue_running || queue.Running || [];
+                    const pending = queue.queue_pending || queue.Pending || [];
+                    const allItems = [...running, ...pending];
                     let patched = false;
                     for (const item of allItems) {
                         const promptId = item[1];
