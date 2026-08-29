@@ -154,6 +154,17 @@ def parse_prompt_blocks(text_str, separator):
         raw_blocks = re.split(r'\n\s*\n+', clean_text)
         return [b.strip() for b in raw_blocks if b.strip()]
 
+def get_current_prompt_id():
+    try:
+        server = PromptServer.instance
+        if hasattr(server, "prompt_queue") and server.prompt_queue.currently_running:
+            for item in server.prompt_queue.currently_running.values():
+                if isinstance(item, (tuple, list)) and len(item) > 1:
+                    return str(item[1])
+    except Exception:
+        pass
+    return None
+
 class PromptQueueIterator:
     @classmethod
     def INPUT_TYPES(cls):
@@ -215,57 +226,86 @@ class PromptQueueIterator:
         text_hash = hashlib.sha256(text_str.strip().encode('utf-8')).hexdigest()[:16]
         state_key = f"node_{unique_id}_{text_hash}"
         
+        current_prompt_id = get_current_prompt_id()
+
         # Load state fresh from disk (no stale memory cache)
         state = load_state()
         node_state = state.get(state_key)
 
         current_index = 0
+        assigned_prompts = {}
         if isinstance(node_state, dict):
             current_index = int(node_state.get("index", 0))
+            raw_assigned = node_state.get("assigned_prompts", {})
+            if isinstance(raw_assigned, dict):
+                assigned_prompts = dict(raw_assigned)
         elif isinstance(node_state, int):
             current_index = node_state
 
-        # Select prompt based on mode and calculate next index
-        if pop_mode in ["Sequential (Loop on End)", "Cycle / Loop", "Pop Top & Delete"]:
-            idx = current_index % total_count
+        # Check if this prompt_id was already assigned an index (e.g. recovered from persistent queue / retry)
+        if current_prompt_id and current_prompt_id in assigned_prompts:
+            idx = assigned_prompts[current_prompt_id] % total_count
             selected_prompt = original_blocks[idx]
-            next_index = (current_index + 1) % total_count
             display_run = idx + 1
-        elif pop_mode in ["Sequential (Stop on End)"]:
-            if current_index >= total_count:
-                idx = total_count - 1
+            next_index = current_index  # Keep current index without double-advancing
+        else:
+            # Select prompt based on mode and calculate next index
+            if pop_mode in ["Sequential (Loop on End)", "Cycle / Loop", "Pop Top & Delete"]:
+                idx = current_index % total_count
                 selected_prompt = original_blocks[idx]
-                next_index = total_count
-                display_run = total_count
-            else:
-                idx = current_index
+                next_index = (current_index + 1) % total_count
+                display_run = idx + 1
+            elif pop_mode in ["Sequential (Stop on End)"]:
+                if current_index >= total_count:
+                    idx = total_count - 1
+                    selected_prompt = original_blocks[idx]
+                    next_index = total_count
+                    display_run = total_count
+                else:
+                    idx = current_index
+                    selected_prompt = original_blocks[idx]
+                    next_index = current_index + 1
+                    display_run = idx + 1
+            elif pop_mode in ["Random (Keep)", "Random (Delete)"]:
+                idx = random.randint(0, total_count - 1)
                 selected_prompt = original_blocks[idx]
                 next_index = current_index + 1
+                display_run = (current_index % total_count) + 1
+            else: # Default fallback
+                idx = current_index % total_count
+                selected_prompt = original_blocks[idx]
+                next_index = (current_index + 1) % total_count
                 display_run = idx + 1
-        elif pop_mode in ["Random (Keep)", "Random (Delete)"]:
-            idx = random.randint(0, total_count - 1)
-            selected_prompt = original_blocks[idx]
-            next_index = current_index + 1
-            display_run = (current_index % total_count) + 1
-        else: # Default fallback
-            idx = current_index % total_count
-            selected_prompt = original_blocks[idx]
-            next_index = (current_index + 1) % total_count
-            display_run = idx + 1
+
+            if current_prompt_id:
+                assigned_prompts[current_prompt_id] = idx
+                if len(assigned_prompts) > 50:
+                    for old_k in list(assigned_prompts.keys())[:-50]:
+                        del assigned_prompts[old_k]
 
         # Calculate remaining items
         remaining_count = max(0, total_count - display_run)
         join_delim = "\n" if separator == "Newline" else ("\n\n\n" if separator == ">2 Empty Lines" else "\n\n")
         remaining_text = join_delim.join(original_blocks[display_run:]) if display_run < total_count else ""
 
-        # Update and save state to disk
+        # Update state dictionary
         state[state_key] = {
             "index": next_index,
             "total": total_count,
             "last_run": display_run,
             "last_updated": int(time.time()),
-            "preview": selected_prompt[:60].replace('\n', ' ')
+            "preview": selected_prompt[:60].replace('\n', ' '),
+            "assigned_prompts": assigned_prompts
         }
+
+        # Keep at most 3 most recent text hashes per node_id
+        node_prefix = f"node_{unique_id}_"
+        node_keys = [k for k in state.keys() if k.startswith(node_prefix)]
+        if len(node_keys) > 3:
+            node_keys.sort(key=lambda k: state[k].get("last_updated", 0) if isinstance(state[k], dict) else 0)
+            for old_k in node_keys[:-3]:
+                del state[old_k]
+
         save_state(state)
 
         # Send live progress update to UI

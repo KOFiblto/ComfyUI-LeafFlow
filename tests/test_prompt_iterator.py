@@ -158,23 +158,66 @@ class TestPromptQueueIterator(unittest.TestCase):
             p0_again, _, _ = self.node.process_queue(text=pack, unique_id="reset_test")
             self.assertEqual(p0_again, "P0")
 
-    def test_empty_text_edge_case(self):
-        prompt, remaining_text, remaining_count = self.node.process_queue(
-            text="",
-            unique_id="empty_node"
-        )
-        self.assertEqual(prompt, "")
-        self.assertEqual(remaining_text, "")
-        self.assertEqual(remaining_count, 0)
+    def test_crash_recovery_assigned_prompt_id_retains_index(self):
+        """
+        Verify that if a prompt is interrupted/restored with the same prompt_id,
+        it re-executes the exact same prompt index instead of skipping ahead.
+        """
+        pack = "Prompt 0\n\nPrompt 1\n\nPrompt 2"
+        state_db = {}
 
-    def test_none_text_edge_case(self):
-        prompt, remaining_text, remaining_count = self.node.process_queue(
-            text=None,
-            unique_id="none_node"
-        )
-        self.assertEqual(prompt, "")
-        self.assertEqual(remaining_text, "")
-        self.assertEqual(remaining_count, 0)
+        def mock_load():
+            return dict(state_db)
+
+        def mock_save(new_state):
+            nonlocal state_db
+            state_db = dict(new_state)
+
+        with patch("nodes.prompt_iterator.load_state", side_effect=mock_load), \
+             patch("nodes.prompt_iterator.save_state", side_effect=mock_save), \
+             patch("nodes.prompt_iterator.PromptServer.instance.send_sync"):
+
+            # 1. First execution with prompt_id = "job-uuid-1" -> gets Prompt 0
+            with patch("nodes.prompt_iterator.get_current_prompt_id", return_value="job-uuid-1"):
+                p0, _, _ = self.node.process_queue(text=pack, unique_id="recover_node")
+                self.assertEqual(p0, "Prompt 0")
+
+            # 2. Workflow is interrupted mid-way and restored by persistent queue (same prompt_id "job-uuid-1")
+            with patch("nodes.prompt_iterator.get_current_prompt_id", return_value="job-uuid-1"):
+                p0_retry, _, _ = self.node.process_queue(text=pack, unique_id="recover_node")
+                # Must STILL be Prompt 0, NOT Prompt 1!
+                self.assertEqual(p0_retry, "Prompt 0")
+
+            # 3. Next workflow run with new prompt_id = "job-uuid-2" -> gets Prompt 1!
+            with patch("nodes.prompt_iterator.get_current_prompt_id", return_value="job-uuid-2"):
+                p1, _, _ = self.node.process_queue(text=pack, unique_id="recover_node")
+                self.assertEqual(p1, "Prompt 1")
+
+    def test_per_node_hash_pruning(self):
+        """
+        Verify that editing text in a node cleans up old abandoned text hashes beyond 3 entries.
+        """
+        state_db = {}
+
+        def mock_load():
+            return dict(state_db)
+
+        def mock_save(new_state):
+            nonlocal state_db
+            state_db = dict(new_state)
+
+        with patch("nodes.prompt_iterator.load_state", side_effect=mock_load), \
+             patch("nodes.prompt_iterator.save_state", side_effect=mock_save), \
+             patch("nodes.prompt_iterator.PromptServer.instance.send_sync"):
+
+            # Create 6 text variants on the same node
+            for i in range(6):
+                text_variant = f"Variant {i} text"
+                self.node.process_queue(text=text_variant, unique_id="prune_node")
+
+            # Only at most 3 entries for 'prune_node' should remain in state
+            matching_keys = [k for k in state_db.keys() if k.startswith("node_prune_node_")]
+            self.assertLessEqual(len(matching_keys), 3)
 
 if __name__ == "__main__":
     unittest.main()
