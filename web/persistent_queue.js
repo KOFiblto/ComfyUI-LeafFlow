@@ -18,15 +18,24 @@ app.registerExtension({
                         const promptData = item[2];
                         if (promptId && promptData) {
                             const promptExecution = rgthree.SERVICE.getOrMakePrompt(promptId);
-                            if (!promptExecution.totalNodes) {
+                            if (!promptExecution.totalNodes || !promptExecution.promptApi) {
                                 promptExecution.setPrompt({ output: promptData });
+                                if (rgthree.SERVICE.promptsMap) {
+                                    rgthree.SERVICE.promptsMap.set(promptId, promptExecution);
+                                }
                                 patched = true;
+                            }
+                            if (running.some(r => r[1] === promptId)) {
+                                if (!rgthree.SERVICE.currentExecution || !rgthree.SERVICE.currentExecution.totalNodes) {
+                                    rgthree.SERVICE.currentExecution = promptExecution;
+                                    patched = true;
+                                }
                             }
                         }
                     }
                     if (patched) {
                         rgthree.SERVICE.dispatchProgressUpdate();
-                        console.log("[LeafFlow] Synced recovered queue with rgthree-comfy.");
+                        console.log("[LeafFlow] Synced recovered queue with rgthree-comfy progress bar.");
                     }
                 }
             } catch (e) {
@@ -44,7 +53,8 @@ app.registerExtension({
                     });
                     
                     // Wait for server to sync queue state back to clients, then patch rgthree
-                    setTimeout(patchRgthree, 500);
+                    setTimeout(patchRgthree, 150);
+                    setTimeout(patchRgthree, 600);
                 } catch (e) {
                     console.error("[LeafFlow] Error claiming queue ownership:", e);
                 }
@@ -52,16 +62,23 @@ app.registerExtension({
         };
 
         // Delay execution until after app & API client ID initialization
-        setTimeout(claimQueueOwnership, 1000);
+        setTimeout(claimQueueOwnership, 500);
+        setTimeout(patchRgthree, 800);
 
         if (api && api.addEventListener) {
             api.addEventListener("status", () => {
                 claimQueueOwnership();
-            }, { once: true });
+                setTimeout(patchRgthree, 200);
+            });
             
-            // Also run patch anytime an execution starts just in case it was triggered externally
-            api.addEventListener("execution_start", () => {
-                setTimeout(patchRgthree, 100);
+            api.addEventListener("execution_start", (e) => {
+                setTimeout(patchRgthree, 50);
+            });
+
+            api.addEventListener("executing", (e) => {
+                if (e && e.detail) {
+                    patchRgthree();
+                }
             });
         }
     }
