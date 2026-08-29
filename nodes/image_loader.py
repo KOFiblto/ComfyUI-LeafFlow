@@ -16,10 +16,22 @@ CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 USER_DIR = get_leafflow_user_dir()
 CACHE_FILE = os.path.join(USER_DIR, "image_prompts_cache.json")
 
+def decode_bytes_safely(raw_bytes):
+    if not isinstance(raw_bytes, bytes):
+        return str(raw_bytes or "")
+    for enc in ["utf-8", "utf-16le", "utf-16", "shift_jis", "gbk", "latin-1"]:
+        try:
+            return raw_bytes.decode(enc)
+        except (UnicodeDecodeError, LookupError):
+            continue
+    return raw_bytes.decode("utf-8", errors="ignore")
+
 def parse_positive_from_parameters(parameters):
     if not parameters:
         return ""
-    lines = parameters.split("\n")
+    if isinstance(parameters, bytes):
+        parameters = decode_bytes_safely(parameters)
+    lines = str(parameters).split("\n")
     pos_lines = []
     for line in lines:
         if line.strip().startswith("Negative prompt:") or line.strip().startswith("Steps:"):

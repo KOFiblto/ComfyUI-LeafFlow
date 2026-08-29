@@ -7,6 +7,30 @@ from PIL import Image, ImageOps
 import comfy.model_management
 from .utils import sanitize_folder_path
 
+def get_current_prompt_id():
+    try:
+        from server import PromptServer
+        server = PromptServer.instance
+        if hasattr(server, "prompt_queue") and server.prompt_queue.currently_running:
+            for item in server.prompt_queue.currently_running.values():
+                if isinstance(item, (tuple, list)) and len(item) > 1:
+                    return str(item[1])
+    except Exception:
+        pass
+    return None
+
+def is_file_ready(filepath):
+    try:
+        if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
+            return False
+        with open(filepath, "rb") as f:
+            f.seek(0, os.SEEK_END)
+        return True
+    except (OSError, IOError, PermissionError):
+        return False
+
+_WATCHER_STATE = {}
+
 class LoadImageFromFolder:
     @classmethod
     def INPUT_TYPES(s):
@@ -17,7 +41,10 @@ class LoadImageFromFolder:
                 "rescan_interval": ("INT", {"default": 2, "min": 1, "max": 60}),
                 "sort_by": (["date_modified", "date_created", "name"], {"default": "date_modified"}),
                 "regex_filter": ("STRING", {"default": ".*"}),
-                "delete_image": ("BOOLEAN", {"default": False, "tooltip": "If enabled, deletes the image file from disk after loading it. Default is False."}),
+                "delete_image": ("BOOLEAN", {"default": False, "tooltip": "If enabled, deletes the image file from disk after loading it. If disabled, cycles through all images in the folder sequentially."}),
+            },
+            "hidden": {
+                "unique_id": "UNIQUE_ID",
             }
         }
 
@@ -25,7 +52,7 @@ class LoadImageFromFolder:
     RETURN_NAMES = ("image", "has_image")
     FUNCTION = "watch"
     CATEGORY = "🍃 LeafFlow/Automation"
-    DESCRIPTION = "Loads an image from a folder, optionally waiting if the folder is empty, with an optional toggle to delete the image after loading."
+    DESCRIPTION = "Loads an image from a folder, optionally waiting if the folder is empty, with automatic sequential cycling when delete is False."
 
     @classmethod
     def IS_CHANGED(s, **kwargs):
@@ -33,8 +60,8 @@ class LoadImageFromFolder:
         return float("NaN")
 
     def create_dummy_image(self):
-        # Returns a 1x1 0-tensor for no-image state
-        return torch.zeros((1, 64, 64, 3), dtype=torch.float32)
+        # Returns a 512x512 standard 0-tensor for safe no-image state
+        return torch.zeros((1, 512, 512, 3), dtype=torch.float32)
 
     def load_and_remove_image(self, filepath, delete_image=False):
         with Image.open(filepath) as img:
@@ -62,7 +89,7 @@ class LoadImageFromFolder:
         for f in os.listdir(folder):
             filepath = os.path.join(folder, f)
             if os.path.isfile(filepath) and f.lower().endswith(valid_extensions):
-                if regex.search(f):
+                if regex.search(f) and is_file_ready(filepath):
                     files.append(filepath)
 
         if not files:
@@ -88,7 +115,39 @@ class LoadImageFromFolder:
             
         return [x[0] for x in valid_files]
 
-    def watch(self, folder, wait_if_folder_is_empty, rescan_interval, sort_by, regex_filter, delete_image=False, **kwargs):
+    def _select_file(self, files, delete_image, unique_id, folder):
+        if not files:
+            return None
+
+        if delete_image:
+            # When deleting on each run, always consume the first available file
+            return files[0]
+
+        # When keeping images (delete_image=False), cycle sequentially through all files!
+        state_key = f"{unique_id}_{folder}"
+        current_pid = get_current_prompt_id()
+        
+        node_state = _WATCHER_STATE.get(state_key, {"index": 0, "assigned": {}})
+        assigned = node_state.get("assigned", {})
+        current_idx = int(node_state.get("index", 0))
+
+        if current_pid and current_pid in assigned:
+            # Re-use exact index on persistent queue crash recovery
+            idx = assigned[current_pid] % len(files)
+        else:
+            idx = current_idx % len(files)
+            if current_pid:
+                assigned[current_pid] = idx
+                if len(assigned) > 50:
+                    for k in list(assigned.keys())[:-50]:
+                        del assigned[k]
+            node_state["index"] = (current_idx + 1) % len(files)
+            node_state["assigned"] = assigned
+            _WATCHER_STATE[state_key] = node_state
+
+        return files[idx]
+
+    def watch(self, folder, wait_if_folder_is_empty, rescan_interval, sort_by, regex_filter, delete_image=False, unique_id="default", **kwargs):
         folder = sanitize_folder_path(folder, default_dir="input/watch")
         
         if wait_if_folder_is_empty:
@@ -99,12 +158,13 @@ class LoadImageFromFolder:
                     try:
                         files = self.get_filtered_files(folder, sort_by, regex_filter)
                         if files:
-                            filepath = files[0] # Pick the first one based on sorting
-                            try:
-                                img_tensor = self.load_and_remove_image(filepath, delete_image=delete_image)
-                                return (img_tensor, True)
-                            except Exception as e:
-                                print(f"[LeafFlow] Error processing {filepath}: {e}")
+                            filepath = self._select_file(files, delete_image, unique_id, folder)
+                            if filepath:
+                                try:
+                                    img_tensor = self.load_and_remove_image(filepath, delete_image=delete_image)
+                                    return (img_tensor, True)
+                                except Exception as e:
+                                    print(f"[LeafFlow] Error processing {filepath}: {e}")
                     except Exception as e:
                         print(f"[LeafFlow] Error accessing directory {folder}: {e}")
 
@@ -114,14 +174,15 @@ class LoadImageFromFolder:
                 try:
                     files = self.get_filtered_files(folder, sort_by, regex_filter)
                     if files:
-                        filepath = files[0]
-                        try:
-                            img_tensor = self.load_and_remove_image(filepath, delete_image=delete_image)
-                            return (img_tensor, True)
-                        except Exception as e:
-                            print(f"[LeafFlow] Error processing {filepath}: {e}")
+                        filepath = self._select_file(files, delete_image, unique_id, folder)
+                        if filepath:
+                            try:
+                                img_tensor = self.load_and_remove_image(filepath, delete_image=delete_image)
+                                return (img_tensor, True)
+                            except Exception as e:
+                                print(f"[LeafFlow] Error processing {filepath}: {e}")
                 except Exception as e:
                     print(f"[LeafFlow] Error accessing directory {folder}: {e}")
 
-            # No image present or folder missing -> return dummy tensor & False immediately
+            # No image present or folder missing -> return standard dummy tensor & False immediately
             return (self.create_dummy_image(), False)

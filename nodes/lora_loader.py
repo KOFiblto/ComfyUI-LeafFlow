@@ -497,6 +497,10 @@ class FolderLoraLoaderPretty(FolderLoraLoader):
             return (model, clip, out_name)
 
         lora_path = folder_paths.get_full_path("loras", resolved_path)
+        if strength_model == 0 and strength_clip == 0:
+            increment_lora_usage(resolved_path)
+            return (model, clip, out_name)
+
         if not lora_path or not os.path.exists(lora_path):
             return (model, clip, out_name)
             
@@ -506,6 +510,18 @@ class FolderLoraLoaderPretty(FolderLoraLoader):
         )
         increment_lora_usage(resolved_path)
         return (model_lora, clip_lora, out_name)
+
+def get_current_prompt_id():
+    try:
+        from server import PromptServer
+        server = PromptServer.instance
+        if hasattr(server, "prompt_queue") and server.prompt_queue.currently_running:
+            for item in server.prompt_queue.currently_running.values():
+                if isinstance(item, (tuple, list)) and len(item) > 1:
+                    return str(item[1])
+    except Exception:
+        pass
+    return None
 
 class VisualLoraLoader(FolderLoraLoaderPretty):
     @classmethod
@@ -559,34 +575,78 @@ class VisualLoraLoader(FolderLoraLoaderPretty):
         else:
             loras_to_load = [active_lora]
 
+        current_pid = get_current_prompt_id()
         if _selection_mode in ["Random", "Sequential", "Random (No Replace)"] and len(loras_to_load) > 0:
             valid_choices = [item for item in loras_to_load if item != "[ NONE ]" and item]
             if valid_choices:
                 if _selection_mode == "Random":
                     import random
-                    loras_to_load = [random.choice(valid_choices)]
+                    state = load_lora_cycle_state()
+                    text_hash = hashlib.sha256(json.dumps(sorted(valid_choices)).encode('utf-8')).hexdigest()[:16]
+                    state_key = f"rand_{unique_id}_{text_hash}"
+                    node_state = state.get(state_key, {})
+                    assigned = node_state.get("assigned", {}) if isinstance(node_state, dict) else {}
+                    if current_pid and current_pid in assigned:
+                        selected_item = assigned[current_pid]
+                    else:
+                        selected_item = random.choice(valid_choices)
+                        if current_pid:
+                            assigned[current_pid] = selected_item
+                            state[state_key] = {"assigned": assigned}
+                            save_lora_cycle_state(state)
+                    loras_to_load = [selected_item]
                 elif _selection_mode == "Sequential":
                     state = load_lora_cycle_state()
                     text_hash = hashlib.sha256(json.dumps(sorted(valid_choices)).encode('utf-8')).hexdigest()[:16]
                     state_key = f"seq_{unique_id}_{text_hash}"
-                    idx = state.get(state_key, 0)
-                    selected_item = valid_choices[idx % len(valid_choices)]
-                    state[state_key] = idx + 1
-                    save_lora_cycle_state(state)
+                    node_state = state.get(state_key, {})
+                    if isinstance(node_state, dict):
+                        idx = int(node_state.get("index", 0))
+                        assigned = node_state.get("assigned", {})
+                    else:
+                        idx = int(node_state) if isinstance(node_state, int) else 0
+                        assigned = {}
+
+                    if current_pid and current_pid in assigned:
+                        selected_item = assigned[current_pid]
+                    else:
+                        selected_item = valid_choices[idx % len(valid_choices)]
+                        if current_pid:
+                            assigned[current_pid] = selected_item
+                        state[state_key] = {
+                            "index": idx + 1,
+                            "assigned": assigned
+                        }
+                        save_lora_cycle_state(state)
                     loras_to_load = [selected_item]
                 elif _selection_mode == "Random (No Replace)":
                     state = load_lora_cycle_state()
                     text_hash = hashlib.sha256(json.dumps(sorted(valid_choices)).encode('utf-8')).hexdigest()[:16]
                     state_key = f"noreplace_{unique_id}_{text_hash}"
-                    pool = state.get(state_key, [])
-                    pool = [x for x in pool if x in valid_choices]
-                    if not pool:
-                        import random
-                        pool = list(valid_choices)
-                        random.shuffle(pool)
-                    selected_item = pool.pop(0)
-                    state[state_key] = pool
-                    save_lora_cycle_state(state)
+                    node_state = state.get(state_key, {})
+                    if isinstance(node_state, dict):
+                        pool = node_state.get("pool", [])
+                        assigned = node_state.get("assigned", {})
+                    else:
+                        pool = node_state if isinstance(node_state, list) else []
+                        assigned = {}
+
+                    if current_pid and current_pid in assigned:
+                        selected_item = assigned[current_pid]
+                    else:
+                        pool = [x for x in pool if x in valid_choices]
+                        if not pool:
+                            import random
+                            pool = list(valid_choices)
+                            random.shuffle(pool)
+                        selected_item = pool.pop(0)
+                        if current_pid:
+                            assigned[current_pid] = selected_item
+                        state[state_key] = {
+                            "pool": pool,
+                            "assigned": assigned
+                        }
+                        save_lora_cycle_state(state)
                     loras_to_load = [selected_item]
             else:
                 loras_to_load = []
@@ -618,6 +678,14 @@ class VisualLoraLoader(FolderLoraLoaderPretty):
                         break
 
             if not resolved_path:
+                continue
+
+            # Fast-path: If strength is 0 for both model and clip, don't load gigabytes into RAM/VRAM
+            if strength_model == 0 and strength_clip == 0:
+                increment_lora_usage(resolved_path)
+                out_name = format_lora_output_name(resolved_path, display_name, output_format=active_format, custom_regex=custom_regex)
+                if out_name:
+                    loaded_names.append(out_name)
                 continue
 
             lora_path = folder_paths.get_full_path("loras", resolved_path)

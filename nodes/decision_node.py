@@ -115,18 +115,27 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
         event = threading.Event()
         DecisionManager.register_wait(unique_id, event)
 
-        print(f"[LeafFlow] Node {unique_id} is waiting for user decision...")
-
-        if timeout > 0:
-            waited = event.wait(timeout)
-            if not waited:
-                print(f"[LeafFlow] Node {unique_id} timed out. Auto-continuing...")
-                DecisionManager.unregister_wait(unique_id)
-                # Notify frontend to update UI back to normal
-                PromptServer.instance.send_sync("leafflow_decision_resolved", {"node_id": unique_id})
-                return (False,)
-        else:
-            event.wait()
+        import time
+        try:
+            if timeout > 0:
+                end_time = time.time() + timeout
+                while time.time() < end_time and not event.is_set():
+                    comfy.model_management.throw_exception_if_processing_interrupted()
+                    event.wait(0.5)
+                if not event.is_set():
+                    print(f"[LeafFlow] Node {unique_id} timed out. Auto-continuing...")
+                    DecisionManager.unregister_wait(unique_id)
+                    # Notify frontend to update UI back to normal
+                    PromptServer.instance.send_sync("leafflow_decision_resolved", {"node_id": unique_id})
+                    return (False,)
+            else:
+                while not event.is_set():
+                    comfy.model_management.throw_exception_if_processing_interrupted()
+                    event.wait(0.5)
+        except Exception:
+            DecisionManager.unregister_wait(unique_id)
+            PromptServer.instance.send_sync("leafflow_decision_resolved", {"node_id": unique_id})
+            raise
 
         # Retrieve action
         action = DecisionManager.get_action(unique_id)

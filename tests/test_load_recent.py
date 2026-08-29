@@ -35,7 +35,7 @@ class TestLoadRecent(unittest.TestCase):
     def test_load_recent_empty_directory_returns_dummy(self):
         with patch("nodes.load_recent.folder_paths.get_output_directory", return_value=self.temp_dir):
             out_tensor, = self.node.load_single_image(output_folder=self.temp_dir, amount=5, index=0)
-            self.assertEqual(out_tensor.shape, (1, 64, 64, 3))
+            self.assertEqual(out_tensor.shape, (1, 512, 512, 3))
 
 if __name__ == "__main__":
     unittest.main()

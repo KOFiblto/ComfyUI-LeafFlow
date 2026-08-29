@@ -20,7 +20,7 @@ class TestAutoWatcher(unittest.TestCase):
 
     def test_create_dummy_image(self):
         dummy = self.node.create_dummy_image()
-        self.assertEqual(dummy.shape, (1, 64, 64, 3))
+        self.assertEqual(dummy.shape, (1, 512, 512, 3))
 
     def test_get_filtered_files_by_regex(self):
         img = Image.new("RGB", (64, 64), color="blue")
@@ -52,7 +52,26 @@ class TestAutoWatcher(unittest.TestCase):
             regex_filter=".*"
         )
         self.assertFalse(has_image)
-        self.assertEqual(img_tensor.shape, (1, 64, 64, 3))
+        self.assertEqual(img_tensor.shape, (1, 512, 512, 3))
+
+    def test_sequential_cycle_when_delete_false(self):
+        """Verify that when delete_image=False, consecutive runs cycle through files instead of loading the same file forever."""
+        f1 = os.path.join(self.temp_dir, "img_a.png")
+        f2 = os.path.join(self.temp_dir, "img_b.png")
+        Image.new("RGB", (64, 64), color="red").save(f1)
+        Image.new("RGB", (64, 64), color="green").save(f2)
+
+        # Run 1 -> loads img_a
+        t1, has1 = self.node.watch(folder=self.temp_dir, wait_if_folder_is_empty=False, rescan_interval=1, sort_by="name", regex_filter=".*", delete_image=False, unique_id="cycle_test")
+        self.assertTrue(has1)
+
+        # Run 2 -> loads img_b (cycled!)
+        t2, has2 = self.node.watch(folder=self.temp_dir, wait_if_folder_is_empty=False, rescan_interval=1, sort_by="name", regex_filter=".*", delete_image=False, unique_id="cycle_test")
+        self.assertTrue(has2)
+
+        # Run 3 -> loops back to img_a
+        t3, has3 = self.node.watch(folder=self.temp_dir, wait_if_folder_is_empty=False, rescan_interval=1, sort_by="name", regex_filter=".*", delete_image=False, unique_id="cycle_test")
+        self.assertTrue(has3)
 
     def test_load_and_remove_image_with_delete_toggle(self):
         img = Image.new("RGB", (64, 64), color="red")
