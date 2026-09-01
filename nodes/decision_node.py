@@ -5,6 +5,7 @@ import subprocess
 from server import PromptServer
 from aiohttp import web
 import comfy.model_management
+from .utils import is_local_request
 
 class DecisionManager:
     _waiting_events = {}
@@ -170,6 +171,8 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
 # Register API Route
 @PromptServer.instance.routes.post("/leafflow/decision")
 async def handle_decision(request):
+    if not is_local_request(request):
+        return web.json_response({"error": "Forbidden: Local access only"}, status=403)
     try:
         data = await request.json()
         node_id = data.get("node_id")

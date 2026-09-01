@@ -18,7 +18,9 @@ from .utils import (
     parse_pretty_name_with_version,
     format_lora_output_name,
     sanitize_folder_path,
-    get_leafflow_user_dir
+    get_leafflow_user_dir,
+    is_local_request,
+    is_safe_path
 )
 
 LORA_CATEGORY = "🍃 LeafFlow/Loaders"
@@ -146,8 +148,8 @@ def get_env_setting(key, default_val):
 
 def scrape_missing_images_sync():
     try:
-        civitai_enabled = get_env_setting("ENABLE_CIVITAI_SCRAPING", "true").lower() in ["true", "1", "yes"]
-        tmdb_enabled = get_env_setting("ENABLE_TMDB_SCRAPING", "true").lower() in ["true", "1", "yes"]
+        civitai_enabled = get_env_setting("ENABLE_CIVITAI_SCRAPING", "false").lower() in ["true", "1", "yes"]
+        tmdb_enabled = get_env_setting("ENABLE_TMDB_SCRAPING", "false").lower() in ["true", "1", "yes"]
         if not civitai_enabled and not tmdb_enabled:
             return
 
@@ -316,9 +318,11 @@ routes = server.routes
 
 @routes.get("/folder_lora_loader/get_loras")
 async def get_loras_endpoint(request):
+    if not is_local_request(request):
+        return web.json_response({"error": "Forbidden: Local access only"}, status=403)
     folder = request.query.get("folder", "")
     pretty = request.query.get("pretty", "false").lower() == "true"
-    scrape_on_new = request.query.get("scrape_on_new", "true").lower() == "true"
+    scrape_on_new = request.query.get("scrape_on_new", "false").lower() == "true"
     
     mapping = get_filtered_loras_mapping(folder, pretty=pretty)
     if scrape_on_new:
@@ -352,6 +356,8 @@ async def get_loras_endpoint(request):
 
 @routes.get("/folder_lora_loader/get_preview")
 async def get_preview_endpoint(request):
+    if not is_local_request(request):
+        return web.Response(status=403)
     system_path = request.query.get("system_path", "")
     lora_name = request.query.get("lora", "")
     folder = request.query.get("folder", "")
@@ -363,7 +369,7 @@ async def get_preview_endpoint(request):
     
     if system_path and system_path != "[ NONE ]":
         img_path = find_preview_image(system_path)
-        if img_path and os.path.exists(img_path):
+        if img_path and os.path.exists(img_path) and os.path.isfile(img_path):
             return web.FileResponse(img_path)
             
     return web.Response(status=404)
