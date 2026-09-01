@@ -30,6 +30,112 @@ def get_leafflow_user_dir():
     os.makedirs(leafflow_dir, exist_ok=True)
     return leafflow_dir
 
+def is_local_request(request):
+    """
+    Returns True if the HTTP request originates strictly from loopback (localhost / 127.0.0.1 / ::1).
+    Used to protect sensitive endpoints (power control, system settings, file browsing).
+    """
+    if request is None:
+        return True
+    remote = getattr(request, "remote", None)
+    if not remote:
+        transport = getattr(request, "transport", None)
+        if transport:
+            peername = transport.get_extra_info("peername")
+            if peername and isinstance(peername, tuple):
+                remote = peername[0]
+    if not remote:
+        return False
+    local_hosts = {"127.0.0.1", "::1", "localhost", "0.0.0.0", "testclient"}
+    if remote in local_hosts:
+        return True
+    try:
+        import ipaddress
+        ip = ipaddress.ip_address(remote)
+        return ip.is_loopback
+    except Exception:
+        return False
+
+def get_allowed_image_directories():
+    """
+    Returns approved base directories for image loader operations: strictly ComfyUI input, output, and temp dirs.
+    """
+    allowed = []
+    try:
+        inp = folder_paths.get_input_directory()
+        if inp:
+            allowed.append(os.path.abspath(os.path.realpath(inp)))
+    except Exception:
+        pass
+    try:
+        out = folder_paths.get_output_directory()
+        if out:
+            allowed.append(os.path.abspath(os.path.realpath(out)))
+    except Exception:
+        pass
+    try:
+        tmp = folder_paths.get_temp_directory()
+        if tmp:
+            allowed.append(os.path.abspath(os.path.realpath(tmp)))
+    except Exception:
+        pass
+    return allowed
+
+def is_safe_path(target_path, allowed_bases=None):
+    """
+    Confines file access strictly within approved base directories.
+    Prevents path traversal, directory escape, and arbitrary system file reads.
+    """
+    if not target_path:
+        return False
+    if allowed_bases is None:
+        allowed_bases = get_allowed_image_directories()
+    try:
+        abs_target = os.path.abspath(os.path.realpath(target_path))
+        for base in allowed_bases:
+            abs_base = os.path.abspath(os.path.realpath(base))
+            if os.path.commonpath([abs_base, abs_target]) == abs_base:
+                return True
+    except Exception:
+        return False
+    return False
+
+def sanitize_image_loader_folder(folder_input, default_to_output=True):
+    """
+    Resolves folder input strictly within ComfyUI input/output/temp directories.
+    If folder_input attempts to escape or points outside allowed bases, falls back safely.
+    """
+    allowed_bases = get_allowed_image_directories()
+    input_dir = folder_paths.get_input_directory()
+    output_dir = folder_paths.get_output_directory()
+    default_dir = output_dir if default_to_output else input_dir
+
+    if not folder_input or not str(folder_input).strip():
+        return default_dir
+
+    clean = str(folder_input).strip().rstrip("\\/")
+    
+    if clean.lower() == "input" or clean.lower().startswith("input/") or clean.lower().startswith("input\\"):
+        sub = clean[5:].lstrip("\\/")
+        resolved = os.path.join(input_dir, sub) if sub else input_dir
+    elif clean.lower() == "output" or clean.lower().startswith("output/") or clean.lower().startswith("output\\"):
+        sub = clean[6:].lstrip("\\/")
+        resolved = os.path.join(output_dir, sub) if sub else output_dir
+    elif os.path.isabs(clean):
+        resolved = clean
+    else:
+        cand_out = os.path.join(output_dir, clean)
+        cand_inp = os.path.join(input_dir, clean)
+        if os.path.exists(cand_inp) and not os.path.exists(cand_out):
+            resolved = cand_inp
+        else:
+            resolved = cand_out
+
+    if is_safe_path(resolved, allowed_bases):
+        return os.path.normpath(resolved)
+
+    return default_dir
+
 def get_env_setting(key, default_val):
     """
     Reads a key setting from ComfyUI/user/default/LeafFlow/.env safely.

@@ -9,10 +9,34 @@ from nodes.utils import (
     parse_pretty_name,
     parse_pretty_name_with_version,
     sanitize_folder_path,
-    format_lora_output_name
+    format_lora_output_name,
+    is_local_request,
+    is_safe_path,
+    sanitize_image_loader_folder
 )
 
 class TestUtils(unittest.TestCase):
+    def test_is_local_request(self):
+        class DummyReq:
+            def __init__(self, ip):
+                self.remote = ip
+        self.assertTrue(is_local_request(DummyReq("127.0.0.1")))
+        self.assertTrue(is_local_request(DummyReq("::1")))
+        self.assertTrue(is_local_request(DummyReq("localhost")))
+        self.assertFalse(is_local_request(DummyReq("192.168.1.50")))
+        self.assertFalse(is_local_request(DummyReq("10.0.0.1")))
+        self.assertFalse(is_local_request(DummyReq("8.8.8.8")))
+
+    def test_is_safe_path(self):
+        import tempfile
+        base1 = tempfile.mkdtemp()
+        sub = os.path.join(base1, "images", "test.png")
+        escape = os.path.join(base1, "..", "passwords.txt")
+        self.assertTrue(is_safe_path(sub, allowed_bases=[base1]))
+        self.assertFalse(is_safe_path(escape, allowed_bases=[base1]))
+        import shutil
+        shutil.rmtree(base1, ignore_errors=True)
+
     def test_parse_pretty_name(self):
         name = parse_pretty_name("krea2_ana-de-armas_v1.safetensors")
         self.assertEqual(name, "Ana De Armas")

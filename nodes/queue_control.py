@@ -7,7 +7,7 @@ from server import PromptServer
 import nodes
 from .tray_icon import TrayIconManager, is_tray_icon_enabled
 from .assets_restore import assets_restore_manager, is_assets_restore_enabled, get_assets_restore_count
-from .utils import get_leafflow_user_dir
+from .utils import get_leafflow_user_dir, is_local_request
 
 QUEUE_CATEGORY = "🍃 LeafFlow/Queue"
 
@@ -542,10 +542,14 @@ def setup_queue_control_routes(server):
 
     @routes.get("/leafflow/power/status")
     async def get_power_status(request):
+        if not is_local_request(request):
+            return web.json_response({"error": "Forbidden: Local access only"}, status=403)
         return web.json_response(power_manager.get_status())
 
     @routes.post("/leafflow/power/arm")
     async def arm_power_action(request):
+        if not is_local_request(request):
+            return web.json_response({"error": "Forbidden: Local access only"}, status=403)
         try:
             data = await request.json()
         except Exception:
@@ -556,16 +560,22 @@ def setup_queue_control_routes(server):
 
     @routes.post("/leafflow/power/restart")
     async def trigger_restart(request):
+        if not is_local_request(request):
+            return web.json_response({"error": "Forbidden: Local access only"}, status=403)
         power_manager.execute_restart()
         return web.json_response({"status": "restarting"})
 
     @routes.post("/leafflow/power/shutdown")
     async def trigger_shutdown(request):
+        if not is_local_request(request):
+            return web.json_response({"error": "Forbidden: Local access only"}, status=403)
         power_manager.execute_shutdown()
         return web.json_response({"status": "shutting_down"})
 
     @routes.post("/leafflow/assets/restore")
     async def restore_assets_endpoint(request):
+        if not is_local_request(request):
+            return web.json_response({"error": "Forbidden: Local access only"}, status=403)
         try:
             data = await request.json()
         except Exception:
@@ -577,6 +587,8 @@ def setup_queue_control_routes(server):
 
     @routes.get("/leafflow/assets/debug")
     async def get_assets_debug(request):
+        if not is_local_request(request):
+            return web.json_response({"error": "Forbidden: Local access only"}, status=403)
         return web.json_response(assets_restore_manager.last_debug_report)
 
     @routes.get("/pause_queue/status")

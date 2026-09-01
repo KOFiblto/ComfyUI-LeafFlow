@@ -9,7 +9,13 @@ import piexif.helper
 from aiohttp import web
 from server import PromptServer
 import folder_paths
-from .utils import sanitize_folder_path, get_leafflow_user_dir
+from .utils import (
+    sanitize_folder_path,
+    get_leafflow_user_dir,
+    is_local_request,
+    is_safe_path,
+    sanitize_image_loader_folder
+)
 
 IMAGE_CATEGORY = "🍃 LeafFlow/Loaders"
 CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -131,13 +137,16 @@ routes = PromptServer.instance.routes if hasattr(PromptServer, "instance") and P
 
 @routes.get("/image_loader/get_images")
 async def get_images_endpoint(request):
+    if not is_local_request(request):
+        return web.json_response({"error": "Forbidden: Local access only"}, status=403)
+
     folder = request.query.get("folder", "")
     if not folder:
         folder = request.query.get("folder_path", "")
         
-    resolved_folder = sanitize_folder_path(folder)
+    resolved_folder = sanitize_image_loader_folder(folder)
     
-    if not resolved_folder or not os.path.exists(resolved_folder):
+    if not resolved_folder or not is_safe_path(resolved_folder) or not os.path.exists(resolved_folder):
         return web.json_response({"names": [], "mapping": {}, "prompts": {}})
         
     image_extensions = {".png", ".jpg", ".jpeg", ".webp", ".PNG", ".JPG", ".JPEG", ".WEBP"}
@@ -148,6 +157,8 @@ async def get_images_endpoint(request):
             ext = os.path.splitext(file)[1]
             if ext in image_extensions:
                 full_path = os.path.normpath(os.path.join(root, file))
+                if not is_safe_path(full_path):
+                    continue
                 try:
                     mtime = os.path.getmtime(full_path)
                 except Exception:
@@ -207,16 +218,25 @@ async def get_images_endpoint(request):
 
 @routes.get("/image_loader/get_thumbnail")
 async def get_thumbnail_endpoint(request):
+    if not is_local_request(request):
+        return web.Response(status=403)
+
     folder = request.query.get("folder", "")
     if not folder:
         folder = request.query.get("folder_path", "")
-    resolved_folder = sanitize_folder_path(folder)
+    resolved_folder = sanitize_image_loader_folder(folder)
     
     image_rel = request.query.get("image", "")
-    
+    if not image_rel:
+        return web.Response(status=400)
+        
     full_path = os.path.normpath(os.path.join(resolved_folder, image_rel))
-    if not os.path.exists(full_path):
+    if not is_safe_path(full_path) or not os.path.exists(full_path) or not os.path.isfile(full_path):
         return web.Response(status=404)
+
+    image_extensions = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
+    if os.path.splitext(full_path)[1].lower() not in image_extensions:
+        return web.Response(status=403)
         
     try:
         with Image.open(full_path) as img:
@@ -229,16 +249,26 @@ async def get_thumbnail_endpoint(request):
 
 @routes.get("/image_loader/get_full_image")
 async def get_full_image_endpoint(request):
+    if not is_local_request(request):
+        return web.Response(status=403)
+
     folder = request.query.get("folder", "")
     if not folder:
         folder = request.query.get("folder_path", "")
-    resolved_folder = sanitize_folder_path(folder)
+    resolved_folder = sanitize_image_loader_folder(folder)
     
     image_rel = request.query.get("image", "")
-    
+    if not image_rel:
+        return web.Response(status=400)
+        
     full_path = os.path.normpath(os.path.join(resolved_folder, image_rel))
-    if not os.path.exists(full_path):
+    if not is_safe_path(full_path) or not os.path.exists(full_path) or not os.path.isfile(full_path):
         return web.Response(status=404)
+
+    image_extensions = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
+    if os.path.splitext(full_path)[1].lower() not in image_extensions:
+        return web.Response(status=403)
+
     return web.FileResponse(full_path)
 
 class VisualImageLoader:
@@ -267,15 +297,15 @@ class VisualImageLoader:
 
     def load_image(self, folder="", display_mode="Scrollable", sort_images_by="Date Modified (Newest First)", folder_path=None, _selected_image="", **kwargs):
         input_dir = folder if folder else (folder_path or "")
-        resolved_folder = sanitize_folder_path(input_dir)
+        resolved_folder = sanitize_image_loader_folder(input_dir)
         
         if not resolved_folder or not _selected_image:
-            empty_image = torch.zeros((1, 64, 64, 3), dtype=torch.float32)
+            empty_image = torch.zeros((1, 512, 512, 3), dtype=torch.float32)
             return (empty_image, "", 0, 0)
 
         full_path = os.path.normpath(os.path.join(resolved_folder, _selected_image))
-        if not os.path.exists(full_path):
-            empty_image = torch.zeros((1, 64, 64, 3), dtype=torch.float32)
+        if not is_safe_path(full_path) or not os.path.exists(full_path):
+            empty_image = torch.zeros((1, 512, 512, 3), dtype=torch.float32)
             return (empty_image, "", 0, 0)
 
         i = Image.open(full_path)

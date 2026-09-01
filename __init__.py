@@ -4,25 +4,6 @@ import subprocess
 from aiohttp import web
 from server import PromptServer
 
-def ensure_dependencies():
-    dep_map = {
-        "pystray": "pystray",
-        "piexif": "piexif",
-        "PIL": "Pillow",
-        "numpy": "numpy"
-    }
-    for mod_name, pip_name in dep_map.items():
-        try:
-            __import__(mod_name)
-        except ImportError:
-            try:
-                print(f"[ComfyUI-LeafFlow] Auto-installing missing dependency: {pip_name}")
-                subprocess.check_call([sys.executable, "-m", "pip", "install", pip_name])
-            except Exception as e:
-                print(f"[ComfyUI-LeafFlow] Warning: Failed to install {pip_name}: {e}")
-
-ensure_dependencies()
-
 from .nodes.queue_control import setup_queue_control_routes, tray_manager
 from .nodes.lora_loader import (
     FolderLoraLoader,
@@ -40,7 +21,12 @@ from .nodes.lora_finder import TextLoraFinder, LoraTextFinder
 from .nodes.prompt_iterator import PromptQueueIterator
 from .nodes.text_replacer import MultiTextReplacer
 from .nodes.text_split import LeafFlowTextSplit
-
+from .nodes.utils import (
+    get_leafflow_user_dir,
+    get_env_setting,
+    is_local_request,
+    is_safe_path
+)
 
 NODE_CLASS_MAPPINGS = {
     "FolderLoraLoader": FolderLoraLoader,
@@ -79,8 +65,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 WEB_DIRECTORY = "./web"
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]
 
-from .nodes.utils import get_leafflow_user_dir, get_env_setting
-
 server = PromptServer.instance
 setup_queue_control_routes(server)
 
@@ -101,6 +85,8 @@ print("[ComfyUI-LeafFlow] 🍃 Loaded 13 nodes & visual endpoints successfully."
 @routes.get("/leafflow/get_image_prompt")
 @routes.get("/leafflow/view_image_prompt")
 async def get_image_prompt_endpoint(request):
+    if not is_local_request(request):
+        return web.json_response({"success": False, "error": "Forbidden: Local access only"}, status=403)
     try:
         import folder_paths
         filename = request.query.get("filename")
@@ -122,8 +108,8 @@ async def get_image_prompt_endpoint(request):
         else:
             filepath = os.path.join(base_dir, filename)
 
-        if not os.path.exists(filepath):
-            return web.json_response({"success": False, "error": "File not found"}, status=404)
+        if not is_safe_path(filepath) or not os.path.exists(filepath) or not os.path.isfile(filepath):
+            return web.json_response({"success": False, "error": "File not found or forbidden"}, status=404)
 
         from .nodes.image_loader import extract_metadata_from_image
         prompt, width, height = extract_metadata_from_image(filepath)
@@ -141,6 +127,8 @@ async def get_image_prompt_endpoint(request):
 @routes.get("/leafflow/settings")
 @routes.get("/flow_control/settings")
 async def get_settings(request):
+    if not is_local_request(request):
+        return web.json_response({"error": "Forbidden: Local access only"}, status=403)
     civitai_key = os.getenv("CIVITAI_API_KEY", "")
     tmdb_key = os.getenv("TMDB_API_KEY", "")
     enable_tray = os.getenv("ENABLE_TRAY_ICON", "false").lower() in ["true", "1", "yes"]
@@ -174,24 +162,31 @@ async def get_settings(request):
         "restore_assets_count": restore_assets_count
     })
 
+def _clean_env_val(v):
+    if v is None:
+        return None
+    return str(v).replace("\n", "").replace("\r", "").strip()
+
 @routes.post("/leafflow/settings")
 @routes.post("/flow_control/settings")
 async def save_settings(request):
+    if not is_local_request(request):
+        return web.json_response({"error": "Forbidden: Local access only"}, status=403)
     try:
         data = await request.json()
-        civitai_key = data.get("civitai_api_key")
-        tmdb_key = data.get("tmdb_api_key")
-        enable_persistent_queue = data.get("enable_persistent_queue")
-        default_pause_state = data.get("default_pause_state")
-        default_pause_mode = data.get("default_pause_mode")
-        enable_civitai = data.get("enable_civitai_scraping")
-        enable_tmdb = data.get("enable_tmdb_scraping")
-        enable_lora_usage = data.get("enable_lora_usage")
-        enable_tray_icon = data.get("enable_tray_icon")
-        enable_assets_restore = data.get("enable_assets_restore")
-        restore_assets_count = data.get("restore_assets_count")
-        clear_prompt_iterator_on_launch = data.get("clear_prompt_iterator_on_launch")
-        restored_state = data.get("persistent_queue_restored_state")
+        civitai_key = _clean_env_val(data.get("civitai_api_key"))
+        tmdb_key = _clean_env_val(data.get("tmdb_api_key"))
+        enable_persistent_queue = _clean_env_val(data.get("enable_persistent_queue"))
+        default_pause_state = _clean_env_val(data.get("default_pause_state"))
+        default_pause_mode = _clean_env_val(data.get("default_pause_mode"))
+        enable_civitai = _clean_env_val(data.get("enable_civitai_scraping"))
+        enable_tmdb = _clean_env_val(data.get("enable_tmdb_scraping"))
+        enable_lora_usage = _clean_env_val(data.get("enable_lora_usage"))
+        enable_tray_icon = _clean_env_val(data.get("enable_tray_icon"))
+        enable_assets_restore = _clean_env_val(data.get("enable_assets_restore"))
+        restore_assets_count = _clean_env_val(data.get("restore_assets_count"))
+        clear_prompt_iterator_on_launch = _clean_env_val(data.get("clear_prompt_iterator_on_launch"))
+        restored_state = _clean_env_val(data.get("persistent_queue_restored_state"))
 
         lines = []
         if os.path.exists(ENV_FILE):
