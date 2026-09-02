@@ -89,6 +89,39 @@ class TestAspectRatioNodes(unittest.TestCase):
         )
         self.assertEqual(ratio, "1:1")
 
+    def test_custom_allowed_ratios_whitelist(self):
+        # When aspect_ratios is configured with "16:9, 9:16", any other ratio in text like "4:3" or "5:7" must be ignored!
+        w, h, ratio = self.finder.find_aspect_ratio(
+            text="First 4:3 then 16:9 and also 5:7",
+            aspect_ratios="16:9, 9:16",
+            default_aspect_ratio="1:1"
+        )
+        self.assertEqual(ratio, "16:9")
+
+        # When prompt only contains unapproved ratios, fall back to default
+        w2, h2, ratio2 = self.finder.find_aspect_ratio(
+            text="A photo in 5:7 format with 12:34 crop",
+            aspect_ratios="16:9, 9:16, 1:1",
+            default_aspect_ratio="1:1"
+        )
+        self.assertEqual(ratio2, "1:1")
+
+    def test_empty_aspect_ratios_accepts_any_ratio(self):
+        # When aspect_ratios is empty, accept any valid aspect ratio found in text
+        w, h, ratio = self.finder.find_aspect_ratio(
+            text="A photo in custom 5:7 format",
+            aspect_ratios="",
+            default_aspect_ratio="1:1"
+        )
+        self.assertEqual(ratio, "5:7")
+
+        w2, h2, ratio2 = self.finder.find_aspect_ratio(
+            text="Anamorphic 2.39:1 movie frame",
+            aspect_ratios="   ",
+            default_aspect_ratio="1:1"
+        )
+        self.assertEqual(ratio2, "2.39:1")
+
     def test_preview_process(self):
         with patch("nodes.aspect_ratio.PromptServer.instance.send_sync") as mock_send:
             res = self.preview_node.process_preview(
