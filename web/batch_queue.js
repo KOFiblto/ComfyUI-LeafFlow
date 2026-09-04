@@ -1,0 +1,447 @@
+import { app } from "/scripts/app.js";
+import { api } from "/scripts/api.js";
+
+// 36 Curated Accessible, High-Contrast Cycling Colors for Batch Visual Grouping
+const BATCH_COLORS = [
+    "#10b981", // 1. Emerald
+    "#3b82f6", // 2. Blue
+    "#8b5cf6", // 3. Purple
+    "#ec4899", // 4. Pink
+    "#f59e0b", // 5. Amber
+    "#06b6d4", // 6. Cyan
+    "#ef4444", // 7. Red
+    "#14b8a6", // 8. Teal
+    "#6366f1", // 9. Indigo
+    "#f97316", // 10. Orange
+    "#84cc16", // 11. Lime
+    "#d946ef", // 12. Fuchsia
+    "#0ea5e9", // 13. Sky
+    "#a855f7", // 14. Violet
+    "#e11d48", // 15. Rose
+    "#22c55e", // 16. Green
+    "#eab308", // 17. Yellow
+    "#64748b", // 18. Slate
+    "#2dd4bf", // 19. Turquoise
+    "#fb7185", // 20. Coral
+    "#38bdf8", // 21. Light Blue
+    "#c084fc", // 22. Lavender
+    "#f43f5e", // 23. Ruby
+    "#4ade80", // 24. Mint
+    "#fbbf24", // 25. Gold
+    "#818cf8", // 26. Periwinkle
+    "#fb923c", // 27. Tangerine
+    "#a3e635", // 28. Chartreuse
+    "#f472b6", // 29. Hot Pink
+    "#22d3ee", // 30. Aqua
+    "#e879f9", // 31. Orchid
+    "#a7f3d0", // 32. Seafoam
+    "#fde047", // 33. Lemon
+    "#fda4af", // 34. Blush
+    "#93c5fd", // 35. Cornflower
+    "#c4b5fd"  // 36. Lilac
+];
+
+const STORAGE_KEY = "leafflow_batch_queue_meta";
+const BATCH_COUNTER_KEY = "leafflow_batch_counter";
+const SETTING_ID = "LeafFlow.BatchQueue.Enabled";
+
+// In-memory registry mapping prompt_id -> batch metadata
+let batchRegistry = new Map();
+let activeBatchContext = null;
+let batchCounter = 0;
+
+function loadStorage() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+                for (const item of parsed) {
+                    if (item && item.prompt_id) {
+                        batchRegistry.set(String(item.prompt_id), item);
+                    }
+                }
+            }
+        }
+        const savedCounter = localStorage.getItem(BATCH_COUNTER_KEY);
+        if (savedCounter) {
+            batchCounter = parseInt(savedCounter, 10) || 0;
+        }
+    } catch (e) {
+        console.warn("[LeafFlow BatchQueue] Failed to load batch storage:", e);
+    }
+}
+
+function saveStorage() {
+    try {
+        // Prune entries to last 250 items to keep localStorage small
+        const allEntries = Array.from(batchRegistry.values());
+        const pruned = allEntries.slice(-250);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(pruned));
+        localStorage.setItem(BATCH_COUNTER_KEY, String(batchCounter));
+    } catch (e) {
+        // Storage full or private mode
+    }
+}
+
+function getNextBatch(batchCount = 1) {
+    batchCounter++;
+    const colorIndex = (batchCounter - 1) % BATCH_COLORS.length;
+    const color = BATCH_COLORS[colorIndex];
+    const batchId = `batch_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    
+    const batch = {
+        batchId,
+        batchNumber: batchCounter,
+        batchCount: Math.max(1, batchCount),
+        color,
+        colorIndex,
+        queuedAt: Date.now(),
+        prompts: []
+    };
+    return batch;
+}
+
+// Inject CSS for the 1D git-graph style line
+function injectBatchStyles() {
+    if (typeof document === "undefined") return;
+    const styleId = "leafflow-batch-queue-styles";
+    if (document.getElementById(styleId)) return;
+
+    const style = document.createElement("style");
+    style.id = styleId;
+    style.textContent = `
+        /* LeafFlow 1D Git-Graph Batch Line Container */
+        .leafflow-batch-line-wrap {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 10px;
+            pointer-events: none;
+            z-index: 20;
+            display: flex;
+            align-items: stretch;
+            justify-content: center;
+        }
+
+        .leafflow-batch-line-svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+            overflow: visible;
+        }
+
+        /* Ensure parent card has relative positioning */
+        [data-testid="job-assets-list"] [data-job-id] {
+            position: relative !important;
+        }
+
+        /* Support for classic frontend v1 queue table rows */
+        .comfy-table tr[data-job-id],
+        .comfy-queue-item {
+            position: relative !important;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Build 1D SVG line path according to segment type:
+// 'single': bracket (rounded top & bottom curving right to card)
+// 'first': rounded top curving right, straight all the way down
+// 'middle': straight line top to bottom
+// 'last': straight from top, rounded bottom curving right to card
+function buildSvgPath(segmentType) {
+    // Coordinate system: width=10, height=48. Curve bends toward the card (x=8)
+    switch (segmentType) {
+        case "single":
+            return "M 8,6 Q 2,6 2,16 L 2,32 Q 2,42 8,42";
+        case "first":
+            return "M 8,6 Q 2,6 2,16 L 2,48";
+        case "middle":
+            return "M 2,0 L 2,48";
+        case "last":
+            return "M 2,0 L 2,32 Q 2,42 8,42";
+        default:
+            return "M 8,6 Q 2,6 2,16 L 2,32 Q 2,42 8,42";
+    }
+}
+
+function renderBatchLineOnElement(element, segmentType, color) {
+    if (!element) return;
+
+    let wrap = element.querySelector(".leafflow-batch-line-wrap");
+    if (!wrap) {
+        wrap = document.createElement("div");
+        wrap.className = "leafflow-batch-line-wrap";
+        element.appendChild(wrap);
+    }
+
+    const dPath = buildSvgPath(segmentType);
+    wrap.innerHTML = `
+        <svg class="leafflow-batch-line-svg" viewBox="0 0 10 48" preserveAspectRatio="none">
+            <path d="${dPath}" stroke="${color}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+        </svg>
+    `;
+}
+
+function removeBatchLineFromElement(element) {
+    if (!element) return;
+    const wrap = element.querySelector(".leafflow-batch-line-wrap");
+    if (wrap) {
+        wrap.remove();
+    }
+}
+
+// Check if LeafFlow Batch Queue is enabled in settings
+function isBatchQueueEnabled() {
+    try {
+        if (app.extensionManager?.setting?.get) {
+            return app.extensionManager.setting.get(SETTING_ID) !== false;
+        }
+    } catch (e) {}
+    return true;
+}
+
+// Sync with server if PersistentQueue is available
+async function syncBatchToServer(promptId, batchInfo) {
+    try {
+        if (!api || !api.fetchApi) return;
+        await api.fetchApi("/leafflow/batch_queue/sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                prompt_id: promptId,
+                batch_info: batchInfo
+            })
+        }).catch(() => null);
+    } catch (e) {
+        // Silently ignore if server endpoint is not present
+    }
+}
+
+async function loadBatchFromServer() {
+    try {
+        if (!api || !api.fetchApi) return;
+        const res = await api.fetchApi("/leafflow/batch_queue/data", { cache: "no-store" }).catch(() => null);
+        if (res && res.ok) {
+            const data = await res.json();
+            if (data && typeof data === "object") {
+                for (const [pid, info] of Object.entries(data)) {
+                    if (pid && info) {
+                        batchRegistry.set(String(pid), info);
+                    }
+                }
+                saveStorage();
+            }
+        }
+    } catch (e) {}
+}
+
+// Refresh visual lines in DOM for both v1 and v2
+async function updateQueueBatchVisuals() {
+    if (!isBatchQueueEnabled()) {
+        document.querySelectorAll(".leafflow-batch-line-wrap").forEach(el => el.remove());
+        return;
+    }
+
+    // 1. Fetch current queue state to get exact pending order
+    let pendingPrompts = [];
+    try {
+        if (api && api.getQueue) {
+            const q = await api.getQueue();
+            const pending = q.queue_pending || q.Pending || [];
+            const running = q.queue_running || q.Running || [];
+            // We analyze running + pending in execution order
+            const allItems = [...running, ...pending];
+            pendingPrompts = allItems.map(item => String(item[1])).filter(Boolean);
+        }
+    } catch (e) {
+        // Fallback to reading prompt IDs from DOM
+    }
+
+    // Find all visible queue item elements in DOM (supports v2 job cards and v1 rows)
+    const elements = Array.from(document.querySelectorAll('[data-testid="job-assets-list"] [data-job-id], .comfy-table tr[data-job-id]'));
+    if (!elements.length) return;
+
+    // Ordered list of visible prompt IDs
+    const visiblePromptIds = elements.map(el => el.getAttribute("data-job-id")).filter(Boolean);
+
+    // If pendingPrompts is empty, use visible DOM order
+    const orderedPids = pendingPrompts.length ? pendingPrompts : visiblePromptIds;
+
+    // Build map of promptId -> element for visible items
+    const elMap = new Map();
+    for (const el of elements) {
+        const pid = el.getAttribute("data-job-id");
+        if (pid) elMap.set(pid, el);
+    }
+
+    // For every prompt in the queue, calculate segment type based on its batch
+    // Key rule:
+    // First prompt of Batch A has top curve (┌)
+    // Last prompt of Batch A has bottom curve (└)
+    // 1-er Batch has top AND bottom curve (()
+    // Anything in between has straight lines (│)
+    for (const pid of visiblePromptIds) {
+        const el = elMap.get(pid);
+        if (!el) continue;
+
+        const info = batchRegistry.get(pid);
+        if (!info || !info.batchId) {
+            // Not part of a tracked batch, or unknown
+            removeBatchLineFromElement(el);
+            continue;
+        }
+
+        const batchId = info.batchId;
+        const color = info.color || BATCH_COLORS[0];
+
+        // Find all occurrences of this batch in the current queue order
+        const occurrencesInQueue = orderedPids.filter(p => {
+            const b = batchRegistry.get(p);
+            return b && b.batchId === batchId;
+        });
+
+        if (occurrencesInQueue.length <= 1) {
+            // Only 1 item of this batch in the current queue!
+            // If the batch only ever had 1 prompt: classic 1-er batch (()
+            if ((info.batchCount || 1) === 1) {
+                renderBatchLineOnElement(el, "single", color);
+            } else {
+                // Batch had multiple items, but only 1 remains in queue:
+                // Check if it's the first or last of the original batch
+                if (info.itemIndex === 0) {
+                    // First item of batch, but subsequent items were split/delayed: open bottom
+                    renderBatchLineOnElement(el, "first", color);
+                } else if (info.itemIndex === (info.batchCount - 1)) {
+                    // Last item of batch: open top, rounded bottom
+                    renderBatchLineOnElement(el, "last", color);
+                } else {
+                    // Middle item: open top and bottom
+                    renderBatchLineOnElement(el, "middle", color);
+                }
+            }
+            continue;
+        }
+
+        const firstPidInQueue = occurrencesInQueue[0];
+        const lastPidInQueue = occurrencesInQueue[occurrencesInQueue.length - 1];
+
+        const isFirst = (pid === firstPidInQueue);
+        const isLast = (pid === lastPidInQueue);
+
+        if (isFirst) {
+            renderBatchLineOnElement(el, "first", color);
+        } else if (isLast) {
+            renderBatchLineOnElement(el, "last", color);
+        } else {
+            renderBatchLineOnElement(el, "middle", color);
+        }
+    }
+}
+
+// Hook queuePrompt to track batch execution
+function setupQueueHooks() {
+    loadStorage();
+
+    // 1. Hook app.queuePrompt to know when a batch is initiated
+    if (app && typeof app.queuePrompt === "function") {
+        const origQueuePrompt = app.queuePrompt.bind(app);
+        app.queuePrompt = async function(number, batchCount = 1, queueNodeIds) {
+            const count = Math.max(1, parseInt(batchCount, 10) || 1);
+            activeBatchContext = getNextBatch(count);
+            saveStorage();
+            return origQueuePrompt(number, batchCount, queueNodeIds);
+        };
+    }
+
+    // 2. Hook api.queuePrompt to record every generated prompt_id
+    if (api && typeof api.queuePrompt === "function") {
+        const origApiQueuePrompt = api.queuePrompt.bind(api);
+        api.queuePrompt = async function(number, prompt, targets) {
+            const res = await origApiQueuePrompt(number, prompt, targets);
+            if (res && res.prompt_id) {
+                const pid = String(res.prompt_id);
+                if (!activeBatchContext) {
+                    activeBatchContext = getNextBatch(1);
+                }
+
+                const itemIndex = activeBatchContext.prompts.length;
+                const batchInfo = {
+                    prompt_id: pid,
+                    batchId: activeBatchContext.batchId,
+                    batchNumber: activeBatchContext.batchNumber,
+                    batchCount: activeBatchContext.batchCount,
+                    itemIndex: itemIndex,
+                    color: activeBatchContext.color,
+                    colorIndex: activeBatchContext.colorIndex,
+                    isQueueFront: number < 0,
+                    queuedAt: Date.now()
+                };
+
+                activeBatchContext.prompts.push(pid);
+                batchRegistry.set(pid, batchInfo);
+                saveStorage();
+                syncBatchToServer(pid, batchInfo);
+
+                // If this batch completed its expected prompt count, clear context
+                if (activeBatchContext.prompts.length >= activeBatchContext.batchCount) {
+                    activeBatchContext = null;
+                }
+
+                setTimeout(updateQueueBatchVisuals, 100);
+            }
+            return res;
+        };
+    }
+}
+
+app.registerExtension({
+    name: "ComfyUI.LeafFlow.BatchQueue",
+    async setup() {
+        injectBatchStyles();
+        setupQueueHooks();
+        loadBatchFromServer();
+
+        // Listen for queue changes
+        if (api && api.addEventListener) {
+            api.addEventListener("status", () => {
+                setTimeout(updateQueueBatchVisuals, 100);
+            });
+            api.addEventListener("execution_start", () => {
+                setTimeout(updateQueueBatchVisuals, 80);
+            });
+            api.addEventListener("executing", () => {
+                setTimeout(updateQueueBatchVisuals, 150);
+            });
+        }
+
+        // Set up MutationObserver on body to detect queue sidebar rendering
+        let debounceTimer = null;
+        const observer = new MutationObserver((mutations) => {
+            let shouldUpdate = false;
+            for (const m of mutations) {
+                if (m.target && m.target.nodeType === 1) {
+                    if (m.target.closest?.('[data-testid="job-assets-list"], .comfy-table') ||
+                        m.target.matches?.('[data-testid="job-assets-list"], [data-job-id]')) {
+                        shouldUpdate = true;
+                        break;
+                    }
+                }
+            }
+            if (shouldUpdate) {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(updateQueueBatchVisuals, 60);
+            }
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        // Initial check after load
+        setTimeout(updateQueueBatchVisuals, 800);
+        setTimeout(updateQueueBatchVisuals, 2000);
+    }
+});
+
+export { BATCH_COLORS, buildSvgPath };

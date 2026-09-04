@@ -5,6 +5,35 @@ All notable changes to `ComfyUI-LeafFlow` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-09-04
+
+### Added
+- **🎨 1D Git-Graph Batch Queue Visualizer (`ComfyUI.LeafFlow.BatchQueue`)**:
+  - Automatically identifies workflows queued together as batches in both ComfyUI Frontend V2 (`JobAssetsList`) and Classic V1 queue list.
+  - Purely graphical 1D colored line along the left edge of queue items without any text or number clutter.
+  - **36 Curated Cycling Colors**: Sequential assignment ensures adjacent batches have distinct, high-contrast colors.
+  - **Start / Middle / End / Single Segments**:
+    - First item in batch segment curves inward at the top (`┌`) and continues straight down.
+    - Middle items connect with a continuous straight line (`│`).
+    - Last item in batch segment comes straight from the top and curves inward at the bottom (`└`).
+    - Single-item batches curve inward at both top and bottom (`(`).
+  - **In-between Infiltration Handling**: When another prompt or batch is queued in-between items of an existing batch, the interrupted batch retains its open straight ends (no false start/end curves), while the inserted item is cleanly enclosed in its own bracket.
+  - **PersistentQueue Interoperability**: Operates client-side via `localStorage` when standalone, and synchronizes with `PersistentQueueManager` so batch relationships restore automatically upon server restart.
+  - **Settings Toggle**: Added `LeafFlow.BatchQueue.Enabled` setting in ComfyUI Settings menu.
+
+### Security & Registry Compliance
+- **Local-Only Route Enforcement**: All server control endpoints (`/leafflow/power/*`), settings updates (`/leafflow/settings`), and queue sync routes now strictly verify loopback origin (`127.0.0.1` / `::1`), rejecting remote calls with `403 Forbidden`.
+- **Directory Traversal Protection**: Image loading (`VisualImageLoader`) and thumbnail endpoints are strictly confined to ComfyUI `input`, `output`, and `temp` directories.
+- **Packaging & Installation Standards**: Removed runtime `install.py` in favor of standard `requirements.txt` (`Pillow`, `piexif`, `numpy`, `pystray`), and removed `"torch"` from `pyproject.toml` to prevent host CUDA environment corruption.
+- **Opt-In Preview Scraping**: Civitai and TMDB network scraping defaulted to disabled (`ENABLE_CIVITAI_SCRAPING=false`, `ENABLE_TMDB_SCRAPING=false`).
+
+### Changed
+- **Text Aspect Ratio Finder Whitelist / Open Mode**:
+  - When `aspect_ratios` is populated (e.g. `16:9, 9:16, 1:1`), strictly matches only those configured ratios in prompt text, falling back to default if prompt contains non-whitelisted ratios.
+  - When `aspect_ratios` is left empty (`""`), enters open mode and accepts any valid aspect ratio found in text.
+
+---
+
 ## [2.1.0] - 2026-08-24
 
 ### Added

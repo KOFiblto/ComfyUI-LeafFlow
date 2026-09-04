@@ -650,5 +650,18 @@ app.registerExtension({
                 URL.revokeObjectURL(url);
             })
         });
+        // =========================================================================
+        // GRUPPE 8: 8 - 🎨 Batch Queue Visuals
+        // =========================================================================
+
+        // 8.1 Enable Batch Queue Grouping Lines
+        app.ui.settings.addSetting({
+            id: "LeafFlow.BatchQueue.Enabled",
+            name: "Show Batch Queue 1D Lines",
+            type: "boolean",
+            defaultValue: true,
+            tooltip: "Renders 1D git-graph style colored lines indicating batch groupings and contiguous segments on queued items."
+        });
     }
 });
+

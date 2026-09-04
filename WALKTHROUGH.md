@@ -27,6 +27,18 @@ Want to check your queue status or pause/resume generations while working in oth
 3. Left-click the tray icon to quickly toggle between **Pause** and **Continue**.
 4. Right-click the tray icon to choose explicit actions: **Pause (Finish)**, **Pause (Instant)**, **Continue / Resume**, switch default pause modes, or quickly **Open ComfyUI in Browser**.
 
+### The 1D Git-Graph Batch Queue Visualizer
+LeafFlow automatically tracks which workflows are submitted together as a batch (whether through "Batch count" or sequential submission) and renders a clean, purely graphical 1D git-graph line directly to the left of your queued items in the queue list:
+- **36 High-Contrast Cycling Colors**: Every new batch gets a distinct color from an accessible 36-color sequence so adjacent batches are visually distinguishable at a glance.
+- **Purely Graphical (No Clutter)**: No numbers or text labels. 
+  - **Batch Start (`┌`)**: The top of the line curves inward towards the card and runs straight down.
+  - **Batch Middle (`│`)**: Seamless, continuous straight vertical line.
+  - **Batch End (`└`)**: Runs straight from above and curves inward towards the card at the bottom.
+  - **Single Item (`(`)**: A standalone 1-item batch curves inward at both top and bottom like a bracket.
+- **In-between Infiltration**: If you use "Queue Front" or insert another prompt between items of an active batch, the original batch maintains its open ends (no false start/end curves), while the inserted prompt is enclosed in its own bracket.
+- **Works Standalone or with PersistentQueue**: Runs locally via `localStorage`, and synchronizes with `PersistentQueue` so batch groupings survive server restarts.
+- **V1 & V2 Frontend Compatible**: Works in the modern V2 queue sidebar (`JobAssetsList`) and classic V1 queue dialog.
+
 ### The Persistent Queue (Crash Recovery)
 You don't need to interact with this—it runs silently in the background! 
 Every time you queue a prompt, LeafFlow saves the entire queue state to your hard drive in real time. If your computer crashes, power goes out, or you accidentally close the terminal, ComfyUI will automatically restore your unfinished queue upon next boot (in a paused state, so it doesn't overwhelm your GPU before you're ready).
@@ -70,12 +82,12 @@ Want to quickly reference your recent generations without digging through Window
 ## 3. Formatting Folder Paths
 Several nodes across this suite (e.g. *Load Image From Folder*, *Recent Outputs*, *Visual Image Loader*, *Visual LoRA Loader*) take a `folder` or `folder_path` string as input. Here is how they work:
 
-- **Empty String**: Leaving a field completely empty (or spaces) will often default to the sensible native directory for that node (e.g., leaving it empty on *Recent Outputs* will automatically target ComfyUI's root `output/` directory).
-- **Absolute Paths**: You can paste full absolute paths from your OS, e.g., `C:\Users\Name\Pictures\Renders` or `/home/user/images`.
-- **Relative Paths**: If you use a relative path like `input/watch`, it resolves relative to your root ComfyUI directory.
+- **Empty String**: Leaving a field completely empty (or spaces) will default to the sensible native directory for that node (e.g., leaving it empty on *Recent Outputs* will automatically target ComfyUI's root `output/` directory).
+- **Safe Directory Containment**: For security, image loading and visual thumbnail nodes are confined to ComfyUI `input`, `output`, and `temp` directories with path traversal protection.
+- **Subfolder Paths**: You can specify subdirectories like `batch_01` or `renders/portraits` within the allowed ComfyUI directories.
 - **Wildcard Filters (`*`)**: 
   - **For the LoRA Loader**: Ending a path with `*` acts as a wildcard directory filter. For example, if you input `style/*`, the loader will recursively display all LoRAs located inside any subfolder that begins with `style/`.
-  - **For File Loaders**: If you accidentally copy a path from Windows Explorer that ends in `\*` or `*`, these nodes are smart enough to automatically strip the trailing asterisk so the folder path still resolves perfectly without throwing an OS Error.
+  - **For File Loaders**: If you accidentally copy a path from Windows Explorer that ends in `\*` or `*`, these nodes are smart enough to automatically strip the trailing asterisk so the folder path still resolves cleanly without throwing an OS Error.
 
 ---
 

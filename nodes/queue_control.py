@@ -183,6 +183,7 @@ class PersistentQueueManager:
     def __init__(self):
         self.lock = threading.RLock()
         self.persistent_items = []
+        self.batch_meta = {}
         self.is_restoring = False
         self._patched = False
         self.has_claimed_once = False
@@ -199,6 +200,9 @@ class PersistentQueueManager:
                                 x for x in data
                                 if isinstance(x, dict) and "prompt_id" in x and isinstance(x.get("item"), (list, tuple))
                             ]
+                            for x in self.persistent_items:
+                                if "batch_info" in x and "prompt_id" in x:
+                                    self.batch_meta[str(x["prompt_id"])] = x["batch_info"]
                             print(f"[PersistentQueue] Loaded {len(self.persistent_items)} saved queue item(s).")
                         else:
                             self.persistent_items = []
@@ -207,6 +211,19 @@ class PersistentQueueManager:
                     self.persistent_items = []
             else:
                 self.persistent_items = []
+
+    def set_batch_info(self, prompt_id, batch_info):
+        if not prompt_id:
+            return
+        pid_str = str(prompt_id)
+        with self.lock:
+            self.batch_meta[pid_str] = batch_info
+            for item in self.persistent_items:
+                if str(item.get("prompt_id")) == pid_str:
+                    item["batch_info"] = batch_info
+                    break
+        if is_persistent_queue_enabled():
+            self.save_to_file()
 
     def save_to_file(self):
         if not is_persistent_queue_enabled():
@@ -234,6 +251,8 @@ class PersistentQueueManager:
                     "prompt_id": pid_str,
                     "item": item_list
                 }
+                if pid_str in self.batch_meta:
+                    entry["batch_info"] = self.batch_meta[pid_str]
                 with self.lock:
                     self.persistent_items = [x for x in self.persistent_items if str(x.get("prompt_id")) != pid_str]
                     self.persistent_items.append(entry)
@@ -249,6 +268,7 @@ class PersistentQueueManager:
         with self.lock:
             initial_count = len(self.persistent_items)
             self.persistent_items = [x for x in self.persistent_items if str(x.get("prompt_id")) != pid_str]
+            self.batch_meta.pop(pid_str, None)
             changed = len(self.persistent_items) != initial_count
         if changed and is_persistent_queue_enabled():
             self.save_to_file()
@@ -257,6 +277,7 @@ class PersistentQueueManager:
     def wipe_all(self):
         with self.lock:
             self.persistent_items = []
+            self.batch_meta = {}
         if is_persistent_queue_enabled():
             self.save_to_file()
         print("[PersistentQueue] Cleared all saved queue items.")
@@ -590,6 +611,27 @@ def setup_queue_control_routes(server):
         if not is_local_request(request):
             return web.json_response({"error": "Forbidden: Local access only"}, status=403)
         return web.json_response(assets_restore_manager.last_debug_report)
+
+    @routes.get("/leafflow/batch_queue/data")
+    async def get_batch_queue_data(request):
+        if not is_local_request(request):
+            return web.json_response({"error": "Forbidden: Local access only"}, status=403)
+        return web.json_response(persistent_manager.batch_meta)
+
+    @routes.post("/leafflow/batch_queue/sync")
+    async def sync_batch_queue_data(request):
+        if not is_local_request(request):
+            return web.json_response({"error": "Forbidden: Local access only"}, status=403)
+        try:
+            data = await request.json()
+            pid = data.get("prompt_id")
+            info = data.get("batch_info")
+            if pid and info:
+                persistent_manager.set_batch_info(pid, info)
+                return web.json_response({"success": True})
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=400)
+        return web.json_response({"success": False}, status=400)
 
     @routes.get("/pause_queue/status")
     async def get_status(request):

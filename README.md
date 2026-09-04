@@ -77,10 +77,10 @@ Visual thumbnail browser for LoRAs with Civitai SHA256 search & TMDB auto-scrapi
 <summary><b>🍃 📷 Visual Image Loader</b> (<code>VisualImageLoader</code> / alias <code>ImageLoaderVisualPrettyV2</code>)</summary>
 
 #### Overview
-Visual thumbnail browser for image folders with instant preview selection and EXIF positive prompt metadata extraction.
+Visual thumbnail browser for image folders with instant preview selection and EXIF positive prompt metadata extraction. Path access is strictly confined to ComfyUI `input`, `output`, and `temp` directories for safe operation.
 
 #### Inputs & Widgets
-- **`folder`** (`STRING`): Folder path to load images from.
+- **`folder`** (`STRING`): Folder path to load images from (confined to ComfyUI input/output/temp).
 - **`display_mode`** (`COMBO`, *Advanced*): `Scrollable` vs `Show All`.
 - **`sort_images_by`** (`COMBO`, *Advanced*): `Name (A-Z)`, `Name (Z-A)`, `Date Modified (Newest First)`, `Date Modified (Oldest First)`.
 
@@ -158,7 +158,7 @@ Pauses workflow execution at a specific step and displays an inline UI popup wit
 Parses input text for aspect ratios (e.g. `16:9`, `2.35:1`), syntax-checks them, and calculates pixel resolution for a target megapixel target.
 
 #### Inputs & Widgets
-- **`aspect_ratios`** (`STRING`): Allowed ratio list.
+- **`aspect_ratios`** (`STRING`): Allowed ratio list (e.g. `16:9, 9:16, 1:1`). When populated, strictly enforces matching only the configured ratios and ignores any other numbers/ratios in text. When left completely empty (`""`), acts in open mode and accepts any valid ratio found in text.
 - **`search_mode`** (`COMBO`): `First match (Front)` vs `Last match (Back)`.
 - **`target_mp`** (`FLOAT`): Target megapixels (e.g. `1.0 MP`).
 - **`default_aspect_ratio`** (`COMBO`): Fallback ratio if none found.
@@ -327,13 +327,26 @@ Configure options directly under ComfyUI Settings (⚙ gear icon):
 - **`Export Debug Profile`** (*Button: `📥 Export Debug Profile`*): Exports non-sensitive system environment details (OS, Python, PyTorch, LeafFlow settings, local cache counts) to a JSON file to share when reporting bugs or requesting assistance. Sensitive API keys and tokens are never exported.
 </details>
 
+<details open>
+<summary><b>8. 🎨 Batch Queue Visuals</b></summary>
+
+- **`Show Batch Queue 1D Lines`** (`boolean`, *Default: true*): Renders a 1D git-graph style colored line on the left side of queued items in the queue list.
+  - **36 Cycling Colors:** Every queued batch is assigned a vibrant, high-contrast color from a 36-color sequence.
+  - **Clean 1D Line:** The first item starts with a top curve (`┌`), middle items are straight lines (`│`), and the last item ends with a bottom curve (`└`). Standalone 1-item batches are rounded at both ends (`(`).
+  - **In-between Infiltration Detection:** If a different prompt is queued in-between items of a batch, the interrupted batch maintains its open line ends without false curves, while the inserted item is highlighted with its own bracket.
+  - **Works Standalone or with PersistentQueue:** Operates client-side via `localStorage` when standalone, and syncs with `PersistentQueue` to retain batch relationships after server restarts.
+</details>
+
 ---
 
 ## 🔒 Security & Privacy
 
-- All API keys and settings are stored locally in `.env` (excluded from git commits via `.gitignore`).
-- No hardcoded personal paths, keys, or credentials.
-- Atomic file writes (`.tmp` + `os.replace`) prevent JSON corruption during sudden crashes.
+- **Local-Only Enforced Endpoints:** Power actions (`/leafflow/power/*`), settings updates (`/leafflow/settings`), and queue sync routes are strictly protected with loopback verification (`127.0.0.1` / `::1`), rejecting external network requests with `403 Forbidden`.
+- **Directory Confinement:** Image loading and thumbnail routes are strictly confined to ComfyUI `input`, `output`, and `temp` directories with traversal guards.
+- **Opt-In Scraping:** Civitai and TMDB network scraping are opt-in and disabled by default.
+- **Zero Runtime Package Installs:** No `install.py` or dynamic `pip` execution; all standard dependencies (`Pillow`, `piexif`, `numpy`, `pystray`) are cleanly declared in `requirements.txt`.
+- **Local Environment:** All API keys and settings are stored locally in `.env` (excluded from git commits via `.gitignore`).
+- **Atomic File Writes:** Safe atomic writes (`.tmp` + `os.replace`) prevent JSON corruption during sudden crashes.
 
 ---
 
