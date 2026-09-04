@@ -114,15 +114,16 @@ function injectBatchStyles() {
         /* LeafFlow 1D Git-Graph Batch Line Container */
         .leafflow-batch-line-wrap {
             position: absolute;
-            left: 0;
+            left: -9px;
             top: 0;
             bottom: 0;
-            width: 10px;
+            width: 9px;
             pointer-events: none;
-            z-index: 20;
+            z-index: 50;
             display: flex;
             align-items: stretch;
             justify-content: center;
+            overflow: visible;
         }
 
         .leafflow-batch-line-svg {
@@ -132,15 +133,17 @@ function injectBatchStyles() {
             overflow: visible;
         }
 
-        /* Ensure parent card has relative positioning */
+        /* Ensure parent card has relative positioning and allows line in left margin */
         [data-testid="job-assets-list"] [data-job-id] {
             position: relative !important;
+            overflow: visible !important;
         }
 
         /* Support for classic frontend v1 queue table rows */
         .comfy-table tr[data-job-id],
         .comfy-queue-item {
             position: relative !important;
+            overflow: visible !important;
         }
     `;
     document.head.appendChild(style);
@@ -152,18 +155,18 @@ function injectBatchStyles() {
 // 'middle': straight line top to bottom
 // 'last': straight from top, rounded bottom curving right to card
 function buildSvgPath(segmentType) {
-    // Coordinate system: width=10, height=48. Curve bends toward the card (x=8)
+    // Coordinate system: width=10, height=48. Curve bends toward the card (x=9)
     switch (segmentType) {
         case "single":
-            return "M 8,6 Q 2,6 2,16 L 2,32 Q 2,42 8,42";
+            return "M 9,6 Q 2,6 2,16 L 2,32 Q 2,42 9,42";
         case "first":
-            return "M 8,6 Q 2,6 2,16 L 2,48";
+            return "M 9,6 Q 2,6 2,16 L 2,48";
         case "middle":
             return "M 2,0 L 2,48";
         case "last":
-            return "M 2,0 L 2,32 Q 2,42 8,42";
+            return "M 2,0 L 2,32 Q 2,42 9,42";
         default:
-            return "M 8,6 Q 2,6 2,16 L 2,32 Q 2,42 8,42";
+            return "M 9,6 Q 2,6 2,16 L 2,32 Q 2,42 9,42";
     }
 }
 
@@ -180,7 +183,7 @@ function renderBatchLineOnElement(element, segmentType, color) {
     const dPath = buildSvgPath(segmentType);
     wrap.innerHTML = `
         <svg class="leafflow-batch-line-svg" viewBox="0 0 10 48" preserveAspectRatio="none">
-            <path d="${dPath}" stroke="${color}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+            <path d="${dPath}" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" />
         </svg>
     `;
 }
@@ -245,30 +248,12 @@ async function updateQueueBatchVisuals() {
         return;
     }
 
-    // 1. Fetch current queue state to get exact pending order
-    let pendingPrompts = [];
-    try {
-        if (api && api.getQueue) {
-            const q = await api.getQueue();
-            const pending = q.queue_pending || q.Pending || [];
-            const running = q.queue_running || q.Running || [];
-            // We analyze running + pending in execution order
-            const allItems = [...running, ...pending];
-            pendingPrompts = allItems.map(item => String(item[1])).filter(Boolean);
-        }
-    } catch (e) {
-        // Fallback to reading prompt IDs from DOM
-    }
-
     // Find all visible queue item elements in DOM (supports v2 job cards and v1 rows)
     const elements = Array.from(document.querySelectorAll('[data-testid="job-assets-list"] [data-job-id], .comfy-table tr[data-job-id]'));
     if (!elements.length) return;
 
-    // Ordered list of visible prompt IDs
+    // Elements are strictly in visual screen order from top to bottom
     const visiblePromptIds = elements.map(el => el.getAttribute("data-job-id")).filter(Boolean);
-
-    // If pendingPrompts is empty, use visible DOM order
-    const orderedPids = pendingPrompts.length ? pendingPrompts : visiblePromptIds;
 
     // Build map of promptId -> element for visible items
     const elMap = new Map();
@@ -277,19 +262,17 @@ async function updateQueueBatchVisuals() {
         if (pid) elMap.set(pid, el);
     }
 
-    // For every prompt in the queue, calculate segment type based on its batch
-    // Key rule:
-    // First prompt of Batch A has top curve (┌)
-    // Last prompt of Batch A has bottom curve (└)
-    // 1-er Batch has top AND bottom curve (()
-    // Anything in between has straight lines (│)
+    // For every prompt on screen, calculate segment type based on visual screen order:
+    // - Top-most card on screen for Batch A curves at the top (┌)
+    // - Bottom-most card on screen for Batch A curves at the bottom (└)
+    // - 1-item Batch curves at both top and bottom (()
+    // - Anything in between connects with straight lines (│)
     for (const pid of visiblePromptIds) {
         const el = elMap.get(pid);
         if (!el) continue;
 
         const info = batchRegistry.get(pid);
         if (!info || !info.batchId) {
-            // Not part of a tracked batch, or unknown
             removeBatchLineFromElement(el);
             continue;
         }
@@ -297,45 +280,40 @@ async function updateQueueBatchVisuals() {
         const batchId = info.batchId;
         const color = info.color || BATCH_COLORS[0];
 
-        // Find all occurrences of this batch in the current queue order
-        const occurrencesInQueue = orderedPids.filter(p => {
+        // Find all visible items of this batch in top-to-bottom visual order
+        const occurrencesOnScreen = visiblePromptIds.filter(p => {
             const b = batchRegistry.get(p);
             return b && b.batchId === batchId;
         });
 
-        if (occurrencesInQueue.length <= 1) {
-            // Only 1 item of this batch in the current queue!
-            // If the batch only ever had 1 prompt: classic 1-er batch (()
+        if (occurrencesOnScreen.length <= 1) {
+            // Only 1 item of this batch currently visible on screen
             if ((info.batchCount || 1) === 1) {
                 renderBatchLineOnElement(el, "single", color);
             } else {
-                // Batch had multiple items, but only 1 remains in queue:
-                // Check if it's the first or last of the original batch
+                // Batch originally had multiple items, but only 1 is currently visible/unexecuted
                 if (info.itemIndex === 0) {
-                    // First item of batch, but subsequent items were split/delayed: open bottom
                     renderBatchLineOnElement(el, "first", color);
                 } else if (info.itemIndex === (info.batchCount - 1)) {
-                    // Last item of batch: open top, rounded bottom
                     renderBatchLineOnElement(el, "last", color);
                 } else {
-                    // Middle item: open top and bottom
                     renderBatchLineOnElement(el, "middle", color);
                 }
             }
             continue;
         }
 
-        const firstPidInQueue = occurrencesInQueue[0];
-        const lastPidInQueue = occurrencesInQueue[occurrencesInQueue.length - 1];
+        const topPidOnScreen = occurrencesOnScreen[0];
+        const bottomPidOnScreen = occurrencesOnScreen[occurrencesOnScreen.length - 1];
 
-        const isFirst = (pid === firstPidInQueue);
-        const isLast = (pid === lastPidInQueue);
-
-        if (isFirst) {
+        if (pid === topPidOnScreen) {
+            // Top card on screen -> curves at top (┌)
             renderBatchLineOnElement(el, "first", color);
-        } else if (isLast) {
+        } else if (pid === bottomPidOnScreen) {
+            // Bottom card on screen -> curves at bottom (└)
             renderBatchLineOnElement(el, "last", color);
         } else {
+            // Middle cards on screen -> straight line (│)
             renderBatchLineOnElement(el, "middle", color);
         }
     }
