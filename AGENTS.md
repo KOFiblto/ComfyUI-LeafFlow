@@ -11,17 +11,17 @@ For Git workflow, branch protection, and Pull Request guidelines, see **[`CONTRI
 
 | File | Purpose & Contents | Link |
 | :--- | :--- | :--- |
-| **`AGENTS.md`** | Authoritative developer & agent standard operating procedure, engineering checklists, architecture rules. | [AGENTS.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/AGENTS.md) |
-| **`CONTRIBUTING.md`** | Community contribution guidelines, strict branch rules, PR submission workflow. | [CONTRIBUTING.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/CONTRIBUTING.md) |
-| **`README.md`** | Main project homepage, installation guide, complete node catalog with parameter tables and UI settings guide. | [README.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/README.md) |
-| **`WALKTHROUGH.md`** | Step-by-step user tutorials, example workflows, visual load guides, and batch prompting patterns. | [WALKTHROUGH.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/WALKTHROUGH.md) |
-| **`CHANGELOG.md`** | Strict Keep-A-Changelog semantic version release history across all updates. | [CHANGELOG.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/CHANGELOG.md) |
-| **`SECURITY.md`** | Security policies, supported versions, and private vulnerability disclosure instructions. | [SECURITY.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/SECURITY.md) |
-| **`CLAUDE.md`** | AI agent instruction pointer. | [CLAUDE.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/CLAUDE.md) |
-| **`GEMINI.md`** | AI agent instruction pointer. | [GEMINI.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/GEMINI.md) |
-| **`AGENTS.md`** | AI agent instruction pointer. | [AGENTS.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/AGENTS.md) |
-| **`bug_report.md`** | GitHub issue template for reporting reproducible defects. | [bug_report.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/.github/ISSUE_TEMPLATE/bug_report.md) |
-| **`feature_request.md`** | GitHub issue template for proposing new nodes or UI features. | [feature_request.md](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/.github/ISSUE_TEMPLATE/feature_request.md) |
+| **`AGENTS.md`** | Authoritative developer & agent standard operating procedure, engineering checklists, architecture rules. | [AGENTS.md](./AGENTS.md) |
+| **`CONTRIBUTING.md`** | Community contribution guidelines, strict branch rules, PR submission workflow. | [CONTRIBUTING.md](./CONTRIBUTING.md) |
+| **`README.md`** | Main project homepage, installation guide, complete node catalog with parameter tables and UI settings guide. | [README.md](./README.md) |
+| **`WALKTHROUGH.md`** | Step-by-step user tutorials, example workflows, visual load guides, and batch prompting patterns. | [WALKTHROUGH.md](./WALKTHROUGH.md) |
+| **`CHANGELOG.md`** | Strict Keep-A-Changelog semantic version release history across all updates. | [CHANGELOG.md](./CHANGELOG.md) |
+| **`SECURITY.md`** | Security policies, supported versions, and private vulnerability disclosure instructions. | [SECURITY.md](./SECURITY.md) |
+| **`CLAUDE.md`** | AI agent instruction pointer. | [CLAUDE.md](./CLAUDE.md) |
+| **`GEMINI.md`** | AI agent instruction pointer. | [GEMINI.md](./GEMINI.md) |
+| **`AGENTS.md`** | AI agent instruction pointer. | [AGENTS.md](./AGENTS.md) |
+| **`bug_report.md`** | GitHub issue template for reporting reproducible defects. | [bug_report.md](./.github/ISSUE_TEMPLATE/bug_report.md) |
+| **`feature_request.md`** | GitHub issue template for proposing new nodes or UI features. | [feature_request.md](./.github/ISSUE_TEMPLATE/feature_request.md) |
 
 ---
 
@@ -99,7 +99,7 @@ When implementing a new custom node, you **must complete all 5 steps**:
 - [ ] Use `comfy.model_management.throw_exception_if_processing_interrupted()` inside long loops.
 
 ### Step 2.2: Export & Map in `__init__.py`
-- [ ] Import the node class into [`__init__.py`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/__init__.py).
+- [ ] Import the node class into [`__init__.py`](./__init__.py).
 - [ ] Register in `NODE_CLASS_MAPPINGS`:
   ```python
   NODE_CLASS_MAPPINGS = {
@@ -123,21 +123,21 @@ When implementing a new custom node, you **must complete all 5 steps**:
   const isTargetNode = ["YourNodeName", "YourOldAlias"].includes(node.comfyClass) || 
                        ["YourNodeName", "YourOldAlias"].includes(node.type);
   ```
-- [ ] Register node theme colors in [`web/leafflow_colors.js`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/web/leafflow_colors.js):
+- [ ] Register node theme colors in [`web/leafflow_colors.js`](./web/leafflow_colors.js):
   - Loaders: Emerald Green (`color: "#059669"`, `bgcolor: "#047857"`)
   - Automation & Utils: Amber (`color: "#d97706"`, `bgcolor: "#b45309"`)
   - Previews & Decisions: Violet (`color: "#7c3aed"`, `bgcolor: "#6d28d9"`)
 
 ### Step 2.4: Documentation (`README.md` & `WALKTHROUGH.md`)
-- [ ] Add a collapsible `<details>` section in [`README.md`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/README.md) under `## 📦 Individual Nodes Reference`:
+- [ ] Add a collapsible `<details>` section in [`README.md`](./README.md) under `## 📦 Individual Nodes Reference`:
   - Node summary tag: `<summary><b>🍃 🏷️ Display Name</b> (<code>ClassName</code>)</summary>`
   - `#### Overview`
   - `#### Inputs & Widgets`
   - `#### Outputs`
-- [ ] If the node introduces a new workflow pattern, add a section in [`WALKTHROUGH.md`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/WALKTHROUGH.md).
+- [ ] If the node introduces a new workflow pattern, add a section in [`WALKTHROUGH.md`](./WALKTHROUGH.md).
 
 ### Step 2.5: Changelog
-- [ ] Add entry under `### Added` in [`CHANGELOG.md`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/CHANGELOG.md).
+- [ ] Add entry under `### Added` in [`CHANGELOG.md`](./CHANGELOG.md).
 
 ---
 
@@ -146,7 +146,7 @@ When implementing a new custom node, you **must complete all 5 steps**:
 When introducing a configurable option or feature toggle:
 
 ### Step 3.1: `.env.example`
-- [ ] Add the variable with default value and explanation in [`.env.example`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/.env.example):
+- [ ] Add the variable with default value and explanation in [`.env.example`](./.env.example):
   ```ini
   # Brief description of what this setting controls
   YOUR_NEW_SETTING=true
@@ -176,16 +176,16 @@ When introducing a configurable option or feature toggle:
   ```
 
 ### Step 3.4: Documentation
-- [ ] Update `## ⚙️ ComfyUI Settings Menu Reference` in [`README.md`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/README.md).
-- [ ] Update `## 4. Settings & Configuration` in [`WALKTHROUGH.md`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/WALKTHROUGH.md).
+- [ ] Update `## ⚙️ ComfyUI Settings Menu Reference` in [`README.md`](./README.md).
+- [ ] Update `## 4. Settings & Configuration` in [`WALKTHROUGH.md`](./WALKTHROUGH.md).
 
 ---
 
 ## 4. Checklist: Updating Dependencies
 
 If a feature requires a new Python package:
-- [ ] Add package to `dependencies` in [`pyproject.toml`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/pyproject.toml).
-- [ ] Add package to `dependencies` list in [`install.py`](file:///d:/GenAI/ComfyUI/ComfyUI/custom_nodes/ComfyUI-LeafFlow/install.py).
+- [ ] Add package to `dependencies` in [`pyproject.toml`](./pyproject.toml).
+- [ ] Add package to `dependencies` list in [`install.py`](./install.py).
 - [ ] Check imports gracefully handle missing optional libraries (e.g. `try... except ImportError`).
 
 ---
