@@ -113,33 +113,73 @@ async function extractPromptFromImageUrl(imgSrc) {
         if (metadata["prompt"]) {
             try {
                 const promptData = JSON.parse(metadata["prompt"]);
-                const positiveNodeIds = new Set();
-                for (const [nid, ndata] of Object.entries(promptData)) {
-                    const ctype = ndata.class_type || "";
-                    const inputs = ndata.inputs || {};
-                    if (ctype.includes("Sampler") || ctype.includes("KSampler")) {
-                        if (Array.isArray(inputs.positive) && inputs.positive.length > 0) {
-                            positiveNodeIds.add(String(inputs.positive[0]));
+                if (typeof promptData === "object" && promptData !== null) {
+                    const startNodes = [];
+                    for (const [nid, ndata] of Object.entries(promptData)) {
+                        const ctype = ndata?.class_type || "";
+                        const inputs = ndata?.inputs || {};
+                        if (ctype.includes("Sampler") || ctype.includes("KSampler") || ctype.includes("Guider") || ctype.includes("CFG")) {
+                            for (const linkKey of ["positive", "conditioning", "guider"]) {
+                                const link = inputs[linkKey];
+                                if (Array.isArray(link) && link.length > 0) {
+                                    startNodes.push(String(link[0]));
+                                }
+                            }
                         }
                     }
-                }
-                const texts = [];
-                for (const nid of positiveNodeIds) {
-                    const ndata = promptData[nid] || {};
-                    const inputs = ndata.inputs || {};
-                    const t = inputs.text || inputs.prompt;
-                    if (typeof t === "string" && t.trim()) texts.push(t.trim());
-                }
-                if (texts.length) return texts.join("\n");
 
-                // Fallback: search all text / prompt nodes
-                for (const [nid, ndata] of Object.entries(promptData)) {
-                    const ctype = ndata.class_type || "";
-                    const inputs = ndata.inputs || {};
-                    if (ctype.includes("CLIPTextEncode") || ctype.includes("Text") || ctype.includes("Prompt")) {
-                        const t = inputs.text || inputs.prompt;
-                        if (typeof t === "string" && t.trim().length > 1) return t.trim();
+                    const visited = new Set();
+                    const texts = [];
+
+                    function walk(nid) {
+                        if (!nid || visited.has(nid)) return;
+                        visited.add(nid);
+                        const ndata = promptData[nid];
+                        if (!ndata || typeof ndata !== "object") return;
+                        const inputs = ndata.inputs || {};
+
+                        for (const tkey of ["text", "prompt", "text_g", "text_l", "text_positive", "positive_prompt", "value", "string"]) {
+                            const val = inputs[tkey];
+                            if (typeof val === "string" && val.trim()) {
+                                const s = val.trim();
+                                if (!texts.includes(s)) texts.push(s);
+                            } else if (Array.isArray(val) && val.length > 0) {
+                                walk(String(val[0]));
+                            }
+                        }
+
+                        for (const [inName, inVal] of Object.entries(inputs)) {
+                            if (Array.isArray(inVal) && inVal.length > 0) {
+                                const low = inName.toLowerCase();
+                                if (low.includes("negative")) continue;
+                                if (["conditioning", "positive", "cond", "text", "prompt", "guider"].some(k => low.includes(k))) {
+                                    walk(String(inVal[0]));
+                                }
+                            }
+                        }
                     }
+
+                    for (const sn of startNodes) {
+                        walk(sn);
+                    }
+
+                    if (texts.length) return texts.join("\n");
+
+                    // Fallback: search all text / prompt nodes
+                    for (const [nid, ndata] of Object.entries(promptData)) {
+                        const ctype = ndata?.class_type || "";
+                        const inputs = ndata?.inputs || {};
+                        if (ctype.includes("CLIPTextEncode") || ctype.includes("Text") || ctype.includes("Prompt")) {
+                            for (const tkey of ["text", "prompt", "text_g", "text_l"]) {
+                                const t = inputs[tkey];
+                                if (typeof t === "string" && t.trim().length > 1) {
+                                    const s = t.trim();
+                                    if (!texts.includes(s)) texts.push(s);
+                                }
+                            }
+                        }
+                    }
+                    if (texts.length) return texts.join("\n");
                 }
             } catch (_) {}
         }
@@ -312,14 +352,287 @@ app.registerExtension({
     }
 });
 
-// 2. Hook into Hover Action Bar over Image Cards in Assets Pane & Canvas Previews ONLY (Strictly Exclude Queue)
-function injectHoverCopyAction(overlayBar) {
-    if (!overlayBar || overlayBar.querySelector(".leafflow-hover-copy")) return;
+// 2. Active Interaction Tracking & Image URL Resolution
+let lastInteractedAssetCard = null;
 
+function registerAssetInteraction(target) {
+    if (!target) return;
+    const card = target.closest?.(
+        "div[data-virtual-grid-item], [data-asset-id], .asset-card, [data-testid='asset-card'], [data-node-id], .lg-node, .comfy-image-preview, .group"
+    );
+    if (card && !card.closest("[data-job-id], [data-testid*='queue'], .comfy-queue, .queue-item, .queue-list")) {
+        lastInteractedAssetCard = card;
+    }
+}
+
+document.addEventListener("pointerdown", (e) => registerAssetInteraction(e.target), true);
+document.addEventListener("click", (e) => registerAssetInteraction(e.target), true);
+document.addEventListener("contextmenu", (e) => registerAssetInteraction(e.target), true);
+
+function getActiveImageSrc() {
+    // 1. From last clicked / right-clicked / interacted asset card
+    if (lastInteractedAssetCard) {
+        const img = lastInteractedAssetCard.querySelector("img");
+        if (img && img.src) return img.src;
+    }
+    // 2. From currently selected asset card in DOM
+    const selected = document.querySelector(
+        'div[data-virtual-grid-item] [data-selected="true"], [data-asset-id][data-selected="true"], .group[data-selected="true"]'
+    );
+    if (selected) {
+        const img = selected.querySelector("img");
+        if (img && img.src) return img.src;
+    }
+    // 3. Any active hover card
+    const hovered = document.querySelector("div[data-virtual-grid-item]:hover, .asset-card:hover, .group:hover");
+    if (hovered) {
+        const img = hovered.querySelector("img");
+        if (img && img.src) return img.src;
+    }
+    return null;
+}
+
+// 3. Inject Copy Prompt Directly Next to Download Button on Asset Cards
+function injectCopyPromptNextToDownload(downloadBtn) {
+    if (!downloadBtn || !downloadBtn.parentElement) return;
+    if (downloadBtn.parentElement.querySelector(".leafflow-hover-copy")) return;
     if (!isCopyEnabled("LeafFlow.3 - 📋 Prompt Actions.01_EnableAssetsCopyPromptButton")) return;
 
     // STRICT EXCLUSION: Never inject inside queue job rows or queue panels
+    if (downloadBtn.closest("[data-job-id], [data-testid*='queue'], .comfy-queue, .queue-item, .queue-list")) {
+        return;
+    }
+
+    const card = downloadBtn.closest(
+        "div[data-virtual-grid-item], [data-asset-id], .asset-card, [data-testid='asset-card'], [data-node-id], .lg-node, .comfy-image-preview, .group"
+    );
+    if (!card) return;
+    if (card.closest("[data-job-id], [data-testid*='queue'], .comfy-queue, .queue-item, .queue-list")) return;
+
+    const img = card.querySelector("img");
+    if (!img || !img.src) return;
+    if (img.classList.contains("size-8") || img.closest(".size-8, .size-10, .h-12")) return;
+
+    const hasModernIcons = !!(
+        downloadBtn.querySelector("[class*='icon-']") ||
+        document.querySelector("[class*='icon-[lucide']")
+    );
+
+    // Build copy prompt button inheriting matching visual classes from downloadBtn
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.title = "Copy Prompt";
+    copyBtn.setAttribute("aria-label", "Copy Prompt");
+
+    let baseClasses = downloadBtn.className
+        .replace(/\brounded-[a-z0-9-]+\b/g, "")
+        .replace(/\brounded-lg\b/g, "")
+        .replace(/\bborder-r\b/g, "")
+        .trim();
+
+    if (!baseClasses || baseClasses.length < 5) {
+        baseClasses = "inline-flex items-center justify-center font-medium font-inter transition-colors focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 border border-transparent shadow-xs cursor-pointer bg-modal-card-badge-background text-modal-card-badge-foreground hover:bg-modal-card-badge-background-hover size-8 p-0";
+    }
+
+    const hasNext = !!downloadBtn.nextElementSibling;
+    const borderClass = hasNext ? "border-r border-modal-card-badge-border" : "";
+    const roundClass = hasNext ? "rounded-none" : "rounded-r-lg";
+
+    copyBtn.className = `leafflow-hover-btn leafflow-hover-copy ${baseClasses} ${roundClass} ${borderClass} shrink-0`;
+
+    if (hasModernIcons) {
+        copyBtn.innerHTML = `<i class="icon-[lucide--copy] size-4 pointer-events-none"></i>`;
+    } else {
+        copyBtn.innerHTML = `<svg class="size-4 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
+    }
+
+    copyBtn.onclick = async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const activeImg = card.querySelector("img") || img;
+        const success = await copyImagePrompt(activeImg.src);
+        if (hasModernIcons) {
+            copyBtn.innerHTML = success
+                ? `<i class="icon-[lucide--check] size-4 text-emerald-600 pointer-events-none"></i>`
+                : `<i class="icon-[lucide--x] size-4 text-rose-600 pointer-events-none"></i>`;
+            setTimeout(() => {
+                copyBtn.innerHTML = `<i class="icon-[lucide--copy] size-4 pointer-events-none"></i>`;
+            }, 2000);
+        } else {
+            copyBtn.innerHTML = success
+                ? `<svg class="size-4 text-emerald-600 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`
+                : `<svg class="size-4 text-rose-600 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+            setTimeout(() => {
+                copyBtn.innerHTML = `<svg class="size-4 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
+            }, 2000);
+        }
+    };
+
+    // Insert directly next to the Download button
+    downloadBtn.parentElement.insertBefore(copyBtn, downloadBtn.nextSibling);
+
+    // If bookmark is enabled, insert Bookmark button right next to Copy Prompt
+    if (isCopyEnabled("LeafFlow.3 - 📋 Prompt Actions.03_EnableSaveToPromptSaver") && !downloadBtn.parentElement.querySelector(".leafflow-hover-bookmark")) {
+        const bookmarkBtn = document.createElement("button");
+        bookmarkBtn.type = "button";
+        bookmarkBtn.title = "Save to Prompt Bookmarks";
+        bookmarkBtn.setAttribute("aria-label", "Save to Prompt Bookmarks");
+
+        const hasNextAfterBookmark = !!copyBtn.nextElementSibling;
+        const bBorderClass = hasNextAfterBookmark ? "border-r border-modal-card-badge-border" : "";
+        const bRoundClass = hasNextAfterBookmark ? "rounded-none" : "rounded-r-lg";
+
+        copyBtn.classList.remove("rounded-r-lg");
+        copyBtn.classList.add("rounded-none", "border-r", "border-modal-card-badge-border");
+
+        bookmarkBtn.className = `leafflow-hover-btn leafflow-hover-bookmark ${baseClasses} ${bRoundClass} ${bBorderClass} shrink-0`;
+
+        if (hasModernIcons) {
+            bookmarkBtn.innerHTML = `<i class="icon-[lucide--bookmark] size-4 pointer-events-none"></i>`;
+        } else {
+            bookmarkBtn.innerHTML = `<svg class="size-4 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>`;
+        }
+
+        bookmarkBtn.onclick = async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const activeImg = card.querySelector("img") || img;
+            const success = await saveImageToPromptBookmarks(activeImg.src);
+            if (hasModernIcons) {
+                bookmarkBtn.innerHTML = success
+                    ? `<i class="icon-[lucide--check] size-4 text-emerald-600 pointer-events-none"></i>`
+                    : `<i class="icon-[lucide--x] size-4 text-rose-600 pointer-events-none"></i>`;
+                setTimeout(() => {
+                    bookmarkBtn.innerHTML = `<i class="icon-[lucide--bookmark] size-4 pointer-events-none"></i>`;
+                }, 2000);
+            } else {
+                bookmarkBtn.innerHTML = success
+                    ? `<svg class="size-4 text-emerald-600 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`
+                    : `<svg class="size-4 text-rose-600 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+                setTimeout(() => {
+                    bookmarkBtn.innerHTML = `<svg class="size-4 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>`;
+                }, 2000);
+            }
+        };
+
+        downloadBtn.parentElement.insertBefore(bookmarkBtn, copyBtn.nextSibling);
+    }
+}
+
+// 4. Inject Copy Prompt into PrimeVue Context Menu Next to Download Item
+function injectContextMenuCopy(contextMenu) {
+    if (!contextMenu) return;
+    if (contextMenu.querySelector(".leafflow-contextmenu-copy")) return;
+    if (!isCopyEnabled("LeafFlow.3 - 📋 Prompt Actions.02_EnableContextMenuCopyPrompt")) return;
+
+    const downloadLi = contextMenu.querySelector(
+        'li[aria-label="Download"], li[aria-label*="ownload" i]'
+    );
+    if (!downloadLi || !downloadLi.parentElement) return;
+
+    const refBtn = downloadLi.querySelector("button");
+    const btnClass = refBtn
+        ? refBtn.className
+        : "relative inline-flex items-center gap-2 cursor-pointer touch-manipulation whitespace-nowrap appearance-none border-none font-medium font-inter transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 text-secondary-foreground bg-secondary-background hover:bg-secondary-background-hover h-8 rounded-lg p-2 text-xs w-full justify-start p-contextmenu-item-link";
+
+    const hasModernIcons = !!(
+        downloadLi.querySelector("[class*='icon-']") ||
+        document.querySelector("[class*='icon-[lucide']")
+    );
+
+    const copyLi = document.createElement("li");
+    copyLi.className = "p-contextmenu-item leafflow-contextmenu-copy";
+    copyLi.setAttribute("role", "menuitem");
+    copyLi.setAttribute("aria-label", "Copy prompt");
+    copyLi.setAttribute("data-pc-section", "item");
+    copyLi.setAttribute("data-p-active", "false");
+    copyLi.setAttribute("data-p-focused", "false");
+
+    const copyIconHtml = hasModernIcons
+        ? `<i class="icon-[lucide--copy] size-4"></i>`
+        : `<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
+
+    copyLi.innerHTML = `
+<div class="p-contextmenu-item-content" data-pc-section="itemcontent">
+  <button class="${btnClass}" tabindex="-1" data-pc-section="itemlink">
+    ${copyIconHtml}
+    <span>Copy prompt</span>
+  </button>
+</div>
+`;
+
+    copyLi.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const span = copyLi.querySelector("span");
+        const src = getActiveImageSrc();
+        if (src) {
+            const success = await copyImagePrompt(src);
+            if (span) span.textContent = success ? "Copied! ✅" : "Failed to copy ❌";
+        } else {
+            if (span) span.textContent = "No image found ❌";
+        }
+        setTimeout(() => {
+            contextMenu.style.display = "none";
+            document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        }, 500);
+    });
+
+    downloadLi.parentElement.insertBefore(copyLi, downloadLi.nextSibling);
+
+    if (isCopyEnabled("LeafFlow.3 - 📋 Prompt Actions.03_EnableSaveToPromptSaver") && !contextMenu.querySelector(".leafflow-contextmenu-bookmark")) {
+        const bookmarkLi = document.createElement("li");
+        bookmarkLi.className = "p-contextmenu-item leafflow-contextmenu-bookmark";
+        bookmarkLi.setAttribute("role", "menuitem");
+        bookmarkLi.setAttribute("aria-label", "Save to prompt bookmarks");
+        bookmarkLi.setAttribute("data-pc-section", "item");
+        bookmarkLi.setAttribute("data-p-active", "false");
+        bookmarkLi.setAttribute("data-p-focused", "false");
+
+        const bIconHtml = hasModernIcons
+            ? `<i class="icon-[lucide--bookmark] size-4"></i>`
+            : `<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>`;
+
+        bookmarkLi.innerHTML = `
+<div class="p-contextmenu-item-content" data-pc-section="itemcontent">
+  <button class="${btnClass}" tabindex="-1" data-pc-section="itemlink">
+    ${bIconHtml}
+    <span>Save to prompt bookmarks</span>
+  </button>
+</div>
+`;
+
+        bookmarkLi.addEventListener("click", async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const span = bookmarkLi.querySelector("span");
+            const src = getActiveImageSrc();
+            if (src) {
+                const success = await saveImageToPromptBookmarks(src);
+                if (span) span.textContent = success ? "Bookmarked! ✅" : "Failed ❌";
+            }
+            setTimeout(() => {
+                contextMenu.style.display = "none";
+                document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+            }, 500);
+        });
+
+        downloadLi.parentElement.insertBefore(bookmarkLi, copyLi.nextSibling);
+    }
+}
+
+// 5. Fallback Hook for Older Frontend Action Bars
+function injectHoverCopyAction(overlayBar) {
+    if (!overlayBar || overlayBar.querySelector(".leafflow-hover-copy")) return;
+    if (!isCopyEnabled("LeafFlow.3 - 📋 Prompt Actions.01_EnableAssetsCopyPromptButton")) return;
+
     if (overlayBar.closest("[data-job-id], [data-testid*='queue'], .comfy-queue, .queue-item, .queue-list")) {
+        return;
+    }
+
+    const downloadBtn = overlayBar.querySelector('button[aria-label="Download"], button[aria-label*="ownload" i]');
+    if (downloadBtn) {
+        injectCopyPromptNextToDownload(downloadBtn);
         return;
     }
 
@@ -329,19 +642,14 @@ function injectHoverCopyAction(overlayBar) {
         overlayBar.querySelector('button[aria-label*="zoom" i]')?.parentElement ||
         overlayBar;
 
-    // Only inject if this is actually an asset card or image preview card (not tiny queue thumbnail)
     const parentCard = overlayBar.closest(
         "div[data-virtual-grid-item], .asset-card, [data-testid='asset-card'], [data-node-id], .lg-node, .comfy-image-preview"
     );
     if (!parentCard) return;
-
-    // Exclude queue items
     if (parentCard.closest("[data-job-id], [data-testid*='queue'], .comfy-queue")) return;
 
     const img = parentCard.querySelector("img");
     if (!img || !img.src) return;
-
-    // Exclude small icon images
     if (img.classList.contains("size-8") || img.closest(".size-8, .size-10, .h-12")) return;
 
     const copyBtn = document.createElement("button");
@@ -375,52 +683,74 @@ function injectHoverCopyAction(overlayBar) {
     } else {
         iconGroup.appendChild(copyBtn);
     }
-
-    if (isCopyEnabled("LeafFlow.3 - 📋 Prompt Actions.03_EnableSaveToPromptSaver") && !overlayBar.querySelector(".leafflow-hover-bookmark")) {
-        const bookmarkBtn = document.createElement("button");
-        bookmarkBtn.className =
-            "leafflow-hover-btn leafflow-hover-bookmark relative inline-flex items-center justify-center cursor-pointer touch-manipulation appearance-none border-none text-xs font-medium font-inter transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-white text-gray-700 hover:bg-gray-100 size-8 p-0 rounded-none pointer-events-auto border-r border-gray-200 shrink-0";
-        bookmarkBtn.title = "Save to Prompt Bookmarks";
-        bookmarkBtn.setAttribute("aria-label", "Save to Prompt Bookmarks");
-        bookmarkBtn.setAttribute("data-pd-tooltip", "true");
-        bookmarkBtn.innerHTML = "<span class='text-sm pointer-events-none'>🔖</span>";
-
-        bookmarkBtn.onclick = async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            await saveImageToPromptBookmarks(img.src);
-            bookmarkBtn.innerHTML = "<span class='text-sm pointer-events-none'>✅</span>";
-            setTimeout(() => (bookmarkBtn.innerHTML = "<span class='text-sm pointer-events-none'>🔖</span>"), 2000);
-        };
-
-        if (moreBtn && moreBtn.parentElement === iconGroup) {
-            iconGroup.insertBefore(bookmarkBtn, moreBtn);
-        } else {
-            iconGroup.appendChild(bookmarkBtn);
-        }
-    }
 }
 
-// Observe DOM mutations to attach the copy button whenever hover overlay bar appears
+// 6. Active Scanner for Dynamic Virtual Grid & Context Menus
+function scanAndInject() {
+    const downloadBtns = document.querySelectorAll(
+        'button[aria-label="Download"], button[aria-label*="ownload" i]'
+    );
+    downloadBtns.forEach(injectCopyPromptNextToDownload);
+
+    const menus = document.querySelectorAll('.p-contextmenu, [data-pc-name="contextmenu"]');
+    menus.forEach(injectContextMenuCopy);
+
+    const olderOverlays = document.querySelectorAll(
+        '[data-testid="asset-card-actions"], .asset-card-overlay, .asset-item-overlay'
+    );
+    olderOverlays.forEach(injectHoverCopyAction);
+}
+
+// Delegated hover listener for instant injection during virtual scrolling
+document.addEventListener("pointerover", (e) => {
+    const btn = e.target.closest?.('button[aria-label="Download"], button[aria-label*="ownload" i]');
+    if (btn) {
+        injectCopyPromptNextToDownload(btn);
+        return;
+    }
+    const card = e.target.closest?.('div[data-virtual-grid-item], [data-asset-id], .asset-card, .group');
+    if (card) {
+        registerAssetInteraction(card);
+        const cardDl = card.querySelector('button[aria-label="Download"], button[aria-label*="ownload" i]');
+        if (cardDl) injectCopyPromptNextToDownload(cardDl);
+    }
+    const menu = e.target.closest?.('.p-contextmenu, [data-pc-name="contextmenu"]');
+    if (menu) {
+        injectContextMenuCopy(menu);
+    }
+}, { passive: true });
+
+// MutationObserver for DOM changes
 const observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
         if (mutation.type === "childList") {
-            mutation.addedNodes.forEach((node) => {
+            for (const node of mutation.addedNodes) {
                 if (node.nodeType === Node.ELEMENT_NODE) {
-                    // Strictly skip queue subtree additions
-                    if (node.closest?.("[data-job-id], [data-testid*='queue'], .comfy-queue")) return;
+                    if (node.closest?.("[data-job-id], [data-testid*='queue'], .comfy-queue")) continue;
 
-                    const selectors =
-                        '[data-testid="asset-card-actions"], .asset-card-overlay, .asset-item-overlay, div[data-virtual-grid-item] .absolute.top-2';
-                    if (node.matches?.(selectors)) {
+                    if (node.matches?.('button[aria-label="Download"], button[aria-label*="ownload" i]')) {
+                        injectCopyPromptNextToDownload(node);
+                    } else if (node.matches?.('.p-contextmenu, [data-pc-name="contextmenu"]')) {
+                        injectContextMenuCopy(node);
+                    } else if (node.matches?.('[data-testid="asset-card-actions"], .asset-card-overlay, .asset-item-overlay')) {
                         injectHoverCopyAction(node);
                     } else if (node.querySelectorAll) {
-                        const overlays = node.querySelectorAll(selectors);
-                        overlays.forEach((overlay) => injectHoverCopyAction(overlay));
+                        const dlBtns = node.querySelectorAll('button[aria-label="Download"], button[aria-label*="ownload" i]');
+                        dlBtns.forEach(injectCopyPromptNextToDownload);
+
+                        const ctxMenus = node.querySelectorAll('.p-contextmenu, [data-pc-name="contextmenu"]');
+                        ctxMenus.forEach(injectContextMenuCopy);
+
+                        const overlays = node.querySelectorAll('[data-testid="asset-card-actions"], .asset-card-overlay, .asset-item-overlay');
+                        overlays.forEach(injectHoverCopyAction);
                     }
                 }
-            });
+            }
         }
     }
 });
 observer.observe(document.body, { childList: true, subtree: true });
+
+// Periodic lightweight sweep to catch virtual-scroll recycle events
+setInterval(scanAndInject, 1000);
+

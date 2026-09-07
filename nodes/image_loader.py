@@ -45,6 +45,71 @@ def parse_positive_from_parameters(parameters):
         pos_lines.append(line)
     return "\n".join(pos_lines).strip()
 
+def trace_positive_prompt_from_graph(prompt_data):
+    if not isinstance(prompt_data, dict):
+        return ""
+
+    start_nodes = []
+    for nid, ndata in prompt_data.items():
+        if not isinstance(ndata, dict):
+            continue
+        ctype = ndata.get("class_type", "")
+        inputs = ndata.get("inputs", {})
+        if any(kw in ctype for kw in ["Sampler", "KSampler", "Guider", "CFG"]):
+            for link_key in ["positive", "conditioning", "guider"]:
+                link = inputs.get(link_key)
+                if isinstance(link, list) and len(link) > 0:
+                    start_nodes.append(str(link[0]))
+
+    visited = set()
+    found_texts = []
+
+    def walk(nid):
+        if not nid or nid in visited:
+            return
+        visited.add(nid)
+        ndata = prompt_data.get(nid)
+        if not isinstance(ndata, dict):
+            return
+        inputs = ndata.get("inputs", {})
+
+        for tkey in ["text", "prompt", "text_g", "text_l", "text_positive", "positive_prompt", "value", "string"]:
+            val = inputs.get(tkey)
+            if isinstance(val, str) and val.strip():
+                s = val.strip()
+                if s not in found_texts:
+                    found_texts.append(s)
+            elif isinstance(val, list) and len(val) > 0:
+                walk(str(val[0]))
+
+        for in_name, in_val in inputs.items():
+            if isinstance(in_val, list) and len(in_val) > 0:
+                low = in_name.lower()
+                if "negative" in low:
+                    continue
+                if any(k in low for k in ["conditioning", "positive", "cond", "text", "prompt", "guider"]):
+                    walk(str(in_val[0]))
+
+    for sn in start_nodes:
+        walk(sn)
+
+    if found_texts:
+        return "\n".join(found_texts)
+
+    for nid, ndata in prompt_data.items():
+        if not isinstance(ndata, dict):
+            continue
+        ctype = ndata.get("class_type", "")
+        inputs = ndata.get("inputs", {})
+        if any(k in ctype for k in ["CLIPTextEncode", "Text", "Prompt"]):
+            for tkey in ["text", "prompt", "text_g", "text_l"]:
+                val = inputs.get(tkey)
+                if isinstance(val, str) and val.strip() and len(val.strip()) > 1:
+                    s = val.strip()
+                    if s not in found_texts:
+                        found_texts.append(s)
+    return "\n".join(found_texts) if found_texts else ""
+
 def extract_metadata_from_image(filepath):
     positive_prompt = ""
     width, height = 0, 0
@@ -58,38 +123,7 @@ def extract_metadata_from_image(filepath):
             if prompt_str:
                 try:
                     prompt_data = json.loads(prompt_str) if isinstance(prompt_str, str) else prompt_str
-                    if isinstance(prompt_data, dict):
-                        # Trace KSampler / SamplerCustom nodes to find positive conditioning link
-                        positive_node_ids = set()
-                        for nid, ndata in prompt_data.items():
-                            ctype = ndata.get("class_type", "")
-                            inputs = ndata.get("inputs", {})
-                            if "Sampler" in ctype or "KSampler" in ctype:
-                                pos_link = inputs.get("positive")
-                                if isinstance(pos_link, list) and len(pos_link) > 0:
-                                    positive_node_ids.add(str(pos_link[0]))
-
-                        texts = []
-                        for nid in positive_node_ids:
-                            ndata = prompt_data.get(nid, {})
-                            inputs = ndata.get("inputs", {})
-                            t = inputs.get("text") or inputs.get("prompt")
-                            if isinstance(t, str) and t.strip():
-                                texts.append(t.strip())
-
-                        if texts:
-                            positive_prompt = "\n".join(texts)
-                        else:
-                            # Fallback: scan all text / prompt nodes
-                            for nid, ndata in prompt_data.items():
-                                ctype = ndata.get("class_type", "")
-                                inputs = ndata.get("inputs", {})
-                                if "CLIPTextEncode" in ctype or "Text" in ctype or "Prompt" in ctype:
-                                    t = inputs.get("text") or inputs.get("prompt")
-                                    if isinstance(t, str) and t.strip() and len(t.strip()) > 1:
-                                        texts.append(t.strip())
-                            if texts:
-                                positive_prompt = texts[0]
+                    positive_prompt = trace_positive_prompt_from_graph(prompt_data)
                 except Exception:
                     pass
 
