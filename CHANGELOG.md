@@ -5,6 +5,23 @@ All notable changes to `ComfyUI-LeafFlow` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-09-08
+
+### Added
+- **🔍 Toggleable "Inspect Asset" Button (`04_EnableInspectAssetButton`)**:
+  - Restores the direct "Inspect asset" (zoom in) button directly onto image cards in the Assets pane hover action bar, placed seamlessly alongside Download, Copy Prompt, and Bookmarks (restoring access since newer ComfyUI versions tucked it away behind the 3-dots submenu). Default is `false` (opt-in).
+- **🔖 Robust Inline SVG Icons for "Save to Prompt Bookmarks"**:
+  - Replaced runtime Tailwind icon class references with crisp inline SVG ribbons, fixing an issue in modern `comfyui_frontend_package` where the bookmark icon rendered with 0 dimensions (empty space).
+- **🎨 Dynamic Action Bar Button Group Pill Styling**:
+  - Implemented `updateButtonGroupBorders()` to automatically calculate and apply seamless rounded pill styling (`rounded-l-lg`, `rounded-r-lg`, `rounded-none`, `border-r`) for any combination of active action buttons on modern ComfyUI asset cards.
+
+### Fixed
+- **📐 Independent Per-Node `tile_size` in Visual Loaders**:
+  - Decoupled `tile_size` zoom levels from global browser `localStorage` in `VisualLoraLoader` (V1 & V2) and `VisualImageLoader`.
+  - Tile zoom values are now persisted directly in `node.properties["tile_size"]` within the workflow JSON, allowing multiple loader nodes on the canvas to maintain independent, custom tile sizes across browser reloads.
+- **🛡️ Queue Container Conflict Prevention**:
+  - Hardened image card button injection guards to avoid injecting into queue item elements or small icon previews in modern virtual grids.
+
 ## [2.2.0] - 2026-09-04
 
 ### Added

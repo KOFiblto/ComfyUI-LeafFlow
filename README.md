@@ -56,7 +56,7 @@ Loads a LoRA using formatted pretty names (e.g. `Ana De Armas V1` instead of `kr
 <summary><b>🍃 🖼️ Visual LoRA Loader</b> (<code>VisualLoraLoader</code> / alias <code>FolderLoraLoaderVisualPrettyV2</code>)</summary>
 
 #### Overview
-Visual thumbnail browser for LoRAs with Civitai SHA256 search & TMDB auto-scraping, popularity rank badges (🔥), and multi-selection support.
+Visual thumbnail browser for LoRAs with Civitai SHA256 search & TMDB auto-scraping, popularity rank badges (🔥), multi-selection support, and independent per-node thumbnail zoom sizing.
 
 #### Inputs & Widgets
 - **`model`** (`MODEL`): Input model.
@@ -64,6 +64,7 @@ Visual thumbnail browser for LoRAs with Civitai SHA256 search & TMDB auto-scrapi
 - **`folder`** (`STRING`): Subfolder filter.
 - **`strength_model`** (`FLOAT`): Model strength.
 - **`strength_clip`** (`FLOAT`): CLIP strength.
+- **`tile_size`** (`SLIDER`, UI): Adjust thumbnail card size (persisted per node in workflow JSON).
 - **`display_mode`** (`COMBO`, *Advanced*): `Scrollable` vs `Show All`.
 - **`sort_loras_by`** (`COMBO`, *Advanced*): Sort by `Name (A-Z)`, `Name (Z-A)`, `Date Modified (Newest First)`, `Date Modified (Oldest First)`, or `Usage (Most Used First)`.
 
@@ -77,10 +78,11 @@ Visual thumbnail browser for LoRAs with Civitai SHA256 search & TMDB auto-scrapi
 <summary><b>🍃 📷 Visual Image Loader</b> (<code>VisualImageLoader</code> / alias <code>ImageLoaderVisualPrettyV2</code>)</summary>
 
 #### Overview
-Visual thumbnail browser for image folders with instant preview selection and EXIF positive prompt metadata extraction. Path access is strictly confined to ComfyUI `input`, `output`, and `temp` directories for safe operation.
+Visual thumbnail browser for image folders with instant preview selection, independent per-node thumbnail zoom sizing, and EXIF positive prompt metadata extraction. Path access is strictly confined to ComfyUI `input`, `output`, and `temp` directories for safe operation.
 
 #### Inputs & Widgets
 - **`folder`** (`STRING`): Folder path to load images from (confined to ComfyUI input/output/temp).
+- **`tile_size`** (`SLIDER`, UI): Adjust thumbnail card size (persisted per node in workflow JSON).
 - **`display_mode`** (`COMBO`, *Advanced*): `Scrollable` vs `Show All`.
 - **`sort_images_by`** (`COMBO`, *Advanced*): `Name (A-Z)`, `Name (Z-A)`, `Date Modified (Newest First)`, `Date Modified (Oldest First)`.
 
@@ -294,6 +296,8 @@ Configure options directly under ComfyUI Settings (⚙ gear icon):
 
 - **`Show "Copy Prompt" Button on Images`** (`boolean`, *Default: true*): Shows the 📋 "Copy Prompt" overlay action button when hovering over generated images in the Assets / History pane and preview nodes.
 - **`Show Right-Click "Copy Prompt" Menu Action`** (`boolean`, *Default: true*): Adds "📋 Copy Prompt" to node right-click context menus.
+- **`Show "Save to Prompt Saver" Action`** (`boolean`, *Default: true*): Adds 🔖 "Save to Prompt Bookmarks" to image hover overlay bars and node context menus.
+- **`Show "Inspect Asset" (Zoom) Button on Images`** (`boolean`, *Default: false*): Restores the 🔍 "Inspect asset" (zoom in) button directly onto image cards in the Assets pane next to Download, Copy Prompt, and Bookmarks (restoring one-click access moved behind the 3-dots menu in newer ComfyUI versions).
 </details>
 
 <details open>

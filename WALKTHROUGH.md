@@ -50,6 +50,13 @@ In standard ComfyUI, restarting your server wipes the in-memory execution histor
 - Features like **Copy Prompt** and **Copy Workflow** immediately work with restored images as if they were generated in your current session!
 - You can adjust the restored image count or toggle this feature in **ComfyUI Settings (⚙️)** under **`🍃 LeafFlow: Restore Assets on Launch`** and **`🍃 LeafFlow: Restored Assets Count`**.
 
+### Image Overlay Actions & Prompt Bookmarks
+Hovering over any image in the ComfyUI Assets / History pane or preview nodes provides powerful quick actions directly on the card:
+- **📋 Copy Prompt**: Instantly copies the positive prompt text/graph to your clipboard.
+- **🔖 Save to Prompt Bookmarks**: One-click saves prompt text straight into your Prompt Bookmarks list with robust SVG bookmark iconography.
+- **🔍 Inspect Asset (Zoom)**: When enabled in settings (`04_EnableInspectAssetButton`), restores the direct full-size zoom inspect button right on the card hover pill bar alongside Download and Copy Prompt (bringing back quick one-click access that newer ComfyUI frontend versions moved into the 3-dots submenu).
+- **Dynamic Button Pill Styling**: The action button bar dynamically calculates borders and corner rounding (`rounded-l-lg`, `rounded-r-lg`) depending on which actions are enabled in settings, maintaining a seamless native appearance.
+
 ---
 
 ## 2. Advanced Nodes
@@ -73,6 +80,7 @@ Tired of guessing what a LoRA does based on its filename?
 1. Use the **`🍃 🖼️ Visual LoRA Loader`**. It natively extracts preview images if you place an identically named `.png`/`.jpg` next to your `.safetensors` file.
 2. If you enable the **Civitai Auto-Scraper** in your ComfyUI Settings, the node will calculate the SHA256 hash of your LoRA and automatically download the official preview thumbnail directly from Civitai! 
 3. **Pretty Name String Output**: The node outputs the parsed, human-readable name of the loaded LoRA (e.g. "Addison Rae V1") by default, allowing you to route it into a text prompt or watermark node. You can easily switch this via the `output_name` toggle on the node to output the raw filename without extension instead. 
+4. **Independent Per-Node Zoom**: Use the `tile_size` slider to adjust preview card sizes to your preference. Zoom levels are saved per node directly inside your workflow JSON, so different visual loaders maintain independent tile sizes across browser reloads. 
 
 ### 🍃 ⏱️ Recent Outputs
 Want to quickly reference your recent generations without digging through Windows Explorer? The **`🍃 ⏱️ Recent Outputs`** node cycles chronologically through your `output/` directory, pulling your freshest creations right back into the workflow canvas.
