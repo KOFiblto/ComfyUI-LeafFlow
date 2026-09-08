@@ -35,10 +35,20 @@ async function copyToClipboard(text) {
 
 function isCopyEnabled(settingKey) {
     try {
-        const val = app.extensionManager?.setting?.get?.(settingKey) ?? app.ui?.settings?.getSettingValue?.(settingKey);
-        if (val !== undefined && val !== null) return Boolean(val);
-    } catch (_) {}
-    return true;
+        let val;
+        if (app.extensionManager?.setting?.get) {
+            val = app.extensionManager.setting.get(settingKey);
+        }
+        if ((val === undefined || val === null || val === "") && app.ui?.settings?.getSettingValue) {
+            val = app.ui.settings.getSettingValue(settingKey);
+        }
+        if (val === undefined || val === null || val === "") {
+            return true;
+        }
+        return val !== false && val !== "false" && val !== 0 && val !== "0";
+    } catch (_) {
+        return true;
+    }
 }
 
 /**
@@ -355,12 +365,21 @@ app.registerExtension({
 // 2. Active Interaction Tracking & Image URL Resolution
 let lastInteractedAssetCard = null;
 
+function isQueueItemElement(el) {
+    if (!el || typeof el.closest !== "function") return false;
+    // An asset card is explicitly an asset card in the gallery/history, never a queue job row
+    if (el.closest("div[data-virtual-grid-item], [data-asset-id], .asset-card, [data-testid='asset-card']")) {
+        return !!el.closest("[data-job-id]");
+    }
+    return !!el.closest("[data-job-id], .comfy-queue-item, .queue-item, .queue-list-item, .queue-entry");
+}
+
 function registerAssetInteraction(target) {
     if (!target) return;
     const card = target.closest?.(
         "div[data-virtual-grid-item], [data-asset-id], .asset-card, [data-testid='asset-card'], [data-node-id], .lg-node, .comfy-image-preview, .group"
     );
-    if (card && !card.closest("[data-job-id], [data-testid*='queue'], .comfy-queue, .queue-item, .queue-list")) {
+    if (card && !isQueueItemElement(card)) {
         lastInteractedAssetCard = card;
     }
 }
@@ -398,16 +417,13 @@ function injectCopyPromptNextToDownload(downloadBtn) {
     if (downloadBtn.parentElement.querySelector(".leafflow-hover-copy")) return;
     if (!isCopyEnabled("LeafFlow.3 - 📋 Prompt Actions.01_EnableAssetsCopyPromptButton")) return;
 
-    // STRICT EXCLUSION: Never inject inside queue job rows or queue panels
-    if (downloadBtn.closest("[data-job-id], [data-testid*='queue'], .comfy-queue, .queue-item, .queue-list")) {
-        return;
-    }
+    if (isQueueItemElement(downloadBtn)) return;
 
     const card = downloadBtn.closest(
         "div[data-virtual-grid-item], [data-asset-id], .asset-card, [data-testid='asset-card'], [data-node-id], .lg-node, .comfy-image-preview, .group"
     );
     if (!card) return;
-    if (card.closest("[data-job-id], [data-testid*='queue'], .comfy-queue, .queue-item, .queue-list")) return;
+    if (isQueueItemElement(card)) return;
 
     const img = card.querySelector("img");
     if (!img || !img.src) return;
@@ -426,8 +442,9 @@ function injectCopyPromptNextToDownload(downloadBtn) {
 
     let baseClasses = downloadBtn.className
         .replace(/\brounded-[a-z0-9-]+\b/g, "")
-        .replace(/\brounded-lg\b/g, "")
+        .replace(/\brounded\b/g, "")
         .replace(/\bborder-r\b/g, "")
+        .replace(/\bborder-modal-card-badge-border\b/g, "")
         .trim();
 
     if (!baseClasses || baseClasses.length < 5) {
@@ -436,7 +453,7 @@ function injectCopyPromptNextToDownload(downloadBtn) {
 
     const hasNext = !!downloadBtn.nextElementSibling;
     const borderClass = hasNext ? "border-r border-modal-card-badge-border" : "";
-    const roundClass = hasNext ? "rounded-none" : "rounded-r-lg";
+    const roundClass = hasNext ? "rounded-none" : "rounded-r-lg rounded-l-none";
 
     copyBtn.className = `leafflow-hover-btn leafflow-hover-copy ${baseClasses} ${roundClass} ${borderClass} shrink-0`;
 
@@ -480,7 +497,7 @@ function injectCopyPromptNextToDownload(downloadBtn) {
 
         const hasNextAfterBookmark = !!copyBtn.nextElementSibling;
         const bBorderClass = hasNextAfterBookmark ? "border-r border-modal-card-badge-border" : "";
-        const bRoundClass = hasNextAfterBookmark ? "rounded-none" : "rounded-r-lg";
+        const bRoundClass = hasNextAfterBookmark ? "rounded-none" : "rounded-r-lg rounded-l-none";
 
         copyBtn.classList.remove("rounded-r-lg");
         copyBtn.classList.add("rounded-none", "border-r", "border-modal-card-badge-border");
@@ -525,9 +542,19 @@ function injectContextMenuCopy(contextMenu) {
     if (contextMenu.querySelector(".leafflow-contextmenu-copy")) return;
     if (!isCopyEnabled("LeafFlow.3 - 📋 Prompt Actions.02_EnableContextMenuCopyPrompt")) return;
 
-    const downloadLi = contextMenu.querySelector(
-        'li[aria-label="Download"], li[aria-label*="ownload" i]'
+    let downloadLi = contextMenu.querySelector(
+        'li[aria-label="Download"], li[aria-label*="ownload" i], [data-pc-section="item"][aria-label*="ownload" i]'
     );
+    if (!downloadLi) {
+        const items = contextMenu.querySelectorAll('li, [data-pc-section="item"]');
+        for (const item of items) {
+            const text = item.textContent?.trim().toLowerCase() || "";
+            if (text.includes("download") || item.querySelector('.icon-[lucide--download], [class*="download" i]')) {
+                downloadLi = item;
+                break;
+            }
+        }
+    }
     if (!downloadLi || !downloadLi.parentElement) return;
 
     const refBtn = downloadLi.querySelector("button");
@@ -626,9 +653,7 @@ function injectHoverCopyAction(overlayBar) {
     if (!overlayBar || overlayBar.querySelector(".leafflow-hover-copy")) return;
     if (!isCopyEnabled("LeafFlow.3 - 📋 Prompt Actions.01_EnableAssetsCopyPromptButton")) return;
 
-    if (overlayBar.closest("[data-job-id], [data-testid*='queue'], .comfy-queue, .queue-item, .queue-list")) {
-        return;
-    }
+    if (isQueueItemElement(overlayBar)) return;
 
     const downloadBtn = overlayBar.querySelector('button[aria-label="Download"], button[aria-label*="ownload" i]');
     if (downloadBtn) {
@@ -646,7 +671,7 @@ function injectHoverCopyAction(overlayBar) {
         "div[data-virtual-grid-item], .asset-card, [data-testid='asset-card'], [data-node-id], .lg-node, .comfy-image-preview"
     );
     if (!parentCard) return;
-    if (parentCard.closest("[data-job-id], [data-testid*='queue'], .comfy-queue")) return;
+    if (isQueueItemElement(parentCard)) return;
 
     const img = parentCard.querySelector("img");
     if (!img || !img.src) return;
@@ -692,7 +717,7 @@ function scanAndInject() {
     );
     downloadBtns.forEach(injectCopyPromptNextToDownload);
 
-    const menus = document.querySelectorAll('.p-contextmenu, [data-pc-name="contextmenu"]');
+    const menus = document.querySelectorAll('.p-contextmenu, .p-menu, .p-tieredmenu, [data-pc-name="contextmenu"], [data-pc-name="menu"], [data-pc-name="tieredmenu"]');
     menus.forEach(injectContextMenuCopy);
 
     const olderOverlays = document.querySelectorAll(
@@ -714,7 +739,7 @@ document.addEventListener("pointerover", (e) => {
         const cardDl = card.querySelector('button[aria-label="Download"], button[aria-label*="ownload" i]');
         if (cardDl) injectCopyPromptNextToDownload(cardDl);
     }
-    const menu = e.target.closest?.('.p-contextmenu, [data-pc-name="contextmenu"]');
+    const menu = e.target.closest?.('.p-contextmenu, .p-menu, .p-tieredmenu, [data-pc-name="contextmenu"], [data-pc-name="menu"], [data-pc-name="tieredmenu"]');
     if (menu) {
         injectContextMenuCopy(menu);
     }
@@ -726,11 +751,11 @@ const observer = new MutationObserver((mutations) => {
         if (mutation.type === "childList") {
             for (const node of mutation.addedNodes) {
                 if (node.nodeType === Node.ELEMENT_NODE) {
-                    if (node.closest?.("[data-job-id], [data-testid*='queue'], .comfy-queue")) continue;
+                    if (isQueueItemElement(node)) continue;
 
                     if (node.matches?.('button[aria-label="Download"], button[aria-label*="ownload" i]')) {
                         injectCopyPromptNextToDownload(node);
-                    } else if (node.matches?.('.p-contextmenu, [data-pc-name="contextmenu"]')) {
+                    } else if (node.matches?.('.p-contextmenu, .p-menu, .p-tieredmenu, [data-pc-name="contextmenu"], [data-pc-name="menu"], [data-pc-name="tieredmenu"]')) {
                         injectContextMenuCopy(node);
                     } else if (node.matches?.('[data-testid="asset-card-actions"], .asset-card-overlay, .asset-item-overlay')) {
                         injectHoverCopyAction(node);
@@ -738,7 +763,7 @@ const observer = new MutationObserver((mutations) => {
                         const dlBtns = node.querySelectorAll('button[aria-label="Download"], button[aria-label*="ownload" i]');
                         dlBtns.forEach(injectCopyPromptNextToDownload);
 
-                        const ctxMenus = node.querySelectorAll('.p-contextmenu, [data-pc-name="contextmenu"]');
+                        const ctxMenus = node.querySelectorAll('.p-contextmenu, .p-menu, .p-tieredmenu, [data-pc-name="contextmenu"], [data-pc-name="menu"], [data-pc-name="tieredmenu"]');
                         ctxMenus.forEach(injectContextMenuCopy);
 
                         const overlays = node.querySelectorAll('[data-testid="asset-card-actions"], .asset-card-overlay, .asset-item-overlay');
@@ -751,6 +776,12 @@ const observer = new MutationObserver((mutations) => {
 });
 observer.observe(document.body, { childList: true, subtree: true });
 
-// Periodic lightweight sweep to catch virtual-scroll recycle events
-setInterval(scanAndInject, 1000);
+// Run scanner immediately, on DOM ready, and periodic sweep
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", scanAndInject);
+} else {
+    scanAndInject();
+}
+setInterval(scanAndInject, 500);
+
 

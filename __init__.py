@@ -104,7 +104,8 @@ async def get_image_prompt_endpoint(request):
             base_dir = folder_paths.get_output_directory()
 
         if subfolder:
-            filepath = os.path.join(base_dir, subfolder, filename)
+            subfolder_clean = str(subfolder).strip().lstrip("/\\")
+            filepath = os.path.join(base_dir, subfolder_clean, filename)
         else:
             filepath = os.path.join(base_dir, filename)
 
