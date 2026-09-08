@@ -33,7 +33,7 @@ async function copyToClipboard(text) {
     }
 }
 
-function isCopyEnabled(settingKey) {
+function isCopyEnabled(settingKey, defaultVal = true) {
     try {
         let val;
         if (app.extensionManager?.setting?.get) {
@@ -43,12 +43,38 @@ function isCopyEnabled(settingKey) {
             val = app.ui.settings.getSettingValue(settingKey);
         }
         if (val === undefined || val === null || val === "") {
-            return true;
+            return defaultVal;
         }
-        return val !== false && val !== "false" && val !== 0 && val !== "0";
+        return val === true || val === "true" || val === 1 || val === "1";
     } catch (_) {
-        return true;
+        return defaultVal;
     }
+}
+
+const BOOKMARK_SVG = `<svg class="size-4 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>`;
+const BOOKMARK_SUCCESS_SVG = `<svg class="size-4 text-emerald-600 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+const BOOKMARK_FAIL_SVG = `<svg class="size-4 text-rose-600 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+const INSPECT_SVG = `<svg class="size-4 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>`;
+
+function updateButtonGroupBorders(container) {
+    if (!container) return;
+    const buttons = Array.from(container.children).filter(el => el.tagName === "BUTTON");
+    if (buttons.length === 0) return;
+    if (buttons.length === 1) {
+        buttons[0].classList.remove("rounded-l-lg", "rounded-r-lg", "rounded-none", "rounded-l-none", "rounded-r-none", "border-r", "border-modal-card-badge-border");
+        buttons[0].classList.add("rounded-lg");
+        return;
+    }
+    buttons.forEach((btn, index) => {
+        btn.classList.remove("rounded-lg", "rounded-l-lg", "rounded-r-lg", "rounded-none", "rounded-l-none", "rounded-r-none", "border-r", "border-modal-card-badge-border");
+        if (index === 0) {
+            btn.classList.add("rounded-l-lg", "rounded-r-none", "border-r", "border-modal-card-badge-border");
+        } else if (index === buttons.length - 1) {
+            btn.classList.add("rounded-r-lg", "rounded-l-none");
+        } else {
+            btn.classList.add("rounded-none", "border-r", "border-modal-card-badge-border");
+        }
+    });
 }
 
 /**
@@ -411,11 +437,9 @@ function getActiveImageSrc() {
     return null;
 }
 
-// 3. Inject Copy Prompt Directly Next to Download Button on Asset Cards
+// 3. Inject Copy Prompt, Bookmark & Inspect Directly Next to Download Button on Asset Cards
 function injectCopyPromptNextToDownload(downloadBtn) {
     if (!downloadBtn || !downloadBtn.parentElement) return;
-    if (downloadBtn.parentElement.querySelector(".leafflow-hover-copy")) return;
-    if (!isCopyEnabled("LeafFlow.3 - 📋 Prompt Actions.01_EnableAssetsCopyPromptButton")) return;
 
     if (isQueueItemElement(downloadBtn)) return;
 
@@ -429,16 +453,12 @@ function injectCopyPromptNextToDownload(downloadBtn) {
     if (!img || !img.src) return;
     if (img.classList.contains("size-8") || img.closest(".size-8, .size-10, .h-12")) return;
 
-    const hasModernIcons = !!(
-        downloadBtn.querySelector("[class*='icon-']") ||
-        document.querySelector("[class*='icon-[lucide']")
-    );
+    const parent = downloadBtn.parentElement;
+    const enableCopy = isCopyEnabled("LeafFlow.3 - 📋 Prompt Actions.01_EnableAssetsCopyPromptButton");
+    const enableBookmark = isCopyEnabled("LeafFlow.3 - 📋 Prompt Actions.03_EnableSaveToPromptSaver");
+    const enableInspect = isCopyEnabled("LeafFlow.3 - 📋 Prompt Actions.04_EnableInspectAssetButton", false);
 
-    // Build copy prompt button inheriting matching visual classes from downloadBtn
-    const copyBtn = document.createElement("button");
-    copyBtn.type = "button";
-    copyBtn.title = "Copy Prompt";
-    copyBtn.setAttribute("aria-label", "Copy Prompt");
+    if (!enableCopy && !enableBookmark && !enableInspect) return;
 
     let baseClasses = downloadBtn.className
         .replace(/\brounded-[a-z0-9-]+\b/g, "")
@@ -451,89 +471,112 @@ function injectCopyPromptNextToDownload(downloadBtn) {
         baseClasses = "inline-flex items-center justify-center font-medium font-inter transition-colors focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 border border-transparent shadow-xs cursor-pointer bg-modal-card-badge-background text-modal-card-badge-foreground hover:bg-modal-card-badge-background-hover size-8 p-0";
     }
 
-    const hasNext = !!downloadBtn.nextElementSibling;
-    const borderClass = hasNext ? "border-r border-modal-card-badge-border" : "";
-    const roundClass = hasNext ? "rounded-none" : "rounded-r-lg rounded-l-none";
+    const hasModernIcons = !!(
+        downloadBtn.querySelector("[class*='icon-']") ||
+        document.querySelector("[class*='icon-[lucide']")
+    );
 
-    copyBtn.className = `leafflow-hover-btn leafflow-hover-copy ${baseClasses} ${roundClass} ${borderClass} shrink-0`;
+    let lastBtn = downloadBtn;
 
-    if (hasModernIcons) {
-        copyBtn.innerHTML = `<i class="icon-[lucide--copy] size-4 pointer-events-none"></i>`;
-    } else {
-        copyBtn.innerHTML = `<svg class="size-4 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
-    }
+    // 1. Copy Prompt Button
+    let copyBtn = parent.querySelector(".leafflow-hover-copy");
+    if (enableCopy) {
+        if (!copyBtn) {
+            copyBtn = document.createElement("button");
+            copyBtn.type = "button";
+            copyBtn.title = "Copy Prompt";
+            copyBtn.setAttribute("aria-label", "Copy Prompt");
+            copyBtn.className = `leafflow-hover-btn leafflow-hover-copy ${baseClasses} shrink-0`;
 
-    copyBtn.onclick = async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const activeImg = card.querySelector("img") || img;
-        const success = await copyImagePrompt(activeImg.src);
-        if (hasModernIcons) {
-            copyBtn.innerHTML = success
-                ? `<i class="icon-[lucide--check] size-4 text-emerald-600 pointer-events-none"></i>`
-                : `<i class="icon-[lucide--x] size-4 text-rose-600 pointer-events-none"></i>`;
-            setTimeout(() => {
-                copyBtn.innerHTML = `<i class="icon-[lucide--copy] size-4 pointer-events-none"></i>`;
-            }, 2000);
-        } else {
-            copyBtn.innerHTML = success
-                ? `<svg class="size-4 text-emerald-600 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`
-                : `<svg class="size-4 text-rose-600 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
-            setTimeout(() => {
-                copyBtn.innerHTML = `<svg class="size-4 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
-            }, 2000);
-        }
-    };
-
-    // Insert directly next to the Download button
-    downloadBtn.parentElement.insertBefore(copyBtn, downloadBtn.nextSibling);
-
-    // If bookmark is enabled, insert Bookmark button right next to Copy Prompt
-    if (isCopyEnabled("LeafFlow.3 - 📋 Prompt Actions.03_EnableSaveToPromptSaver") && !downloadBtn.parentElement.querySelector(".leafflow-hover-bookmark")) {
-        const bookmarkBtn = document.createElement("button");
-        bookmarkBtn.type = "button";
-        bookmarkBtn.title = "Save to Prompt Bookmarks";
-        bookmarkBtn.setAttribute("aria-label", "Save to Prompt Bookmarks");
-
-        const hasNextAfterBookmark = !!copyBtn.nextElementSibling;
-        const bBorderClass = hasNextAfterBookmark ? "border-r border-modal-card-badge-border" : "";
-        const bRoundClass = hasNextAfterBookmark ? "rounded-none" : "rounded-r-lg rounded-l-none";
-
-        copyBtn.classList.remove("rounded-r-lg");
-        copyBtn.classList.add("rounded-none", "border-r", "border-modal-card-badge-border");
-
-        bookmarkBtn.className = `leafflow-hover-btn leafflow-hover-bookmark ${baseClasses} ${bRoundClass} ${bBorderClass} shrink-0`;
-
-        if (hasModernIcons) {
-            bookmarkBtn.innerHTML = `<i class="icon-[lucide--bookmark] size-4 pointer-events-none"></i>`;
-        } else {
-            bookmarkBtn.innerHTML = `<svg class="size-4 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>`;
-        }
-
-        bookmarkBtn.onclick = async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const activeImg = card.querySelector("img") || img;
-            const success = await saveImageToPromptBookmarks(activeImg.src);
             if (hasModernIcons) {
-                bookmarkBtn.innerHTML = success
-                    ? `<i class="icon-[lucide--check] size-4 text-emerald-600 pointer-events-none"></i>`
-                    : `<i class="icon-[lucide--x] size-4 text-rose-600 pointer-events-none"></i>`;
-                setTimeout(() => {
-                    bookmarkBtn.innerHTML = `<i class="icon-[lucide--bookmark] size-4 pointer-events-none"></i>`;
-                }, 2000);
+                copyBtn.innerHTML = `<i class="icon-[lucide--copy] size-4 pointer-events-none"></i>`;
             } else {
-                bookmarkBtn.innerHTML = success
-                    ? `<svg class="size-4 text-emerald-600 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`
-                    : `<svg class="size-4 text-rose-600 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
-                setTimeout(() => {
-                    bookmarkBtn.innerHTML = `<svg class="size-4 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>`;
-                }, 2000);
+                copyBtn.innerHTML = `<svg class="size-4 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
             }
-        };
 
-        downloadBtn.parentElement.insertBefore(bookmarkBtn, copyBtn.nextSibling);
+            copyBtn.onclick = async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const activeImg = card.querySelector("img") || img;
+                const success = await copyImagePrompt(activeImg.src);
+                if (hasModernIcons) {
+                    copyBtn.innerHTML = success
+                        ? `<i class="icon-[lucide--check] size-4 text-emerald-600 pointer-events-none"></i>`
+                        : `<i class="icon-[lucide--x] size-4 text-rose-600 pointer-events-none"></i>`;
+                    setTimeout(() => {
+                        copyBtn.innerHTML = `<i class="icon-[lucide--copy] size-4 pointer-events-none"></i>`;
+                    }, 2000);
+                } else {
+                    copyBtn.innerHTML = success
+                        ? `<svg class="size-4 text-emerald-600 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`
+                        : `<svg class="size-4 text-rose-600 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+                    setTimeout(() => {
+                        copyBtn.innerHTML = `<svg class="size-4 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
+                    }, 2000);
+                }
+            };
+            parent.insertBefore(copyBtn, lastBtn.nextSibling);
+        }
+        lastBtn = copyBtn;
+    } else if (copyBtn) {
+        copyBtn.remove();
     }
+
+    // 2. Bookmark Button
+    let bookmarkBtn = parent.querySelector(".leafflow-hover-bookmark");
+    if (enableBookmark) {
+        if (!bookmarkBtn) {
+            bookmarkBtn = document.createElement("button");
+            bookmarkBtn.type = "button";
+            bookmarkBtn.title = "Save to Prompt Bookmarks";
+            bookmarkBtn.setAttribute("aria-label", "Save to Prompt Bookmarks");
+            bookmarkBtn.className = `leafflow-hover-btn leafflow-hover-bookmark ${baseClasses} shrink-0`;
+            bookmarkBtn.innerHTML = BOOKMARK_SVG;
+
+            bookmarkBtn.onclick = async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const activeImg = card.querySelector("img") || img;
+                const success = await saveImageToPromptBookmarks(activeImg.src);
+                bookmarkBtn.innerHTML = success ? BOOKMARK_SUCCESS_SVG : BOOKMARK_FAIL_SVG;
+                setTimeout(() => {
+                    bookmarkBtn.innerHTML = BOOKMARK_SVG;
+                }, 2000);
+            };
+            parent.insertBefore(bookmarkBtn, lastBtn.nextSibling);
+        }
+        lastBtn = bookmarkBtn;
+    } else if (bookmarkBtn) {
+        bookmarkBtn.remove();
+    }
+
+    // 3. Inspect Asset (Zoom) Button
+    let inspectBtn = parent.querySelector(".leafflow-hover-inspect");
+    if (enableInspect) {
+        if (!inspectBtn) {
+            inspectBtn = document.createElement("button");
+            inspectBtn.type = "button";
+            inspectBtn.title = "Inspect asset";
+            inspectBtn.setAttribute("aria-label", "Inspect asset");
+            inspectBtn.className = `leafflow-hover-btn leafflow-hover-inspect ${baseClasses} shrink-0`;
+            inspectBtn.innerHTML = INSPECT_SVG;
+
+            inspectBtn.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const target = card.querySelector(".aspect-square, [class*='aspect-square'], img") || img;
+                if (target) {
+                    target.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, cancelable: true, view: window }));
+                }
+            };
+            parent.insertBefore(inspectBtn, lastBtn.nextSibling);
+        }
+        lastBtn = inspectBtn;
+    } else if (inspectBtn) {
+        inspectBtn.remove();
+    }
+
+    updateButtonGroupBorders(parent);
 }
 
 // 4. Inject Copy Prompt into PrimeVue Context Menu Next to Download Item
@@ -616,9 +659,7 @@ function injectContextMenuCopy(contextMenu) {
         bookmarkLi.setAttribute("data-p-active", "false");
         bookmarkLi.setAttribute("data-p-focused", "false");
 
-        const bIconHtml = hasModernIcons
-            ? `<i class="icon-[lucide--bookmark] size-4"></i>`
-            : `<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>`;
+        const bIconHtml = BOOKMARK_SVG;
 
         bookmarkLi.innerHTML = `
 <div class="p-contextmenu-item-content" data-pc-section="itemcontent">

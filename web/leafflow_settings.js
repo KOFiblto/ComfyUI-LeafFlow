@@ -427,6 +427,15 @@ app.registerExtension({
             tooltip: "Adds 🔖 'Save to Prompt Bookmarks' to image hover overlay bars and node context menus.",
         });
 
+        // 3.4 Show "Inspect Asset" (Zoom) Button on Image Overlays
+        app.ui.settings.addSetting({
+            id: "LeafFlow.3 - 📋 Prompt Actions.04_EnableInspectAssetButton",
+            name: "Show \"Inspect Asset\" (Zoom) Button on Images",
+            type: "boolean",
+            defaultValue: false,
+            tooltip: "Restores the 🔍 'Inspect asset' (zoom in) button directly on image cards in the Assets pane next to Download, Copy Prompt, and Bookmarks (moved behind the 3-dots menu in newer ComfyUI versions).",
+        });
+
 
         // =========================================================================
         // GRUPPE 4: 4 - ⏸️ Pause & Resume Controls
