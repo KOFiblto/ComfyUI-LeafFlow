@@ -344,7 +344,11 @@ app.registerExtension({
                 applyDisplayMode(mode);
             };
 
-            const initialZoom = localStorage.getItem("comfy_img_picker_zoom") || "80";
+            node.properties = node.properties || {};
+            const initialZoom = node.properties["tile_size"] != null
+                ? node.properties["tile_size"]
+                : (localStorage.getItem("comfy_img_picker_zoom") || "80");
+            node.properties["tile_size"] = parseInt(initialZoom);
             viewContainer.style.setProperty("--img-tile-size", `${initialZoom}px`);
 
             // Embed DOM Widget inside the node container
@@ -380,8 +384,10 @@ app.registerExtension({
                 "tile_size",
                 parseInt(initialZoom),
                 (val) => {
-                    localStorage.setItem("comfy_img_picker_zoom", val);
+                    node.properties = node.properties || {};
+                    node.properties["tile_size"] = val;
                     viewContainer.style.setProperty("--img-tile-size", `${val}px`);
+                    if (app.graph) app.graph.setDirtyCanvas(true, true);
                 },
                 { min: 50, max: 200, step: 1 }
             );
@@ -601,6 +607,21 @@ app.registerExtension({
             const originalOnConfigure = node.onConfigure;
             node.onConfigure = function(config) {
                 if (originalOnConfigure) originalOnConfigure.apply(this, arguments);
+
+                const savedTileSize = (config && config.properties && config.properties["tile_size"] != null)
+                    ? config.properties["tile_size"]
+                    : (node.properties && node.properties["tile_size"] != null ? node.properties["tile_size"] : null);
+
+                if (savedTileSize != null) {
+                    node.properties = node.properties || {};
+                    node.properties["tile_size"] = savedTileSize;
+                    if (zoomWidget) {
+                        zoomWidget.value = parseInt(savedTileSize);
+                    }
+                    if (viewContainer && viewContainer.style) {
+                        viewContainer.style.setProperty("--img-tile-size", `${savedTileSize}px`);
+                    }
+                }
 
                 const curWidget = getHiddenWidget("_selected_image", "");
                 const widgetIndex = node.widgets.indexOf(curWidget);
