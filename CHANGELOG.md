@@ -5,26 +5,20 @@ All notable changes to `ComfyUI-LeafFlow` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.3.0] - 2026-09-08
+## [2.2.0] - 2026-09-08
+
+> ⚠️ **Important Frontend Compatibility Notice**:
+> The previous release (**v2.1.0**) does **not** support the new ComfyUI frontend package (`@comfyorg/comfyui-frontend` / modern Vue virtual grid).
+> **v2.2.0 introduces complete support for the new frontend package**, restoring action buttons (Copy Prompt, Save to Prompt Bookmarks, Inspect Asset zoom) directly on modern virtual grid cards, alongside the 1D Git-Graph batch queue visualizer and per-node zoom settings!
 
 ### Added
+- **🌐 Full Modern ComfyUI Frontend Package Support**:
+  - Full compatibility with `@comfyorg/comfyui-frontend` modern virtual grid and card DOM structures.
+  - Seamless overlay action bar button groups for modern asset cards with dynamic rounded pill styling (`rounded-l-lg`, `rounded-r-lg`, `rounded-none`, `border-r`).
 - **🔍 Toggleable "Inspect Asset" Button (`04_EnableInspectAssetButton`)**:
   - Restores the direct "Inspect asset" (zoom in) button directly onto image cards in the Assets pane hover action bar, placed seamlessly alongside Download, Copy Prompt, and Bookmarks (restoring access since newer ComfyUI versions tucked it away behind the 3-dots submenu). Default is `false` (opt-in).
 - **🔖 Robust Inline SVG Icons for "Save to Prompt Bookmarks"**:
   - Replaced runtime Tailwind icon class references with crisp inline SVG ribbons, fixing an issue in modern `comfyui_frontend_package` where the bookmark icon rendered with 0 dimensions (empty space).
-- **🎨 Dynamic Action Bar Button Group Pill Styling**:
-  - Implemented `updateButtonGroupBorders()` to automatically calculate and apply seamless rounded pill styling (`rounded-l-lg`, `rounded-r-lg`, `rounded-none`, `border-r`) for any combination of active action buttons on modern ComfyUI asset cards.
-
-### Fixed
-- **📐 Independent Per-Node `tile_size` in Visual Loaders**:
-  - Decoupled `tile_size` zoom levels from global browser `localStorage` in `VisualLoraLoader` (V1 & V2) and `VisualImageLoader`.
-  - Tile zoom values are now persisted directly in `node.properties["tile_size"]` within the workflow JSON, allowing multiple loader nodes on the canvas to maintain independent, custom tile sizes across browser reloads.
-- **🛡️ Queue Container Conflict Prevention**:
-  - Hardened image card button injection guards to avoid injecting into queue item elements or small icon previews in modern virtual grids.
-
-## [2.2.0] - 2026-09-04
-
-### Added
 - **🎨 1D Git-Graph Batch Queue Visualizer (`ComfyUI.LeafFlow.BatchQueue`)**:
   - Automatically identifies workflows queued together as batches in both ComfyUI Frontend V2 (`JobAssetsList`) and Classic V1 queue list.
   - Purely graphical 1D colored line along the left edge of queue items without any text or number clutter.
@@ -37,6 +31,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **In-between Infiltration Handling**: When another prompt or batch is queued in-between items of an existing batch, the interrupted batch retains its open straight ends (no false start/end curves), while the inserted item is cleanly enclosed in its own bracket.
   - **PersistentQueue Interoperability**: Operates client-side via `localStorage` when standalone, and synchronizes with `PersistentQueueManager` so batch relationships restore automatically upon server restart.
   - **Settings Toggle**: Added `LeafFlow.BatchQueue.Enabled` setting in ComfyUI Settings menu.
+
+### Fixed
+- **📐 Independent Per-Node `tile_size` in Visual Loaders**:
+  - Decoupled `tile_size` zoom levels from global browser `localStorage` in `VisualLoraLoader` (V1 & V2) and `VisualImageLoader`.
+  - Tile zoom values are now persisted directly in `node.properties["tile_size"]` within the workflow JSON, allowing multiple loader nodes on the canvas to maintain independent, custom tile sizes across browser reloads.
+- **🛡️ Queue Container Conflict Prevention**:
+  - Hardened image card button injection guards to avoid injecting into queue item elements or small icon previews in modern virtual grids.
 
 ### Security & Registry Compliance
 - **Local-Only Route Enforcement**: All server control endpoints (`/leafflow/power/*`), settings updates (`/leafflow/settings`), and queue sync routes now strictly verify loopback origin (`127.0.0.1` / `::1`), rejecting remote calls with `403 Forbidden`.
