@@ -85,6 +85,16 @@ Tired of guessing what a LoRA does based on its filename?
 ### 🍃 ⏱️ Recent Outputs
 Want to quickly reference your recent generations without digging through Windows Explorer? The **`🍃 ⏱️ Recent Outputs`** node cycles chronologically through your `output/` directory, pulling your freshest creations right back into the workflow canvas.
 
+### 🍃 📝 Prompt Counter & 🔄 Prompt Queue Iterator
+Managing multi-prompt queues and setting the exact ComfyUI batch size has never been easier:
+1. **`🍃 📝 Prompt Counter`**: Place this multiline text node in your workflow and paste all your prompts.
+   - As you type or paste, the live badge instantly updates (e.g. `🍃 24 Prompts`), so you know exactly what batch size to set before clicking Queue!
+   - Under Advanced Options, select your delimiter (`>1 Empty Line`, `Newline`, `>2 Empty Lines`, or `Custom Regex`).
+   - If `Custom Regex` is selected, enter any custom delimiter pattern (such as `\n---\n`). The regex field is dynamically enabled only when Custom Regex is active.
+2. **`🍃 🔄 Prompt Queue Iterator`**: Connect the `STRING` output of the Prompt Counter into the Prompt Queue Iterator to sequentially pop and execute each prompt run-by-run.
+   - Now supports `Custom Regex` in addition to empty line and newline separators.
+   - Includes live progress counter widget (`🍃 Run X / Y`), instant index reset button (`🔄 Reset Counter (0)`), and direct state file access (`📂 Open Queue File`).
+
 ---
 
 ## 3. Formatting Folder Paths

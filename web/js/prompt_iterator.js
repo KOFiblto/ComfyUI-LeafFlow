@@ -74,7 +74,58 @@ app.registerExtension({
                     app.graph?.setDirtyCanvas(true, true);
                 }, 1500);
             });
-            openFileBtn.serialize = false;
+            // 4. Manage custom_regex enable/disable based on separator
+            const sepWidget = node.widgets?.find(w => w.name === "separator");
+            const regexWidget = node.widgets?.find(w => w.name === "custom_regex");
+
+            function updateRegexState() {
+                if (!sepWidget || !regexWidget) return;
+                const isCustom = String(sepWidget.value || "").toLowerCase().includes("regex");
+                regexWidget.disabled = !isCustom;
+                if (regexWidget.inputEl) {
+                    regexWidget.inputEl.disabled = !isCustom;
+                    regexWidget.inputEl.style.opacity = isCustom ? "1" : "0.4";
+                    regexWidget.inputEl.style.pointerEvents = isCustom ? "auto" : "none";
+                }
+                if (regexWidget.options) {
+                    regexWidget.options.disabled = !isCustom;
+                }
+                app.graph?.setDirtyCanvas(true, true);
+            }
+
+            if (sepWidget && regexWidget) {
+                const origSepCb = sepWidget.callback;
+                sepWidget.callback = function(val) {
+                    if (origSepCb) origSepCb.apply(this, arguments);
+                    updateRegexState();
+                };
+
+                const origMouse = regexWidget.mouse;
+                regexWidget.mouse = function(event, pos, node) {
+                    if (this.disabled) return false;
+                    if (origMouse) return origMouse.apply(this, arguments);
+                };
+
+                const origDraw = regexWidget.draw;
+                regexWidget.draw = function(ctx, node, widget_width, y, widget_height) {
+                    if (this.disabled) {
+                        ctx.save();
+                        ctx.globalAlpha = 0.35;
+                        if (origDraw) origDraw.apply(this, arguments);
+                        ctx.restore();
+                    } else {
+                        if (origDraw) origDraw.apply(this, arguments);
+                    }
+                };
+
+                setTimeout(updateRegexState, 20);
+            }
+
+            const origOnConfigure = node.onConfigure;
+            node.onConfigure = function() {
+                if (origOnConfigure) origOnConfigure.apply(this, arguments);
+                setTimeout(updateRegexState, 40);
+            };
         }
     }
 });

@@ -139,18 +139,34 @@ try:
 except Exception:
     pass
 
-def parse_prompt_blocks(text_str, separator):
+def parse_prompt_blocks(text_str, separator, custom_regex=""):
     if not text_str or not text_str.strip():
         return []
     
     clean_text = text_str.replace('\r\n', '\n').replace('\r', '\n')
+    sep_lower = str(separator).lower() if separator else ">1 empty line"
 
-    if separator == "Newline":
+    if "regex" in sep_lower:
+        pattern = custom_regex.strip() if (custom_regex and custom_regex.strip()) else r'\n\s*\n+'
+        try:
+            regex = re.compile(pattern)
+            raw_blocks = regex.split(clean_text)
+            results = []
+            for b in raw_blocks:
+                b_str = b.strip()
+                if b_str and not regex.fullmatch(b):
+                    results.append(b_str)
+            return results
+        except Exception as e:
+            print(f"[LeafFlow Prompt] Invalid custom regex pattern '{pattern}': {e}. Falling back to empty line separator.")
+            raw_blocks = re.split(r'\n\s*\n+', clean_text)
+            return [b.strip() for b in raw_blocks if b.strip()]
+    elif "newline" in sep_lower:
         return [line.strip() for line in clean_text.split('\n') if line.strip()]
-    elif separator == ">2 Empty Lines":
+    elif ">2" in sep_lower or "2 empty" in sep_lower:
         raw_blocks = re.split(r'(?:\n\s*){3,}', clean_text)
         return [b.strip() for b in raw_blocks if b.strip()]
-    else: # ">1 Empty Line"
+    else: # ">1 Empty Line", ">1 Emptyline"
         raw_blocks = re.split(r'\n\s*\n+', clean_text)
         return [b.strip() for b in raw_blocks if b.strip()]
 
@@ -179,11 +195,13 @@ class PromptQueueIterator:
                 "separator": ([
                     ">1 Empty Line",
                     "Newline",
-                    ">2 Empty Lines"
+                    ">2 Empty Lines",
+                    "Custom Regex"
                 ], {"default": ">1 Empty Line"}),
                 "text": ("STRING", {"default": "", "multiline": True}),
             },
             "optional": {
+                "custom_regex": ("STRING", {"default": "", "placeholder": "Custom regex delimiter (e.g. \\n---\\n)"}),
                 "prompt": ("STRING", {"forceInput": True}),
             },
             "hidden": {
@@ -207,6 +225,7 @@ class PromptQueueIterator:
         pop_mode="Sequential (Loop on End)",
         separator=">1 Empty Line",
         text="",
+        custom_regex="",
         prompt=None,
         prompt_text=None,
         unique_id="default",
@@ -217,7 +236,7 @@ class PromptQueueIterator:
         if not text_str.strip():
             return ("", "", 0)
 
-        original_blocks = parse_prompt_blocks(text_str, separator)
+        original_blocks = parse_prompt_blocks(text_str, separator, custom_regex)
         total_count = len(original_blocks)
         if total_count == 0:
             return ("", "", 0)
@@ -285,7 +304,18 @@ class PromptQueueIterator:
 
         # Calculate remaining items
         remaining_count = max(0, total_count - display_run)
-        join_delim = "\n" if separator == "Newline" else ("\n\n\n" if separator == ">2 Empty Lines" else "\n\n")
+        sep_lower = str(separator).lower() if separator else ""
+        if "newline" in sep_lower:
+            join_delim = "\n"
+        elif ">2" in sep_lower or "2 empty" in sep_lower:
+            join_delim = "\n\n\n"
+        elif "regex" in sep_lower:
+            if custom_regex and not any(c in custom_regex for c in r"*+?{}[\]^$|()\\"):
+                join_delim = custom_regex
+            else:
+                join_delim = "\n\n"
+        else:
+            join_delim = "\n\n"
         remaining_text = join_delim.join(original_blocks[display_run:]) if display_run < total_count else ""
 
         # Update state dictionary

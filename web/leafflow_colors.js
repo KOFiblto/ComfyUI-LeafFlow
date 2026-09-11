@@ -19,6 +19,7 @@ const COLOR_MAP = {
     "PreviewImageSizeAspectRatio": LEAF_LIGHT,
     "TextLoraFinder": LEAF_LIGHT,
     "PromptQueueIterator": LEAF_LIGHT,
+    "PromptCounter": LEAF_LIGHT,
     "MultiTextReplacer": LEAF_LIGHT,
     "LeafFlowTextSplit": LEAF_LIGHT,
     "LeafFlowDecision": LEAF_LIGHT,

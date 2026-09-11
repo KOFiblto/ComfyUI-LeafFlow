@@ -19,6 +19,7 @@ from .nodes.decision_node import LeafFlowDecision
 from .nodes.aspect_ratio import TextAspectRatioFinder, AspectRatioFinder, PreviewImageSizeAspectRatio
 from .nodes.lora_finder import TextLoraFinder, LoraTextFinder
 from .nodes.prompt_iterator import PromptQueueIterator
+from .nodes.prompt_counter import PromptCounter
 from .nodes.text_replacer import MultiTextReplacer
 from .nodes.text_split import LeafFlowTextSplit
 from .nodes.utils import (
@@ -41,6 +42,7 @@ NODE_CLASS_MAPPINGS = {
     "PreviewImageSizeAspectRatio": PreviewImageSizeAspectRatio,
     "TextLoraFinder": TextLoraFinder,
     "PromptQueueIterator": PromptQueueIterator,
+    "PromptCounter": PromptCounter,
     "MultiTextReplacer": MultiTextReplacer,
     "LeafFlowTextSplit": LeafFlowTextSplit,
 }
@@ -58,6 +60,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "PreviewImageSizeAspectRatio": "🍃 📐 Preview Image Size & Aspect Ratio",
     "TextLoraFinder": "🍃 🔎 Text LoRA Finder & Loader",
     "PromptQueueIterator": "🍃 🔄 Prompt Queue Iterator",
+    "PromptCounter": "🍃 📝 Prompt Counter",
     "MultiTextReplacer": "🍃 🔤 Multi Text Replacer",
     "LeafFlowTextSplit": "🍃 ✂️ Text Split"
 }

@@ -32,6 +32,22 @@ class TestPromptQueueIterator(unittest.TestCase):
         self.assertEqual(blocks[0], "Block 1 line 1\nBlock 1 line 2")
         self.assertEqual(blocks[1], "Block 2")
 
+    def test_parse_prompt_blocks_custom_regex(self):
+        text = "Prompt A\n---\nPrompt B\n---\nPrompt C"
+        blocks = parse_prompt_blocks(text, separator="Custom Regex", custom_regex=r"\n---\n")
+        self.assertEqual(blocks, ["Prompt A", "Prompt B", "Prompt C"])
+
+    def test_parse_prompt_blocks_custom_regex_capturing_group(self):
+        text = "Prompt A\n---\nPrompt B\n---\nPrompt C"
+        blocks = parse_prompt_blocks(text, separator="Custom Regex", custom_regex=r"(\n---\n)")
+        self.assertEqual(blocks, ["Prompt A", "Prompt B", "Prompt C"])
+
+    def test_parse_prompt_blocks_custom_regex_invalid_fallback(self):
+        text = "Prompt 1\n\nPrompt 2"
+        # Invalid regex [unterminated class
+        blocks = parse_prompt_blocks(text, separator="Custom Regex", custom_regex=r"[unterminated")
+        self.assertEqual(blocks, ["Prompt 1", "Prompt 2"])
+
     def test_sequential_10_batch_execution(self):
         """
         Verify that 10 prompts are executed in exact sequential order (0 to 9).

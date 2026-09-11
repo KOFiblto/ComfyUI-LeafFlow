@@ -217,17 +217,35 @@ Scans input prompt text for `<lora:name:strength>` tags or names matching a fold
 <summary><b>🍃 🔄 Prompt Queue Iterator</b> (<code>PromptQueueIterator</code>)</summary>
 
 #### Overview
-Parses multiline prompts or batch text blocks separated by double newlines (`\n\n`), automatically popping the top prompt per queue iteration and keeping remaining prompts in memory.
+Deterministically iterates over multiline prompt text blocks per queue run with live progress display, counter reset controls, and index tracking. Supports splitting prompts by empty lines, newlines, or a custom regular expression delimiter.
 
 #### Inputs & Widgets
-- **`prompts`** (`STRING`, Multiline): Queue of prompt blocks.
-- **`mode`** (`COMBO`): `Double Newline (\n\n)` vs `Single Line (\n)`.
-- **`delete_after_queue`** (`BOOLEAN`): Pop executed block from widget text.
+- **`pop_mode`** (`COMBO`): `Sequential (Loop on End)`, `Sequential (Stop on End)`, `Random (Keep)`, `Random (Cycle)`.
+- **`separator`** (`COMBO`): Split prompts by `>1 Empty Line`, `Newline`, `>2 Empty Lines`, or `Custom Regex`.
+- **`custom_regex`** (`STRING`): Custom regular expression delimiter (e.g. `\n---\n`). Automatically enabled when `separator` is set to `Custom Regex` and disabled otherwise.
+- **`text`** (`STRING`, Multiline): Multiline prompt text containing your queued blocks.
+- **`prompt`** (`STRING`, Optional Input): Connect an external multiline string node (such as *Prompt Counter*).
 
 #### Outputs
-- **`active_prompt`** (`STRING`): The current prompt block for this run.
-- **`remaining_prompts`** (`STRING`): The queue of remaining prompts.
+- **`prompt`** (`STRING`): The selected prompt block for the current queue run.
+- **`remaining_text`** (`STRING`): All remaining prompt blocks joined by the delimiter.
 - **`remaining_count`** (`INT`): Count of remaining items in queue.
+</details>
+
+<details>
+<summary><b>🍃 📝 Prompt Counter</b> (<code>PromptCounter</code>)</summary>
+
+#### Overview
+Multiline text prompt input node that functions identically to a standard multiline string node, with real-time prompt counting according to your chosen delimiter (`>1 Empty Line`, `Newline`, `>2 Empty Lines`, or `Custom Regex`). Displays the live prompt count directly on the node (e.g. `🍃 24 Prompts`) on every keystroke, allowing you to easily determine and set the exact ComfyUI batch size before running your queue.
+
+#### Inputs & Widgets
+- **`text`** (`STRING`, Multiline): Input prompt text block.
+- **`separator`** (`COMBO`, *Advanced*): Prompt delimiter (`>1 Empty Line`, `Newline`, `>2 Empty Lines`, `Custom Regex`). Hidden by default under Advanced Options.
+- **`custom_regex`** (`STRING`, *Advanced*): Custom regex delimiter pattern (e.g. `\n---\n`). Dynamically enabled/disabled based on delimiter selection.
+
+#### Outputs
+- **`STRING`**: The unmodified prompt text (ready to connect into samplers or *Prompt Queue Iterator*).
+- **`count`** (`INT`): The registered prompt count integer.
 </details>
 
 <details>
