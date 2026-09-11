@@ -45,7 +45,6 @@ const STORAGE_KEY = "leafflow_batch_queue_meta";
 const BATCH_COUNTER_KEY = "leafflow_batch_counter";
 const SETTING_ID = "LeafFlow.BatchQueue.Enabled";
 const SETTING_SNAPSHOT_GUARD = "LeafFlow.BatchQueue.SnapshotGuard";
-const SETTING_QUEUE_PROGRESS = "LeafFlow.BatchQueue.ShowQueueProgress";
 
 // In-memory registry mapping prompt_id -> batch metadata
 let batchRegistry = new Map();
@@ -215,48 +214,6 @@ function isSnapshotGuardEnabled() {
         }
     } catch (e) {}
     return true;
-}
-
-function isQueueProgressEnabled() {
-    try {
-        if (app.extensionManager?.setting?.get) {
-            return app.extensionManager.setting.get(SETTING_QUEUE_PROGRESS) !== false;
-        }
-    } catch (e) {}
-    return true;
-}
-
-function getQueueButton() {
-    if (typeof document === "undefined") return null;
-    return document.querySelector('[data-testid="queue-button"], #queue-button, #comfy-queue-btn, button.comfyui-queue-button, button.comfy-queue-btn');
-}
-
-function setQueueButtonProgress(current, total) {
-    if (!isQueueProgressEnabled()) return;
-    const btn = getQueueButton();
-    if (!btn) return;
-
-    let badge = btn.querySelector(".leafflow-queue-progress-badge");
-    if (!badge) {
-        badge = document.createElement("span");
-        badge.className = "leafflow-queue-progress-badge";
-        badge.style.marginLeft = "6px";
-        badge.style.fontSize = "11px";
-        badge.style.fontWeight = "600";
-        badge.style.opacity = "0.9";
-        badge.style.pointerEvents = "none";
-        badge.style.display = "inline-flex";
-        badge.style.alignItems = "center";
-        badge.style.color = "#10b981";
-        btn.appendChild(badge);
-    }
-    badge.textContent = `⏳ (${current}/${total})`;
-    badge.title = `LeafFlow: Queuing batch item ${current} of ${total}...`;
-}
-
-function clearQueueButtonProgress() {
-    if (typeof document === "undefined") return;
-    document.querySelectorAll(".leafflow-queue-progress-badge").forEach(el => el.remove());
 }
 
 function isSeedInput(key, val, nodeInputs) {
@@ -450,13 +407,9 @@ function setupQueueHooks() {
                 activeBatchContext = batch;
                 saveStorage();
                 try {
-                    if (count > 1) {
-                        setQueueButtonProgress(1, count);
-                    }
                     return await origQueuePrompt(number, batchCount, queueNodeIds);
                 } finally {
                     activeBatchContext = null;
-                    clearQueueButtonProgress();
                 }
             });
             batchSubmissionQueue = turn.catch(() => {});
@@ -481,10 +434,8 @@ function setupQueueHooks() {
                     } catch (e) {
                         console.warn("[LeafFlow BatchQueue] Failed to snapshot prompt:", e);
                     }
-                    setQueueButtonProgress(1, activeBatchContext.batchCount);
                 } else if (activeBatchContext.snapshotPrompt) {
                     promptToSend = mergeDynamicSeeds(activeBatchContext.snapshotPrompt, prompt);
-                    setQueueButtonProgress(itemIndex + 1, activeBatchContext.batchCount);
                 }
             }
 
@@ -513,9 +464,8 @@ function setupQueueHooks() {
                 saveStorage();
                 syncBatchToServer(pid, batchInfo);
 
-                // If this batch completed its expected prompt count, clear context & badge
+                // If this batch completed its expected prompt count, clear context
                 if (activeBatchContext.prompts.length >= activeBatchContext.batchCount) {
-                    clearQueueButtonProgress();
                     activeBatchContext = null;
                 }
 
