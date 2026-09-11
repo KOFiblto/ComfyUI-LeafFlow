@@ -44,6 +44,8 @@ const BATCH_COLORS = [
 const STORAGE_KEY = "leafflow_batch_queue_meta";
 const BATCH_COUNTER_KEY = "leafflow_batch_counter";
 const SETTING_ID = "LeafFlow.BatchQueue.Enabled";
+const SETTING_SNAPSHOT_GUARD = "LeafFlow.BatchQueue.SnapshotGuard";
+const SETTING_QUEUE_PROGRESS = "LeafFlow.BatchQueue.ShowQueueProgress";
 
 // In-memory registry mapping prompt_id -> batch metadata
 let batchRegistry = new Map();
@@ -206,6 +208,117 @@ function isBatchQueueEnabled() {
     return true;
 }
 
+function isSnapshotGuardEnabled() {
+    try {
+        if (app.extensionManager?.setting?.get) {
+            return app.extensionManager.setting.get(SETTING_SNAPSHOT_GUARD) !== false;
+        }
+    } catch (e) {}
+    return true;
+}
+
+function isQueueProgressEnabled() {
+    try {
+        if (app.extensionManager?.setting?.get) {
+            return app.extensionManager.setting.get(SETTING_QUEUE_PROGRESS) !== false;
+        }
+    } catch (e) {}
+    return true;
+}
+
+function getQueueButton() {
+    if (typeof document === "undefined") return null;
+    return document.querySelector('[data-testid="queue-button"], #queue-button, #comfy-queue-btn, button.comfyui-queue-button, button.comfy-queue-btn');
+}
+
+function setQueueButtonProgress(current, total) {
+    if (!isQueueProgressEnabled()) return;
+    const btn = getQueueButton();
+    if (!btn) return;
+
+    let badge = btn.querySelector(".leafflow-queue-progress-badge");
+    if (!badge) {
+        badge = document.createElement("span");
+        badge.className = "leafflow-queue-progress-badge";
+        badge.style.marginLeft = "6px";
+        badge.style.fontSize = "11px";
+        badge.style.fontWeight = "600";
+        badge.style.opacity = "0.9";
+        badge.style.pointerEvents = "none";
+        badge.style.display = "inline-flex";
+        badge.style.alignItems = "center";
+        badge.style.color = "#10b981";
+        btn.appendChild(badge);
+    }
+    badge.textContent = `⏳ (${current}/${total})`;
+    badge.title = `LeafFlow: Queuing batch item ${current} of ${total}...`;
+}
+
+function clearQueueButtonProgress() {
+    if (typeof document === "undefined") return;
+    document.querySelectorAll(".leafflow-queue-progress-badge").forEach(el => el.remove());
+}
+
+function isSeedInput(key, val, nodeInputs) {
+    const k = String(key).toLowerCase();
+    // 1. Direct seed properties (seed, noise_seed, sampler_seed, seed_num, random_seed, etc.)
+    if (k.includes("seed")) {
+        return typeof val === "number" || (typeof val === "string" && /^-?\d+$/.test(val.trim()));
+    }
+    // 2. Dynamic random integer/number properties (random_value, random_int, etc.)
+    if (k.includes("random") && typeof val === "number") {
+        return true;
+    }
+    // 3. ComfyUI PrimitiveNode controlling a seed widget (contains control_after_generate or control_mode)
+    if (key === "value" && nodeInputs && (nodeInputs.control_after_generate !== undefined || nodeInputs.control_mode !== undefined)) {
+        return typeof val === "number" || (typeof val === "string" && /^-?\d+$/.test(String(val).trim()));
+    }
+    return false;
+}
+
+function mergeDynamicSeeds(snapPrompt, livePrompt) {
+    if (!snapPrompt) return livePrompt;
+    try {
+        const cloned = JSON.parse(JSON.stringify(snapPrompt));
+        if (livePrompt && livePrompt.output && cloned.output) {
+            for (const [nodeId, liveNode] of Object.entries(livePrompt.output)) {
+                const snapNode = cloned.output[nodeId];
+                if (snapNode && snapNode.inputs && liveNode.inputs) {
+                    for (const [key, val] of Object.entries(liveNode.inputs)) {
+                        if (isSeedInput(key, val, liveNode.inputs)) {
+                            snapNode.inputs[key] = val;
+                        }
+                    }
+                }
+            }
+        }
+        // Also sync seed values in workflow metadata so saved PNG metadata matches generated seeds
+        if (livePrompt && livePrompt.workflow && Array.isArray(livePrompt.workflow.nodes) && cloned.workflow && Array.isArray(cloned.workflow.nodes)) {
+            const liveWorkflowMap = new Map();
+            for (const n of livePrompt.workflow.nodes) {
+                if (n && n.id !== undefined) liveWorkflowMap.set(String(n.id), n);
+            }
+            for (const snapNode of cloned.workflow.nodes) {
+                if (!snapNode || snapNode.id === undefined) continue;
+                const liveWfNode = liveWorkflowMap.get(String(snapNode.id));
+                if (liveWfNode && Array.isArray(liveWfNode.widgets_values) && Array.isArray(snapNode.widgets_values)) {
+                    for (let i = 0; i < liveWfNode.widgets_values.length; i++) {
+                        const liveVal = liveWfNode.widgets_values[i];
+                        const snapVal = snapNode.widgets_values[i];
+                        if (typeof liveVal === "number" && typeof snapVal === "number" && liveVal !== snapVal) {
+                            snapNode.widgets_values[i] = liveVal;
+                        }
+                    }
+                }
+            }
+        }
+        return cloned;
+    } catch (e) {
+        console.warn("[LeafFlow BatchQueue] Error merging dynamic seeds into snapshot:", e);
+        return snapPrompt;
+    }
+}
+
 // Sync with server if PersistentQueue is available
 async function syncBatchToServer(promptId, batchInfo) {
     try {
@@ -319,7 +432,9 @@ async function updateQueueBatchVisuals() {
     }
 }
 
-// Hook queuePrompt to track batch execution
+let batchSubmissionQueue = Promise.resolve();
+
+// Hook queuePrompt to track batch execution and guard multi-item batches
 function setupQueueHooks() {
     loadStorage();
 
@@ -328,17 +443,52 @@ function setupQueueHooks() {
         const origQueuePrompt = app.queuePrompt.bind(app);
         app.queuePrompt = async function(number, batchCount = 1, queueNodeIds) {
             const count = Math.max(1, parseInt(batchCount, 10) || 1);
-            activeBatchContext = getNextBatch(count);
-            saveStorage();
-            return origQueuePrompt(number, batchCount, queueNodeIds);
+
+            // Chain onto batchSubmissionQueue to ensure sequential batch submissions
+            const turn = batchSubmissionQueue.then(async () => {
+                const batch = getNextBatch(count);
+                activeBatchContext = batch;
+                saveStorage();
+                try {
+                    if (count > 1) {
+                        setQueueButtonProgress(1, count);
+                    }
+                    return await origQueuePrompt(number, batchCount, queueNodeIds);
+                } finally {
+                    activeBatchContext = null;
+                    clearQueueButtonProgress();
+                }
+            });
+            batchSubmissionQueue = turn.catch(() => {});
+            return turn;
         };
     }
 
-    // 2. Hook api.queuePrompt to record every generated prompt_id
+    // 2. Hook api.queuePrompt to record every generated prompt_id & enforce snapshot guard
     if (api && typeof api.queuePrompt === "function") {
         const origApiQueuePrompt = api.queuePrompt.bind(api);
         api.queuePrompt = async function(number, prompt, targets) {
-            const res = await origApiQueuePrompt(number, prompt, targets);
+            let promptToSend = prompt;
+
+            // Batch Graph Snapshot Guard:
+            // When queueing a batch with batchCount > 1, snapshot on iteration 0 in the background
+            // so canvas edits (text, LoRA selection, widgets) don't bleed into subsequent items.
+            if (isSnapshotGuardEnabled() && activeBatchContext && activeBatchContext.batchCount > 1) {
+                const itemIndex = activeBatchContext.prompts.length;
+                if (itemIndex === 0) {
+                    try {
+                        activeBatchContext.snapshotPrompt = JSON.parse(JSON.stringify(prompt));
+                    } catch (e) {
+                        console.warn("[LeafFlow BatchQueue] Failed to snapshot prompt:", e);
+                    }
+                    setQueueButtonProgress(1, activeBatchContext.batchCount);
+                } else if (activeBatchContext.snapshotPrompt) {
+                    promptToSend = mergeDynamicSeeds(activeBatchContext.snapshotPrompt, prompt);
+                    setQueueButtonProgress(itemIndex + 1, activeBatchContext.batchCount);
+                }
+            }
+
+            const res = await origApiQueuePrompt(number, promptToSend, targets);
             if (res && res.prompt_id) {
                 const pid = String(res.prompt_id);
                 if (!activeBatchContext) {
@@ -363,8 +513,9 @@ function setupQueueHooks() {
                 saveStorage();
                 syncBatchToServer(pid, batchInfo);
 
-                // If this batch completed its expected prompt count, clear context
+                // If this batch completed its expected prompt count, clear context & badge
                 if (activeBatchContext.prompts.length >= activeBatchContext.batchCount) {
+                    clearQueueButtonProgress();
                     activeBatchContext = null;
                 }
 

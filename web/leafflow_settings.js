@@ -671,6 +671,24 @@ app.registerExtension({
             defaultValue: true,
             tooltip: "Renders 1D git-graph style colored lines indicating batch groupings and contiguous segments on queued items."
         });
+
+        // 8.2 Batch Graph Snapshot Guard
+        app.ui.settings.addSetting({
+            id: "LeafFlow.BatchQueue.SnapshotGuard",
+            name: "Batch Graph Snapshot Guard",
+            type: "boolean",
+            defaultValue: true,
+            tooltip: "When queueing multi-item batches, snapshots prompt and node inputs (like text and LoRAs) in the background so mid-queue canvas edits do not corrupt queued items. Random seeds continue to randomize."
+        });
+
+        // 8.3 Show Batch Queuing Progress
+        app.ui.settings.addSetting({
+            id: "LeafFlow.BatchQueue.ShowQueueProgress",
+            name: "Show Batch Queuing Progress on Button",
+            type: "boolean",
+            defaultValue: true,
+            tooltip: "Displays live batch submission progress (e.g. ⏳ (3/11)) on the Queue button while a multi-batch is transmitting in the background."
+        });
     }
 });
 
